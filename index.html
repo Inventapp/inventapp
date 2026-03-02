@@ -3,7 +3,87 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>InventApp</title>
+<title>InventApp · FAZOCAR</title>
+<!-- Firebase SDK -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+  import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged }
+    from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+  import { getFirestore, doc, getDoc, setDoc, onSnapshot, collection }
+    from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyC-ZS7HNJhsX-LooWu12lStkVpQWEW-mhk",
+    authDomain: "fazocar-c723e.firebaseapp.com",
+    projectId: "fazocar-c723e",
+    storageBucket: "fazocar-c723e.firebasestorage.app",
+    messagingSenderId: "218367024149",
+    appId: "1:218367024149:web:e91de531376505455ac21c"
+  };
+
+  const fbApp  = initializeApp(firebaseConfig);
+  const fbAuth = getAuth(fbApp);
+  const fbDb   = getFirestore(fbApp);
+
+  // Expose to global scope for the rest of the app
+  window._fbAuth   = fbAuth;
+  window._fbDb     = fbDb;
+  window._fbDoc    = doc;
+  window._fbGetDoc = getDoc;
+  window._fbSetDoc = setDoc;
+  window._fbOnSnap = onSnapshot;
+  window._fbCol    = collection;
+  window._fbSignIn = (email, pass) => signInWithEmailAndPassword(fbAuth, email, pass);
+  window._fbSignOut = () => signOut(fbAuth);
+  window._fbOnAuth  = (cb) => onAuthStateChanged(fbAuth, cb);
+
+  // Boot the app once Firebase is ready
+  window._fbOnAuth(async (user) => {
+    if (!user) {
+      // Not logged in → show login screen
+      document.getElementById('login-screen').style.display = 'flex';
+      document.getElementById('app-root').style.display = 'none';
+      return;
+    }
+    // Logged in → load user profile from Firestore
+    try {
+      const uRef  = doc(fbDb, 'users', user.uid);
+      const uSnap = await getDoc(uRef);
+      if (!uSnap.exists()) {
+        // First login: create user doc with admin role if first user
+        const allUsersSnap = await getDoc(doc(fbDb, 'meta', 'stats'));
+        const isFirst = !allUsersSnap.exists();
+        const rol = isFirst ? 'admin' : 'viewer';
+        await setDoc(uRef, { email: user.email, nombre: user.email.split('@')[0], rol, activo: true });
+        if (isFirst) await setDoc(doc(fbDb, 'meta', 'stats'), { creado: new Date().toISOString() });
+        window._currentUser = { uid: user.uid, email: user.email, rol, nombre: user.email.split('@')[0] };
+      } else {
+        const data = uSnap.data();
+        if (!data.activo) {
+          await window._fbSignOut();
+          showLoginError('Tu cuenta ha sido desactivada. Contacta al administrador.');
+          return;
+        }
+        window._currentUser = { uid: user.uid, ...data };
+      }
+      // Show app
+      document.getElementById('login-screen').style.display = 'none';
+      document.getElementById('app-root').style.display = 'block';
+      // Subscribe to Firestore data
+      window._fbSubscribe();
+      // Update header user info
+      const el = document.getElementById('hdr-user');
+      if (el) {
+        el.textContent = window._currentUser.nombre || window._currentUser.email;
+        const rolEl = document.getElementById('hdr-rol');
+        if (rolEl) rolEl.textContent = window._currentUser.rol;
+      }
+    } catch(e) {
+      console.error('Auth error:', e);
+      showLoginError('Error al cargar perfil: ' + e.message);
+    }
+  });
+</script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script src="https://unpkg.com/@zxing/library@0.19.1/umd/index.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -227,6 +307,38 @@ tr:hover td{background:rgba(255,255,255,.02);}
 </style>
 </head>
 <body>
+
+<!-- ═══════════════ LOGIN SCREEN ═══════════════ -->
+<div id="login-screen" style="display:none;position:fixed;inset:0;z-index:9999;background:var(--bg);align-items:center;justify-content:center;flex-direction:column;">
+  <div style="width:100%;max-width:380px;padding:20px;">
+    <!-- Logo -->
+    <div style="text-align:center;margin-bottom:32px;">
+      <div style="font-family:'Space Mono',monospace;font-size:1.6rem;color:var(--accent);margin-bottom:6px;">FAZOCAR</div>
+      <div style="font-size:.82rem;color:var(--muted);">Sistema de Inventario</div>
+    </div>
+    <!-- Card -->
+    <div class="card" style="padding:28px;">
+      <div style="font-size:1rem;font-weight:700;margin-bottom:20px;text-align:center;">Iniciar sesión</div>
+      <div style="margin-bottom:12px;">
+        <label style="font-size:.72rem;color:var(--muted);">Correo electrónico</label>
+        <input type="email" id="login-email" placeholder="correo@empresa.com"
+          style="width:100%;margin-top:4px;" onkeydown="if(event.key==='Enter')document.getElementById('login-pass').focus()">
+      </div>
+      <div style="margin-bottom:16px;">
+        <label style="font-size:.72rem;color:var(--muted);">Contraseña</label>
+        <input type="password" id="login-pass" placeholder="••••••••"
+          style="width:100%;margin-top:4px;" onkeydown="if(event.key==='Enter')doLogin()">
+      </div>
+      <div id="login-error" style="display:none;font-size:.75rem;color:var(--danger);margin-bottom:12px;padding:8px 12px;background:rgba(255,71,87,.1);border-radius:7px;border:1px solid var(--danger);"></div>
+      <button id="login-btn" class="btn btn-primary btn-full" onclick="doLogin()">Entrar</button>
+    </div>
+    <div style="text-align:center;margin-top:14px;font-size:.68rem;color:var(--muted);">v2.0 · Firebase</div>
+  </div>
+</div>
+
+<!-- ═══════════════ APP ROOT ═══════════════ -->
+<div id="app-root" style="display:none;">
+
 <div id="print-area"></div>
 
 <header>
@@ -234,6 +346,10 @@ tr:hover td{background:rgba(255,255,255,.02);}
   <div class="logo" id="header-logo" style="position:absolute;left:50%;transform:translateX(-50%);">Invent<span>App</span></div>
   <div id="header-seccion" style="display:none;position:absolute;left:50%;transform:translateX(-50%);font-family:'Space Mono',monospace;font-size:.75rem;color:var(--text);font-weight:700;letter-spacing:.05em;text-transform:uppercase;"></div>
   <div class="header-right">
+    <div id="hdr-user-chip" style="display:flex;align-items:center;gap:6px;font-size:.68rem;color:var(--muted);">
+      <span id="hdr-user" style="color:var(--text);font-weight:600;"></span>
+      <span id="hdr-rol" style="font-family:'Space Mono',monospace;font-size:.6rem;padding:1px 6px;border-radius:4px;background:var(--surface2);color:var(--accent);"></span>
+    </div>
     <div class="stat-chip" id="hdr-chip" style="display:none">Productos <b id="hdr-products">0</b></div>
     <div class="stat-chip" id="hdr-alert-wrap" style="display:none"><span style="color:var(--warn)">⚠ <b id="hdr-alerts">0</b></span></div>
     <button class="hamburger" id="hamburger-btn" onclick="toggleMenu()" style="display:none">
@@ -990,12 +1106,28 @@ const DEFAULT_WORKERS = [
   {name:"Luis Soto",     area:"Producción"},
 ];
 
+// ── FIRESTORE SAVE/LOAD ───────────────────────────────
+// Debounce: avoid writing on every keystroke
+let _saveMatTimer = null;
 function lsGuardar() {
+  // Keep localStorage as fast local cache
   try {
     localStorage.setItem(LS_PRODUCTS,  JSON.stringify(products));
     localStorage.setItem(LS_MOVEMENTS, JSON.stringify(movements));
     localStorage.setItem(LS_WORKERS,   JSON.stringify(workers));
-  } catch(e) { console.warn('localStorage lleno:', e); }
+  } catch(e) {}
+  // Debounced Firestore write
+  clearTimeout(_saveMatTimer);
+  _saveMatTimer = setTimeout(() => fbSaveMat(), 800);
+}
+async function fbSaveMat() {
+  if(!window._fbDb) return;
+  try {
+    await window._fbSetDoc(
+      window._fbDoc(window._fbDb, 'inventario', 'materiales'),
+      { products, movements, workers, updatedAt: new Date().toISOString() }
+    );
+  } catch(e) { console.warn('Firestore save error (mat):', e); }
 }
 function lsCargar() {
   try {
@@ -1006,7 +1138,6 @@ function lsCargar() {
     if (m) movements = JSON.parse(m);
     if (w) {
       const parsed = JSON.parse(w);
-      // Migrate old string array to object array
       workers = parsed.map(x => typeof x === 'string' ? {name:x, area:'Sin área'} : x);
     }
   } catch(e) { console.warn('Error leyendo localStorage:', e); }
@@ -1101,6 +1232,16 @@ function toggleMenu() {
   document.getElementById('hamburger-btn').classList.toggle('open');
   document.getElementById('dropdown-menu').classList.toggle('open');
   document.getElementById('menu-overlay').classList.toggle('open');
+  // Inject user info when opening
+  const isOpen = document.getElementById('dropdown-menu').classList.contains('open');
+  if(isOpen && window._currentUser) {
+    const nm = document.getElementById('menu-user-name');
+    const rl = document.getElementById('menu-user-rol');
+    if(nm) nm.textContent = window._currentUser.nombre || window._currentUser.email;
+    if(rl) rl.textContent = window._currentUser.rol;
+    const adminBtn = document.getElementById('btn-admin-usuarios');
+    if(adminBtn) adminBtn.style.display = window._currentUser.rol==='admin'?'flex':'none';
+  }
 }
 function closeMenu() {
   document.getElementById('hamburger-btn').classList.remove('open');
@@ -2034,13 +2175,25 @@ let uCurrentTerm = null;  // terminación activa en ingreso
 let uCurrentSerial = null; // serial activo en ficha
 let _uEstadoFiltro = null;
 
+let _saveUrnTimer = null;
 function lsGuardarU() {
   try {
     localStorage.setItem(LS_U_PRODUCTS,  JSON.stringify(uProducts));
     localStorage.setItem(LS_U_MOVEMENTS, JSON.stringify(uMovements));
     localStorage.setItem(LS_U_OPS,       JSON.stringify(uOPs));
     localStorage.setItem(LS_U_UNIDADES,  JSON.stringify(uUnidades));
-  } catch(e) { console.warn('Storage lleno:', e); }
+  } catch(e) {}
+  clearTimeout(_saveUrnTimer);
+  _saveUrnTimer = setTimeout(() => fbSaveUrn(), 800);
+}
+async function fbSaveUrn() {
+  if(!window._fbDb) return;
+  try {
+    await window._fbSetDoc(
+      window._fbDoc(window._fbDb, 'inventario', 'urnas'),
+      { uProducts, uMovements, uOPs, uUnidades, updatedAt: new Date().toISOString() }
+    );
+  } catch(e) { console.warn('Firestore save error (urn):', e); }
 }
 function lsCargarU() {
   try {
@@ -4157,6 +4310,171 @@ function toggleMatResProd(id){
 lsCargarU();
 updateHeader();
 volverHome();
+
+
+// ════════════════════════════════════════════════════
+// FIREBASE — login, logout, sync
+// ════════════════════════════════════════════════════
+
+// Login handler
+async function doLogin() {
+  const email = document.getElementById('login-email').value.trim();
+  const pass  = document.getElementById('login-pass').value;
+  const btn   = document.getElementById('login-btn');
+  if(!email || !pass) return showLoginError('Ingresa email y contraseña');
+  btn.textContent = 'Entrando...'; btn.disabled = true;
+  try {
+    await window._fbSignIn(email, pass);
+    // onAuthStateChanged handles the rest
+  } catch(e) {
+    btn.textContent = 'Entrar'; btn.disabled = false;
+    const msgs = {
+      'auth/invalid-credential': 'Email o contraseña incorrectos',
+      'auth/user-not-found':     'Usuario no encontrado',
+      'auth/wrong-password':     'Contraseña incorrecta',
+      'auth/too-many-requests':  'Demasiados intentos. Espera un momento.',
+    };
+    showLoginError(msgs[e.code] || 'Error: ' + e.message);
+  }
+}
+
+function showLoginError(msg) {
+  const el = document.getElementById('login-error');
+  if(!el) return;
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+
+// Logout handler (called from hamburger menu)
+async function cerrarSesion() {
+  closeMenu();
+  if(!confirm('¿Cerrar sesión?')) return;
+  await window._fbSignOut();
+  // Clear local cache
+  localStorage.clear();
+  document.getElementById('app-root').style.display = 'none';
+  document.getElementById('login-screen').style.display = 'flex';
+  document.getElementById('login-email').value = '';
+  document.getElementById('login-pass').value = '';
+  document.getElementById('login-error').style.display = 'none';
+  document.getElementById('login-btn').textContent = 'Entrar';
+  document.getElementById('login-btn').disabled = false;
+}
+
+// Firestore subscription: load data and listen for changes
+window._fbSubscribe = function() {
+  if(!window._fbDb) return;
+
+  // ── Materiales ──────────────────────────────────────
+  window._fbOnSnap(
+    window._fbDoc(window._fbDb, 'inventario', 'materiales'),
+    (snap) => {
+      if(!snap.exists()) return; // first time, no data yet
+      const data = snap.data();
+      // Only update if data is newer than local (avoid overwriting own pending saves)
+      if(data.products)   { products  = data.products;  localStorage.setItem(LS_PRODUCTS,  JSON.stringify(products)); }
+      if(data.movements)  { movements = data.movements; localStorage.setItem(LS_MOVEMENTS, JSON.stringify(movements)); }
+      if(data.workers)    {
+        workers = data.workers.map(x => typeof x === 'string' ? {name:x, area:'Sin área'} : x);
+        localStorage.setItem(LS_WORKERS, JSON.stringify(workers));
+      }
+      // Refresh active views
+      updateHeader();
+      const active = document.querySelector('#seccion-materiales .page.active');
+      if(active) {
+        const id = active.id.replace('page-','');
+        if(id === 'inventory')   renderInventory();
+        if(id === 'movements')   renderMovements();
+        if(id === 'resumen')     renderResumenMat();
+        if(id === 'workers')     renderWorkers();
+      }
+    }
+  );
+
+  // ── Urnas ──────────────────────────────────────────
+  window._fbOnSnap(
+    window._fbDoc(window._fbDb, 'inventario', 'urnas'),
+    (snap) => {
+      if(!snap.exists()) return;
+      const data = snap.data();
+      if(data.uProducts)  { uProducts  = data.uProducts;  localStorage.setItem(LS_U_PRODUCTS,  JSON.stringify(uProducts)); }
+      if(data.uMovements) { uMovements = data.uMovements; localStorage.setItem(LS_U_MOVEMENTS, JSON.stringify(uMovements)); }
+      if(data.uOPs)       { uOPs       = data.uOPs;       localStorage.setItem(LS_U_OPS,       JSON.stringify(uOPs)); }
+      if(data.uUnidades)  { uUnidades  = data.uUnidades;  localStorage.setItem(LS_U_UNIDADES,  JSON.stringify(uUnidades)); }
+      // Refresh active urnas views
+      const activeU = document.querySelector('#seccion-urnas .page.active');
+      if(activeU) {
+        const uid = activeU.id.replace('page-','');
+        if(uid === 'uinventory')  uRenderInventory();
+        if(uid === 'uunidades')   uRenderUnidades();
+        if(uid === 'umovements')  uRenderMovements();
+        if(uid === 'uop')         uRenderOP();
+        if(uid === 'uresumen')    uRenderResumen();
+      }
+    }
+  );
+};
+
+// ── ADMIN: Panel de usuarios ─────────────────────────
+async function abrirAdminUsuarios() {
+  if(!window._currentUser || window._currentUser.rol !== 'admin') {
+    return showToast('Solo el admin puede gestionar usuarios','error');
+  }
+  closeMenu();
+  // Load all users from Firestore
+  const modal = document.getElementById('modal-admin-usuarios');
+  if(!modal) return;
+  modal.style.display = 'flex';
+  document.getElementById('admin-users-list').innerHTML = '<div style="text-align:center;padding:20px;color:var(--muted);">Cargando...</div>';
+  try {
+    // Get all user docs — requires admin privileges in rules
+    // For simplicity we'll use a known-users collection
+    const snap = await window._fbGetDoc(window._fbDoc(window._fbDb, 'meta', 'userList'));
+    const uids = snap.exists() ? (snap.data().uids || []) : [];
+    const userDocs = await Promise.all(
+      uids.map(uid => window._fbGetDoc(window._fbDoc(window._fbDb, 'users', uid)))
+    );
+    // Also add current user's own uid if not in list
+    const allUsers = userDocs.filter(d => d.exists()).map(d => ({uid: d.id, ...d.data()}));
+    adminRenderUsers(allUsers);
+  } catch(e) {
+    document.getElementById('admin-users-list').innerHTML = '<div style="padding:14px;color:var(--danger);">Error cargando usuarios: '+e.message+'</div>';
+  }
+}
+function adminRenderUsers(users) {
+  const c = document.getElementById('admin-users-list');
+  if(!users.length) { c.innerHTML = '<div style="padding:14px;color:var(--muted);">Sin usuarios registrados.</div>'; return; }
+  const ROLES = ['admin','bodega','produccion','viewer'];
+  c.innerHTML = users.map(u => `
+    <div style="padding:10px 0;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;gap:8px;">
+      <div>
+        <div style="font-weight:600;font-size:.85rem;">${u.nombre||u.email}</div>
+        <div style="font-size:.68rem;color:var(--muted);">${u.email}</div>
+      </div>
+      <div style="display:flex;gap:6px;align-items:center;">
+        <select onchange="adminCambiarRol('${u.uid}',this.value)" style="font-size:.72rem;padding:4px 6px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--text);">
+          ${ROLES.map(r=>`<option value="${r}" ${r===u.rol?'selected':''}>${r}</option>`).join('')}
+        </select>
+        <button onclick="adminToggleActivo('${u.uid}',${u.activo})" style="background:none;border:1px solid ${u.activo?'var(--accent)':'var(--danger)'};border-radius:5px;padding:3px 8px;cursor:pointer;font-size:.65rem;color:${u.activo?'var(--accent)':'var(--danger)'};">
+          ${u.activo?'Activo':'Inactivo'}
+        </button>
+      </div>
+    </div>`).join('');
+}
+async function adminCambiarRol(uid, rol) {
+  try {
+    await window._fbSetDoc(window._fbDoc(window._fbDb,'users',uid), {rol}, {merge:true});
+    showToast('✓ Rol actualizado a '+rol,'success');
+  } catch(e) { showToast('Error: '+e.message,'error'); }
+}
+async function adminToggleActivo(uid, activo) {
+  try {
+    await window._fbSetDoc(window._fbDoc(window._fbDb,'users',uid), {activo:!activo}, {merge:true});
+    showToast('✓ Usuario '+(activo?'desactivado':'activado'),'success');
+    abrirAdminUsuarios(); // refresh
+  } catch(e) { showToast('Error: '+e.message,'error'); }
+}
+
 </script>
 <!-- MODAL EDITAR UNIDADES -->
 <div class="modal-overlay" id="modal-editar-unidades" onclick="if(event.target===this)cerrarEditarUnidades()" style="display:none;">
@@ -4317,5 +4635,18 @@ volverHome();
   </div>
 </div>
 
+<!-- MODAL ADMIN USUARIOS -->
+<div class="modal-overlay" id="modal-admin-usuarios" onclick="if(event.target===this)this.style.display='none'" style="display:none;">
+  <div class="modal-box" style="max-width:480px;width:94%;max-height:88vh;display:flex;flex-direction:column;">
+    <div class="modal-title" style="flex-shrink:0;">👥 Gestionar usuarios</div>
+    <p style="font-size:.75rem;color:var(--muted);margin-bottom:14px;flex-shrink:0;">Los nuevos usuarios deben registrarse con su email en Firebase Authentication. Luego aparecerán aquí al iniciar sesión por primera vez.</p>
+    <div id="admin-users-list" style="overflow-y:auto;flex:1;"></div>
+    <div style="margin-top:14px;flex-shrink:0;">
+      <button class="btn btn-secondary btn-full" onclick="document.getElementById('modal-admin-usuarios').style.display='none'">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+</div><!-- /app-root -->
 </body>
 </html>
