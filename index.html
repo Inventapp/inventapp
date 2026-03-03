@@ -62,9 +62,11 @@
         const allUsersSnap = await getDoc(doc(fbDb, 'meta', 'stats'));
         const isFirst = !allUsersSnap.exists();
         const rol = isFirst ? 'admin' : 'viewer';
-        await setDoc(uRef, { email: user.email, nombre: user.email.split('@')[0], rol, activo: true });
+        var nombre = user.email.split('@')[0];
+        await setDoc(uRef, { email: user.email, nombre: nombre, rol: rol, activo: true });
         if (isFirst) await setDoc(doc(fbDb, 'meta', 'stats'), { creado: new Date().toISOString() });
-        window._currentUser = { uid: user.uid, email: user.email, rol, nombre: user.email.split('@')[0] };
+        try{var _ls=await getDoc(doc(fbDb,'meta','userList'));var _us=_ls.exists()?(_ls.data().uids||[]):[];if(!_us.includes(user.uid)){_us.push(user.uid);await setDoc(doc(fbDb,'meta','userList'),{uids:_us});}}catch(_){}
+        window._currentUser = { uid: user.uid, email: user.email, rol: rol, nombre: nombre };
       } else {
         const data = uSnap.data();
         if (!data.activo) {
@@ -4730,7 +4732,7 @@ async function abrirAdminUsuarios() {
 function adminRenderUsers(users) {
   const c = document.getElementById('admin-users-list');
   if(!users.length) { c.innerHTML = '<div style="padding:14px;color:var(--muted);">Sin usuarios registrados.</div>'; return; }
-  const ROLES = ['admin','bodega','produccion','viewer'];
+  const ROLES = ['admin','bodega','produccion','instalacion','ventas','viewer'];
   c.innerHTML = users.map(u => `
     <div style="padding:10px 0;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;gap:8px;">
       <div>
@@ -4751,6 +4753,13 @@ async function adminCambiarRol(uid, rol) {
   try {
     await window._fbSetDoc(window._fbDoc(window._fbDb,'users',uid), {rol}, {merge:true});
     showToast('✓ Rol actualizado a '+rol,'success');
+  } catch(e) { showToast('Error: '+e.message,'error'); }
+}
+async function adminCambiarNombre(uid, nombre) {
+  if(!nombre.trim()) return;
+  try {
+    await window._fbSetDoc(window._fbDoc(window._fbDb,'users',uid), {nombre:nombre.trim()}, {merge:true});
+    showToast('Nombre actualizado','success');
   } catch(e) { showToast('Error: '+e.message,'error'); }
 }
 async function adminToggleActivo(uid, activo) {
