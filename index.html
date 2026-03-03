@@ -972,7 +972,6 @@ tr:hover td{background:rgba(255,255,255,.02);}
     <button onclick="uSetEstadoFiltro('En Stock')"   id="u-ef-stock"   class="btn btn-secondary" style="font-size:.68rem;padding:5px 11px;">● En Stock</button>
     <button onclick="uSetEstadoFiltro('Vendido')"    id="u-ef-vendido" class="btn btn-secondary" style="font-size:.68rem;padding:5px 11px;">● Vendido</button>
     <button onclick="uSetEstadoFiltro('En Proceso')" id="u-ef-proceso" class="btn btn-secondary" style="font-size:.68rem;padding:5px 11px;">● En Proceso</button>
-    <button onclick="uSetEstadoFiltro('Dañado')"     id="u-ef-danado"  class="btn btn-secondary" style="font-size:.68rem;padding:5px 11px;">● Dañado</button>
   </div>
   <div class="card" style="padding:0;overflow:hidden;">
     <div style="padding:11px 17px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);">
@@ -981,7 +980,7 @@ tr:hover td{background:rgba(255,255,255,.02);}
     </div>
     <div class="table-wrap" style="border:none;border-radius:0;">
       <table>
-        <thead><tr><th>Código</th><th>Nombre</th><th>Terminación</th><th>●</th><th>Ingreso</th><th>Costo</th><th>Notas</th><th></th></tr></thead>
+        <thead><tr><th>Código</th><th>Nombre</th><th>Terminación</th><th>●</th><th>Ingreso</th><th>Notas</th><th></th></tr></thead>
         <tbody id="u-unidades-tbody"></tbody>
       </table>
     </div>
@@ -1158,60 +1157,52 @@ tr:hover td{background:rgba(255,255,255,.02);}
 <!-- SECCION OPERACIONES (Funerales + Instalaciones)      -->
 <!-- ════════════════════════════════════════════════════ -->
 <div id="seccion-operaciones" style="display:none">
-<nav>
-  <button class="tab active" id="otab-funerales"     onclick="oNavTo('funerales')">⚱️ Funerales</button>
-  <button class="tab"        id="otab-instalaciones" onclick="oNavTo('instalaciones')">🔧 Instalaciones</button>
-</nav>
 <main>
 
 <!-- FUNERALES -->
-<div class="page active" id="opage-funerales">
-  <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:14px;">
-    <div style="font-family:'Space Mono',monospace;font-size:.78rem;color:var(--text);font-weight:700;display:flex;align-items:center;gap:8px;">
-      ⚱️ Funerales <span style="font-size:.65rem;color:var(--muted);" id="count-funerales">0 registros</span>
-    </div>
-    <div style="display:flex;gap:7px;">
-      <button class="btn btn-primary" style="font-size:.75rem;padding:6px 12px;" onclick="abrirModalFuneral(null)">＋ Agregar</button>
-      <button class="btn btn-danger"  style="font-size:.75rem;padding:6px 12px;" onclick="eliminarTodosFunerales()">🗑 Vaciar</button>
-    </div>
+<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:10px;">
+  <div style="font-family:'Space Mono',monospace;font-size:.78rem;color:var(--text);font-weight:700;display:flex;align-items:center;gap:8px;">
+    ⚱️ Funerales <span style="font-size:.65rem;color:var(--muted);" id="count-funerales">0 registros</span>
   </div>
-  <div class="table-wrap">
-    <table style="min-width:1000px;">
-      <thead><tr>
-        <th>Contrato</th><th>Nombre</th><th>Se encuentra en</th><th>Cementerio</th>
-        <th>Hora</th><th>Llegada</th><th>Conductor</th><th>Acompañante</th>
-        <th>Urna</th><th>Pase</th><th>Fuente</th><th>Obs</th><th style="width:76px;">—</th>
-      </tr></thead>
-      <tbody id="tbody-funerales">
-        <tr><td colspan="13" style="text-align:center;padding:36px;color:var(--muted);">Sin registros</td></tr>
-      </tbody>
-    </table>
+  <div style="display:flex;gap:7px;">
+    <button class="btn btn-primary" style="font-size:.75rem;padding:6px 12px;" onclick="abrirModalFuneral(null)">＋ Agregar</button>
+    <button class="btn btn-danger"  style="font-size:.75rem;padding:6px 12px;" onclick="eliminarTodosFunerales()">🗑 Vaciar</button>
   </div>
+</div>
+<div class="table-wrap" style="margin-bottom:28px;">
+  <table style="min-width:1000px;">
+    <thead><tr>
+      <th>Contrato</th><th>Nombre</th><th>Se encuentra en</th><th>Cementerio</th>
+      <th>Hora</th><th>Llegada</th><th>Conductor</th><th>Acompañante</th>
+      <th>Urna</th><th>Pase</th><th>Fuente</th><th>Obs</th><th style="width:76px;">—</th>
+    </tr></thead>
+    <tbody id="tbody-funerales">
+      <tr><td colspan="13" style="text-align:center;padding:36px;color:var(--muted);">Sin registros</td></tr>
+    </tbody>
+  </table>
 </div>
 
 <!-- INSTALACIONES -->
-<div class="page" id="opage-instalaciones">
-  <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:14px;">
-    <div style="font-family:'Space Mono',monospace;font-size:.78rem;color:var(--text);font-weight:700;display:flex;align-items:center;gap:8px;">
-      🔧 Instalaciones <span style="font-size:.65rem;color:var(--muted);" id="count-instalaciones">0 registros</span>
-    </div>
-    <div style="display:flex;gap:7px;">
-      <button class="btn btn-primary" style="font-size:.75rem;padding:6px 12px;" onclick="abrirModalInstalacion(null)">＋ Agregar</button>
-      <button class="btn btn-danger"  style="font-size:.75rem;padding:6px 12px;" onclick="eliminarTodasInstalaciones()">🗑 Vaciar</button>
-    </div>
+<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:10px;">
+  <div style="font-family:'Space Mono',monospace;font-size:.78rem;color:var(--text);font-weight:700;display:flex;align-items:center;gap:8px;">
+    🔧 Instalaciones <span style="font-size:.65rem;color:var(--muted);" id="count-instalaciones">0 registros</span>
   </div>
-  <div class="table-wrap">
-    <table style="min-width:800px;">
-      <thead><tr>
-        <th>Contrato</th><th>Nombre</th><th>Se encuentra en</th><th>Cementerio</th>
-        <th>Conductor</th><th>Ayudante</th><th>Urna</th><th>Fuente</th><th>Obs</th><th>Trámite</th>
-        <th style="width:76px;">—</th>
-      </tr></thead>
-      <tbody id="tbody-instalaciones">
-        <tr><td colspan="11" style="text-align:center;padding:36px;color:var(--muted);">Sin registros</td></tr>
-      </tbody>
-    </table>
+  <div style="display:flex;gap:7px;">
+    <button class="btn btn-primary" style="font-size:.75rem;padding:6px 12px;" onclick="abrirModalInstalacion(null)">＋ Agregar</button>
+    <button class="btn btn-danger"  style="font-size:.75rem;padding:6px 12px;" onclick="eliminarTodasInstalaciones()">🗑 Vaciar</button>
   </div>
+</div>
+<div class="table-wrap">
+  <table style="min-width:800px;">
+    <thead><tr>
+      <th>Contrato</th><th>Nombre</th><th>Se encuentra en</th><th>Cementerio</th>
+      <th>Conductor</th><th>Ayudante</th><th>Urna</th><th>Fuente</th><th>Obs</th><th>Trámite</th>
+      <th style="width:76px;">—</th>
+    </tr></thead>
+    <tbody id="tbody-instalaciones">
+      <tr><td colspan="11" style="text-align:center;padding:36px;color:var(--muted);">Sin registros</td></tr>
+    </tbody>
+  </table>
 </div>
 
 </main>
@@ -1239,7 +1230,7 @@ tr:hover td{background:rgba(255,255,255,.02);}
   <div class="table-wrap">
     <table>
       <thead><tr>
-        <th>SKU</th><th>Producto</th><th>Terminación</th><th>Stock</th><th>Estado</th>
+        <th>SKU</th><th>Terminación</th><th>Stock</th><th>Estado</th>
       </tr></thead>
       <tbody id="tbody-vendedores">
         <tr><td colspan="5" style="text-align:center;padding:36px;color:var(--muted);">Cargando…</td></tr>
@@ -1251,7 +1242,7 @@ tr:hover td{background:rgba(255,255,255,.02);}
 
 <!-- MODAL FUNERAL -->
 <div class="modal-overlay" id="modal-funeral" onclick="if(event.target===this)cerrarModalFuneral()" style="display:none;">
-  <div class="modal-box" style="max-width:580px;width:96%;">
+  <div class="modal-box" style="max-width:580px;width:96%;max-height:90vh;overflow-y:auto;display:flex;flex-direction:column;">
     <div class="modal-title" id="modal-funeral-title">Nuevo funeral</div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">
       <div><label style="font-size:.65rem;color:var(--muted);">Contrato</label>
@@ -1259,7 +1250,7 @@ tr:hover td{background:rgba(255,255,255,.02);}
       <div><label style="font-size:.65rem;color:var(--muted);">Hora</label>
         <input id="f-hora" type="time" style="width:100%;margin-top:4px;"></div>
       <div style="grid-column:1/-1;"><label style="font-size:.65rem;color:var(--muted);">Nombre</label>
-        <input id="f-nombre" type="text" placeholder="Nombre del difunto" style="width:100%;margin-top:4px;"></div>
+        <input id="f-nombre" type="text" placeholder="Nombre fallecido" style="width:100%;margin-top:4px;"></div>
       <div><label style="font-size:.65rem;color:var(--muted);">Se encuentra en</label>
         <input id="f-ubicacion" type="text" placeholder="Dirección o lugar" style="width:100%;margin-top:4px;"></div>
       <div><label style="font-size:.65rem;color:var(--muted);">Cementerio</label>
@@ -1273,13 +1264,13 @@ tr:hover td{background:rgba(255,255,255,.02);}
       <div><label style="font-size:.65rem;color:var(--muted);">Urna</label>
         <select id="f-urna" style="width:100%;margin-top:4px;"><option value="">— Seleccionar —</option></select></div>
       <div><label style="font-size:.65rem;color:var(--muted);">Pase</label>
-        <input id="f-pase" type="text" placeholder="Nº pase" style="width:100%;margin-top:4px;"></div>
+        <input id="f-pase" type="text" placeholder="Pase" style="width:100%;margin-top:4px;"></div>
       <div style="grid-column:1/-1;"><label style="font-size:.65rem;color:var(--muted);">Fuente</label>
         <input id="f-fuente" type="text" placeholder="Fuente" style="width:100%;margin-top:4px;"></div>
       <div style="grid-column:1/-1;"><label style="font-size:.65rem;color:var(--muted);">Observaciones</label>
         <textarea id="f-obs" placeholder="Notas…" style="width:100%;margin-top:4px;min-height:56px;resize:vertical;padding:8px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-family:'DM Sans',sans-serif;font-size:.83rem;"></textarea></div>
     </div>
-    <div style="display:flex;gap:8px;justify-content:flex-end;">
+    <div style="display:flex;gap:8px;justify-content:flex-end;padding-top:12px;border-top:1px solid var(--border);margin-top:4px;flex-shrink:0;">
       <button class="btn btn-secondary" onclick="cerrarModalFuneral()">Cancelar</button>
       <button class="btn btn-primary" onclick="guardarFuneral()">Guardar</button>
     </div>
@@ -1288,13 +1279,13 @@ tr:hover td{background:rgba(255,255,255,.02);}
 
 <!-- MODAL INSTALACION -->
 <div class="modal-overlay" id="modal-instalacion" onclick="if(event.target===this)cerrarModalInstalacion()" style="display:none;">
-  <div class="modal-box" style="max-width:560px;width:96%;">
+  <div class="modal-box" style="max-width:560px;width:96%;max-height:90vh;overflow-y:auto;display:flex;flex-direction:column;">
     <div class="modal-title" id="modal-inst-title">Nueva instalación</div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">
       <div style="grid-column:1/-1;"><label style="font-size:.65rem;color:var(--muted);">Contrato</label>
         <input id="i-contrato" type="text" placeholder="Nº contrato" style="width:100%;margin-top:4px;"></div>
       <div style="grid-column:1/-1;"><label style="font-size:.65rem;color:var(--muted);">Nombre</label>
-        <input id="i-nombre" type="text" placeholder="Nombre del difunto" style="width:100%;margin-top:4px;"></div>
+        <input id="i-nombre" type="text" placeholder="Nombre fallecido" style="width:100%;margin-top:4px;"></div>
       <div><label style="font-size:.65rem;color:var(--muted);">Se encuentra en</label>
         <input id="i-ubicacion" type="text" placeholder="Dirección o lugar" style="width:100%;margin-top:4px;"></div>
       <div><label style="font-size:.65rem;color:var(--muted);">Cementerio</label>
@@ -1312,7 +1303,7 @@ tr:hover td{background:rgba(255,255,255,.02);}
       <div style="grid-column:1/-1;"><label style="font-size:.65rem;color:var(--muted);">Observaciones</label>
         <textarea id="i-obs" placeholder="Notas…" style="width:100%;margin-top:4px;min-height:56px;resize:vertical;padding:8px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-family:'DM Sans',sans-serif;font-size:.83rem;"></textarea></div>
     </div>
-    <div style="display:flex;gap:8px;justify-content:flex-end;">
+    <div style="display:flex;gap:8px;justify-content:flex-end;padding-top:12px;border-top:1px solid var(--border);margin-top:4px;flex-shrink:0;">
       <button class="btn btn-secondary" onclick="cerrarModalInstalacion()">Cancelar</button>
       <button class="btn btn-primary" onclick="guardarInstalacion()">Guardar</button>
     </div>
@@ -1457,7 +1448,6 @@ function entrarSeccion(nombre) {
     document.getElementById('seccion-operaciones').style.display = 'block';
     document.getElementById('hdr-chip').style.display = 'none';
     setSeccionHeader('Funerales / Instalaciones','var(--warn)');
-    oNavTo('funerales');
     opsCargarDatos();
   } else if (nombre === 'vendedores') {
     document.getElementById('seccion-vendedores').style.display = 'block';
@@ -2851,11 +2841,11 @@ function uCambiarEstado(serial, nuevoEstado) {
 // ── INVENTARIO ─────────────────────────────────────────
 function uSetEstadoFiltro(estado) {
   _uEstadoFiltro = estado;
-  ['u-ef-all','u-ef-stock','u-ef-vendido','u-ef-proceso','u-ef-danado'].forEach(id => {
+  ['u-ef-all','u-ef-stock','u-ef-vendido','u-ef-proceso'].forEach(id => {
     const el = document.getElementById(id); if(!el) return;
     el.style.borderColor = 'var(--border)'; el.style.color = 'var(--muted)'; el.style.background = 'transparent';
   });
-  const activeId = estado === null ? 'u-ef-all' : estado === 'En Stock' ? 'u-ef-stock' : estado === 'Vendido' ? 'u-ef-vendido' : estado === 'En Proceso' ? 'u-ef-proceso' : 'u-ef-danado';
+  const activeId = estado === null ? 'u-ef-all' : estado === 'En Stock' ? 'u-ef-stock' : estado === 'Vendido' ? 'u-ef-vendido' : 'u-ef-proceso';
   const active = document.getElementById(activeId);
   if(active) { active.style.borderColor = 'var(--accent)'; active.style.color = 'var(--accent)'; }
   uRenderUnidades();
@@ -2985,7 +2975,7 @@ function uRenderUnidades() {
   if(!tbody) return;
   tbody.innerHTML = '';
   if(!lista.length) {
-    tbody.innerHTML = '<tr><td colspan="9"><div class="empty"><div class="empty-icon">🔢</div>Sin unidades' + (_uEstadoFiltro ? ' con ese estado' : '') + '</div></td></tr>';
+    tbody.innerHTML = '<tr><td colspan="8"><div class="empty"><div class="empty-icon">🔢</div>Sin unidades' + (_uEstadoFiltro ? ' con ese estado' : '') + '</div></td></tr>';
     return;
   }
   lista.forEach(u => {
@@ -3006,7 +2996,6 @@ function uRenderUnidades() {
       <td><span style="font-size:.68rem;padding:1px 7px;border-radius:5px;background:${uTermBg(u.terminacion)};color:${uTermColor(u.terminacion)};font-family:'Space Mono',monospace;">${u.terminacion||'—'}</span></td>
       <td style="text-align:center;">${circulo}</td>
       <td class="td-mono" style="font-size:.72rem;">${fmtFecha(u.fechaIngreso)}</td>
-      <td class="td-mono" style="font-size:.72rem;">${u.costoIngreso>0?'$'+fmtNum(u.costoIngreso):'—'}</td>
       <td style="font-size:.72rem;color:var(--muted);max-width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${u.notas||''}">${u.notas||'—'}</td>
       <td style="text-align:right;white-space:nowrap;">${acciones}</td>
     </tr>`);
@@ -3087,8 +3076,7 @@ function uRenderMovements() {
   const mes  = ventas.filter(m => m.date >= inicioMes).length;
   document.getElementById('u-mov-summary').innerHTML = `
     <div class="sum-card accent"><div class="sum-val">${total}</div><div class="sum-lbl">Total ventas</div></div>
-    <div class="sum-card blue"><div class="sum-val">${mes}</div><div class="sum-lbl">Este mes</div></div>
-    <div class="sum-card" style="background:var(--surface);border:1px solid var(--border);"><div class="sum-val" style="color:var(--accent2);">$${fmtNum(totalVal)}</div><div class="sum-lbl">Ingresos total</div></div>`;
+    <div class="sum-card blue"><div class="sum-val">${mes}</div><div class="sum-lbl">Este mes</div></div>`;
   const tbody = document.getElementById('u-mov-tbody');
   tbody.innerHTML = '';
   if(!ventas.length) {
@@ -3566,11 +3554,10 @@ function opRenderLineas() {
     const nombre = l.nombre || (uUnidades.find(u=>u.id===l.serial)?.nombre||'');
     const destinos = nombre ? uProducts.filter(p=>p.name===nombre && (p.terminacion||'').toLowerCase()!=='bruto') : [];
     // Workers
-    const areaFiltro = l.terminacionDest ? l.terminacionDest.split('-')[0] : '';
-    const workerOpts = workers.map(w=>{
+    const barnizWorkers = workers.filter(w => (w.area||'').toLowerCase().includes('barniz'));
+    const workerOpts = barnizWorkers.map(w=>{
       const nm=workerName(w);
-      const match = areaFiltro && (w.area||'').toLowerCase().includes(areaFiltro.toLowerCase());
-      return `<option value="${nm}" ${nm===l.responsable?'selected':''} ${match?'style="font-weight:700"':''}>${nm}${w.area&&w.area!=='Sin área'?' ('+w.area+')':''}</option>`;
+      return `<option value="${nm}" ${nm===l.responsable?'selected':''}>${nm}</option>`;
     }).join('');
 
     return `<div style="background:var(--surface2);border-radius:8px;padding:10px 12px;position:relative;">
@@ -3998,7 +3985,16 @@ function renderTrabajadoresGlobal(){
   const areaColors=['var(--accent)','var(--accent2)','var(--warn)','#8B5CF6','#EC4899','#14B8A6'];
   const areaMap={};
   [...new Set(workers.map(w=>w.area||'Sin área'))].forEach((a,i)=>areaMap[a]=areaColors[i%areaColors.length]);
-  workers.forEach((w,i)=>{
+  // Ordenar: categoría alfabética → nombre alfabético
+  const sorted = workers
+    .map((w,i)=>({w,i}))
+    .sort((a,b)=>{
+      const areaA=(a.w.area||'Sin área').toLowerCase();
+      const areaB=(b.w.area||'Sin área').toLowerCase();
+      if(areaA!==areaB) return areaA.localeCompare(areaB,'es');
+      return workerName(a.w).localeCompare(workerName(b.w),'es');
+    });
+  sorted.forEach(({w,i})=>{
     const nm=workerName(w);
     const area=w.area||'Sin área';
     const c=areaMap[area]||'var(--muted)';
@@ -5295,38 +5291,63 @@ async function eliminarTodasInstalaciones() {
 }
 
 // ── VENDEDORES — Inventario Urnas (solo lectura) ──────
+let _vendExpandidos = new Set();
 function renderVendedores() {
   const tbody = document.getElementById('tbody-vendedores');
   if(!tbody) return;
   if(!uProducts.length) {
-    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:36px;color:var(--muted);">Sin productos en inventario.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:36px;color:var(--muted);">Sin productos en inventario.</td></tr>';
     ['vk-total','vk-stock','vk-sinstock'].forEach(id => { const el=document.getElementById(id); if(el) el.textContent='0'; });
     return;
   }
-  const sorted = [...uProducts].sort((a,b) => (b.stock||0)-(a.stock||0));
-  const conStock  = sorted.filter(p => (p.stock||0)>0).length;
-  const sinStock  = sorted.filter(p => (p.stock||0)===0).length;
-  const vkT = document.getElementById('vk-total');    if(vkT) vkT.textContent = sorted.length;
+  // Agrupar por nombre
+  const grupos = {};
+  uProducts.forEach(p => {
+    if(!grupos[p.name]) grupos[p.name] = [];
+    grupos[p.name].push(p);
+  });
+  const nombres = Object.keys(grupos).sort((a,b) => a.localeCompare(b,'es'));
+  const totalSkus = uProducts.length;
+  const conStock  = uProducts.filter(p=>(p.stock||0)>0).length;
+  const sinStock  = uProducts.filter(p=>(p.stock||0)===0).length;
+  const vkT = document.getElementById('vk-total');    if(vkT) vkT.textContent = totalSkus;
   const vkS = document.getElementById('vk-stock');    if(vkS) vkS.textContent = conStock;
   const vkN = document.getElementById('vk-sinstock'); if(vkN) vkN.textContent = sinStock;
 
-  const tColor = t => t==='Bruto'?'#888':t&&t.startsWith('Barniz')?'#8B5CF6':'#D97706';
-  const tBg    = t => t==='Bruto'?'rgba(136,136,136,.12)':t&&t.startsWith('Barniz')?'rgba(139,92,246,.12)':'rgba(217,119,6,.12)';
-
-  tbody.innerHTML = sorted.map(p => {
-    const stock = p.stock || 0;
-    const [elbl, ecls] = stock===0 ? ['Sin stock','background:rgba(255,71,87,.15);color:var(--danger);'] :
-                         stock<=(p.min||0) ? ['Stock bajo','background:rgba(255,165,2,.15);color:var(--warn);'] :
-                         ['Disponible','background:rgba(0,229,160,.15);color:var(--accent);'];
-    const term = p.terminacion || 'Bruto';
-    return `<tr>
-      <td style="font-family:'Space Mono',monospace;font-size:.72rem;color:var(--muted);">${opsEsc(p.id)}</td>
-      <td style="font-weight:600;">${opsEsc(p.name)}</td>
-      <td><span style="font-size:.7rem;padding:2px 8px;border-radius:5px;background:${tBg(term)};color:${tColor(term)};font-family:'Space Mono',monospace;">${opsEsc(term)}</span></td>
-      <td style="font-family:'Space Mono',monospace;font-weight:700;color:${stock===0?'var(--danger)':stock<=(p.min||0)?'var(--warn)':'var(--accent)'};">${stock}</td>
-      <td><span style="font-size:.65rem;padding:2px 8px;border-radius:5px;font-weight:700;font-family:'Space Mono',monospace;${ecls}">${elbl}</span></td>
+  let html = '';
+  nombres.forEach(nombre => {
+    const skus = grupos[nombre];
+    const totalStock = skus.reduce((s,p)=>(s+(p.stock||0)),0);
+    const expanded = _vendExpandidos.has(nombre);
+    const stockColor = totalStock===0?'var(--danger)':totalStock<=skus.reduce((s,p)=>(s+(p.min||0)),0)?'var(--warn)':'var(--accent)';
+    // Header row
+    html += `<tr style="cursor:pointer;background:var(--surface2);" onclick="vendToggle('${opsEsc(nombre)}')">
+      <td colspan="2" style="font-weight:700;font-size:.85rem;padding:10px 14px;">${opsEsc(nombre)}</td>
+      <td style="font-family:'Space Mono',monospace;font-weight:700;color:${stockColor};text-align:center;">${totalStock}</td>
+      <td style="text-align:right;padding-right:14px;color:var(--muted);font-size:.8rem;">${expanded?'▲':'▼'} ${skus.length} terminac.</td>
     </tr>`;
-  }).join('');
+    if(expanded) {
+      skus.forEach(p => {
+        const stock = p.stock||0;
+        const term = p.terminacion||'Bruto';
+        const [elbl,ecls] = stock===0?['Sin stock','background:rgba(255,71,87,.15);color:var(--danger);']:
+          stock<=(p.min||0)?['Stock bajo','background:rgba(255,165,2,.15);color:var(--warn);']:
+          ['Disponible','background:rgba(0,229,160,.15);color:var(--accent);'];
+        html += `<tr style="background:var(--bg);">
+          <td style="padding-left:28px;font-size:.75rem;color:var(--muted);">${opsEsc(p.id)}</td>
+          <td><span style="font-size:.7rem;padding:2px 8px;border-radius:5px;background:${uTermBg(term)};color:${uTermColor(term)};font-family:'Space Mono',monospace;">${opsEsc(term)}</span></td>
+          <td style="font-family:'Space Mono',monospace;font-weight:700;text-align:center;color:${stock===0?'var(--danger)':stock<=(p.min||0)?'var(--warn)':'var(--accent)'};">${stock}</td>
+          <td><span style="font-size:.65rem;padding:2px 8px;border-radius:5px;font-weight:700;font-family:'Space Mono',monospace;${ecls}">${elbl}</span></td>
+        </tr>`;
+      });
+    }
+  });
+  tbody.innerHTML = html;
+}
+function vendToggle(nombre) {
+  if(_vendExpandidos.has(nombre)) _vendExpandidos.delete(nombre);
+  else _vendExpandidos.add(nombre);
+  renderVendedores();
 }
 </script>
 <!-- MODAL EDITAR UNIDADES -->
