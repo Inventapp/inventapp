@@ -1418,6 +1418,13 @@ let workers   = DEFAULT_WORKERS;
 let currentProd = null;
 let currentType = null;
 
+function sanitizar(str) {
+  if (!str) return "";
+  var div = document.createElement("div");
+  div.textContent = str;
+  return div.innerHTML;
+}
+
 // Cargar datos guardados al iniciar
 lsCargar();
 
@@ -2249,7 +2256,7 @@ function renderMovements(){
                   <td class="td-mono">${m.qty}</td>
                   <td class="td-mono">${isIn?'$'+fmtNum(m.cost):'—'}</td>
                   <td class="td-mono">${isIn?'$'+fmtNum(m.qty*m.cost):'—'}</td>
-                  <td style="font-size:.72rem;color:var(--muted);">${m.obs||'—'}</td>
+                  <td style="font-size:.72rem;color:var(--muted);">${sanitizar(m.obs||'—')}</td>
                 </tr>`).join('')}
               </tbody>
             </table>
@@ -2279,7 +2286,7 @@ function renderWorkers(){
   tbody.innerHTML='';
   if(!workers.length){tbody.innerHTML='<tr><td colspan="6"><div class="empty"><div class="empty-icon">👷</div>Sin trabajadores</div></td></tr>';return;}
   workers.forEach((w,i)=>{
-    const nm=workerName(w);
+    const nm=sanitizar(workerName(w));
     const salidas=movements.filter(m=>m.worker===nm);
     const qty=salidas.reduce((s,m)=>s+m.qty,0);
     const last=salidas.length?[...salidas].sort((a,b)=>b.date.localeCompare(a.date))[0].date:'—';
@@ -4006,7 +4013,7 @@ function renderTrabajadoresGlobal(){
     });
   sorted.forEach(({w,i})=>{
     const nm=workerName(w);
-    const area=w.area||'Sin área';
+    const area=sanitizar(w.area||'Sin área');
     const c=areaMap[area]||'var(--muted)';
     tbody.insertAdjacentHTML('beforeend',`<tr style="cursor:pointer;" onclick="abrirPerfilTrabajador(${i})">
       <td><b>${nm}</b> <span style="font-size:.65rem;color:var(--muted);margin-left:4px;">→</span></td>
@@ -4146,7 +4153,7 @@ function renderPerfilTrabajador(w, nm){
             ${entMat.length ? [...entMat].sort((a,b)=>b.date.localeCompare(a.date)).map(m=>`
               <tr>
                 <td class="td-mono">${fmtFecha(m.date)}</td>
-                <td>${m.prodName||'—'}</td>
+                <td>${sanitizar(m.prodName||'—')}</td>
                 <td class="td-mono">${m.qty}</td>
                 <td class="td-mono">$${fmtNum(m.cost||0)}</td>
               </tr>`).join('') :
