@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>InventApp · FAZOCAR</title>
 <!-- PWA -->
-<link rel="manifest" href="./manifest.json">
+<link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#00e5a0">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -94,6 +94,8 @@
       if(mrl) mrl.textContent = u.rol;
       const adminSection = document.getElementById('menu-admin-section');
       if(adminSection) adminSection.style.display = u.rol === 'admin' ? 'block' : 'none';
+      // Aplicar restricciones de rol
+      aplicarRol(u.rol);
     } catch(e) {
       console.error('Auth error:', e);
       showLoginError('Error al cargar perfil: ' + e.message);
@@ -439,11 +441,11 @@ tr:hover td{background:rgba(255,255,255,.02);}
   <!-- NAVEGACION -->
   <div style="padding:6px 8px;border-bottom:1px solid var(--border);">
     <div style="font-family:'Space Mono',monospace;font-size:.58rem;color:var(--muted);padding:6px 8px 4px;letter-spacing:.06em;">NAVEGAR</div>
-    <a onclick="entrarSeccionMenu('materiales')" style="border-radius:7px;margin-bottom:2px;">📦 Materiales</a>
-    <a onclick="entrarSeccionMenu('urnas')" style="border-radius:7px;margin-bottom:2px;">🪦 Urnas</a>
-    <a onclick="entrarSeccionMenu('trabajadores')" style="border-radius:7px;margin-bottom:2px;">👷 Trabajadores</a>
-    <a onclick="entrarSeccionMenu('operaciones')" style="border-radius:7px;margin-bottom:2px;">⚱️ Funerales / Instalaciones</a>
-    <a onclick="entrarSeccionMenu('vendedores')" style="border-radius:7px;">🛍 Vendedores</a>
+    <a id="mnav-materiales" onclick="entrarSeccionMenu('materiales')" style="border-radius:7px;margin-bottom:2px;">📦 Materiales</a>
+    <a id="mnav-urnas" onclick="entrarSeccionMenu('urnas')" style="border-radius:7px;margin-bottom:2px;">🪦 Urnas</a>
+    <a id="mnav-trabajadores" onclick="entrarSeccionMenu('trabajadores')" style="border-radius:7px;margin-bottom:2px;">👷 Trabajadores</a>
+    <a id="mnav-operaciones" onclick="entrarSeccionMenu('operaciones')" style="border-radius:7px;margin-bottom:2px;">⚱️ Funerales / Instalaciones</a>
+    <a id="mnav-vendedores" onclick="entrarSeccionMenu('vendedores')" style="border-radius:7px;">🛍 Vendedores</a>
     <a onclick="irQRsMenu()" style="border-radius:7px;">🔲 Mis QRs</a>
   </div>
 
@@ -513,27 +515,27 @@ tr:hover td{background:rgba(255,255,255,.02);}
   <div class="home-logo">Invent<span>App</span></div>
   <div class="home-sub">Sistema de inventario</div>
   <div class="home-grid">
-    <div class="home-btn active-section" onclick="entrarSeccion('materiales')">
+    <div id="hbtn-materiales" class="home-btn active-section" onclick="entrarSeccion('materiales')">
       <div class="hb-icon">📦</div>
       <div class="hb-label">Materiales</div>
       <div class="hb-sub">Escaneo, stock y movimientos</div>
     </div>
-    <div class="home-btn active-section" onclick="entrarSeccion('urnas')">
+    <div id="hbtn-urnas" class="home-btn active-section" onclick="entrarSeccion('urnas')">
       <div class="hb-icon">⚰️</div>
       <div class="hb-label">Urnas</div>
       <div class="hb-sub">Inventario y producción</div>
     </div>
-    <div class="home-btn active-section" onclick="entrarSeccion('vendedores')">
+    <div id="hbtn-vendedores" class="home-btn active-section" onclick="entrarSeccion('vendedores')">
       <div class="hb-icon">🛍</div>
       <div class="hb-label">Vendedores</div>
       <div class="hb-sub">Inventario de urnas</div>
     </div>
-    <div class="home-btn active-section" onclick="entrarSeccion('operaciones')">
+    <div id="hbtn-operaciones" class="home-btn active-section" onclick="entrarSeccion('operaciones')">
       <div class="hb-icon">⚱️</div>
       <div class="hb-label">Funerales</div>
       <div class="hb-sub">Funerales e instalaciones</div>
     </div>
-    <div class="home-btn active-section" onclick="entrarSeccion('trabajadores')">
+    <div id="hbtn-trabajadores" class="home-btn active-section" onclick="entrarSeccion('trabajadores')">
       <div class="hb-icon">👷</div>
       <div class="hb-label">Trabajadores</div>
       <div class="hb-sub">Gestión de personal</div>
@@ -1435,6 +1437,56 @@ function setSeccionHeader(nombre, color){
   document.getElementById('header-seccion').style.color = color||'var(--text)';
   document.getElementById('header-seccion').textContent = nombre;
 }
+// ════════════════════════════════════════════════════
+// SISTEMA DE ROLES
+// ════════════════════════════════════════════════════
+function aplicarRol(rol) {
+  // Definir qué secciones puede ver cada rol
+  const permisos = {
+    admin:      ['materiales','urnas','vendedores','operaciones','trabajadores'],
+    ventas:     ['vendedores'],
+    instalacion:['operaciones','urnas'],
+    viewer:     ['materiales','urnas','vendedores','operaciones','trabajadores'],
+  };
+
+  const permitidas = permisos[rol] || permisos['viewer'];
+  const todas = ['materiales','urnas','vendedores','operaciones','trabajadores'];
+
+  // Home buttons
+  todas.forEach(sec => {
+    const btn = document.getElementById('hbtn-' + sec);
+    if(btn) btn.style.display = permitidas.includes(sec) ? '' : 'none';
+  });
+
+  // Menu nav links
+  todas.forEach(sec => {
+    const lnk = document.getElementById('mnav-' + sec);
+    if(lnk) lnk.style.display = permitidas.includes(sec) ? '' : 'none';
+  });
+
+  // Si el rol instalacion entra a Urnas, ir directo a pestaña Inventario
+  // (se maneja en entrarSeccion)
+
+  // Si el rol tiene solo 1 sección, entrar directo sin mostrar home
+  if(permitidas.length === 1) {
+    entrarSeccion(permitidas[0]);
+  }
+}
+
+// Verificar si el rol actual puede acceder a una sección
+function rolPuedeVer(seccion) {
+  const u = window._currentUser;
+  if(!u) return false;
+  const permisos = {
+    admin:      ['materiales','urnas','vendedores','operaciones','trabajadores'],
+    ventas:     ['vendedores'],
+    instalacion:['operaciones','urnas'],
+    viewer:     ['materiales','urnas','vendedores','operaciones','trabajadores'],
+  };
+  const permitidas = permisos[u.rol] || permisos['viewer'];
+  return permitidas.includes(seccion);
+}
+
 function entrarSeccion(nombre) {
   document.getElementById('page-home').classList.remove('active');
   document.getElementById('back-btn').style.display = 'block';
@@ -1445,16 +1497,20 @@ function entrarSeccion(nombre) {
     const el=document.getElementById(s); if(el) el.style.display='none';
   });
   if (nombre === 'materiales') {
+    if(!rolPuedeVer('materiales')){ volverHome(); return; }
     document.getElementById('seccion-materiales').style.display = 'block';
     document.getElementById('hdr-chip').style.display = 'flex';
     setSeccionHeader('Materiales','var(--accent)');
     navTo('scan');
   } else if (nombre === 'urnas') {
+    if(!rolPuedeVer('urnas')){ volverHome(); return; }
     document.getElementById('seccion-urnas').style.display = 'block';
     document.getElementById('hdr-chip').style.display = 'none';
     setSeccionHeader('Urnas','var(--accent)');
-    uNavTo('uscan');
+    const _r = window._currentUser ? window._currentUser.rol : '';
+    uNavTo(_r === 'instalacion' ? 'uinventory' : 'uscan');
   } else if (nombre === 'trabajadores') {
+    if(!rolPuedeVer('trabajadores')){ volverHome(); return; }
     document.getElementById('seccion-trabajadores').style.display = 'block';
     document.getElementById('hdr-chip').style.display = 'none';
     setSeccionHeader('Trabajadores','var(--accent)');
@@ -1462,11 +1518,13 @@ function entrarSeccion(nombre) {
     document.getElementById('trab-perfil-view').style.display='none';
     renderTrabajadoresGlobal();
   } else if (nombre === 'operaciones') {
+    if(!rolPuedeVer('operaciones')){ volverHome(); return; }
     document.getElementById('seccion-operaciones').style.display = 'block';
     document.getElementById('hdr-chip').style.display = 'none';
     setSeccionHeader('Funerales / Instalaciones','var(--warn)');
     opsCargarDatos();
   } else if (nombre === 'vendedores') {
+    if(!rolPuedeVer('vendedores')){ volverHome(); return; }
     document.getElementById('seccion-vendedores').style.display = 'block';
     document.getElementById('hdr-chip').style.display = 'none';
     setSeccionHeader('Vendedores — Inventario Urnas','var(--accent2)');
@@ -4739,7 +4797,7 @@ async function abrirAdminUsuarios() {
 function adminRenderUsers(users) {
   const c = document.getElementById('admin-users-list');
   if(!users.length) { c.innerHTML = '<div style="padding:14px;color:var(--muted);">Sin usuarios registrados.</div>'; return; }
-  const ROLES = ['admin','bodega','produccion','instalacion','ventas','viewer'];
+  const ROLES = ['admin','instalacion','ventas','viewer'];
   c.innerHTML = users.map(u => `
     <div style="padding:10px 0;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;gap:8px;">
       <div>
