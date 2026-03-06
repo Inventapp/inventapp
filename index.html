@@ -676,6 +676,31 @@ tr:hover td{background:rgba(255,255,255,.02);}
       <div><label>Stock inicial</label><input type="number" id="np-stock" value="0" min="0"></div>
       <div><label>Stock mínimo</label><input type="number" id="np-min" value="5" min="0"></div>
     </div>
+    <div class="form-row">
+      <div>
+        <label>Formato <span style="font-size:.75em;color:var(--muted);font-weight:400;">(Opcional) · ej: 500, 1, 2.5</span></label>
+        <input type="number" id="np-formato" min="0" step="any" placeholder="ej: 500">
+      </div>
+      <div>
+        <label>Unidad de medida <span style="font-size:.75em;color:var(--muted);font-weight:400;">ej: ml, kg, m</span></label>
+        <input type="text" id="np-um" placeholder="ej: ml, kg, m" list="um-datalist">
+      </div>
+    </div>
+    <div class="form-row">
+      <div style="grid-column:1/-1">
+        <label>Tipo <span style="font-size:.75em;color:var(--muted);font-weight:400;">(para fabricación)</span></label>
+        <select id="np-tipo" style="width:100%">
+          <option value="directo">➡ Directo — se entrega con cantidad exacta a la OP</option>
+          <option value="indirecto">🔄 Indirecto — se descuenta por receta al terminar OP</option>
+        </select>
+      </div>
+    </div>
+    <datalist id="um-datalist">
+      <option value="ml"><option value="lt"><option value="cc">
+      <option value="kg"><option value="g"><option value="mg">
+      <option value="m"><option value="cm"><option value="mm"><option value="m²">
+      <option value="unidad"><option value="par"><option value="rollo"><option value="hoja"><option value="pliego">
+    </datalist>
     <datalist id="cat-datalist"></datalist>
     <div class="action-row" style="margin-top:13px;">
       <button class="btn btn-primary" onclick="addProduct()">Guardar</button>
@@ -760,6 +785,8 @@ tr:hover td{background:rgba(255,255,255,.02);}
   <button class="tab"        id="utab-uunidades"  onclick="uNavTo('uunidades')">🔢 Unidades</button>
   <button class="tab"        id="utab-umovements" onclick="uNavTo('umovements')">💰 Ventas</button>
   <button class="tab"        id="utab-op"         onclick="uNavTo('uop')">🗂 Orden Prod.</button>
+  <button class="tab"        id="utab-receta"     onclick="uNavTo('ureceta')">📖 Receta</button>
+  <button class="tab"        id="utab-costeo"     onclick="uNavTo('ucosteo')">💰 Costeo</button>
   <button class="tab"        id="utab-resumen"    onclick="uNavTo('uresumen')">📊 Resumen</button>
 </nav>
 <main>
@@ -1108,6 +1135,38 @@ tr:hover td{background:rgba(255,255,255,.02);}
   <div id="u-resumen-content"></div>
 </div>
 
+
+<!-- RECETA PAGE -->
+<div class="page" id="page-ureceta">
+  <div style="background:rgba(0,229,160,.07);border:1px solid rgba(0,229,160,.2);border-radius:10px;padding:11px 14px;margin-bottom:14px;font-size:.75rem;color:var(--muted);line-height:1.5;">
+    💡 Define cuánto material <b style="color:var(--text);">Indirecto</b> consume cada SKU al fabricarse. Al terminar una OP, el sistema descuenta automáticamente del inventario de Materiales y registra el costo.
+  </div>
+  <div id="ureceta-list"></div>
+</div>
+
+<!-- COSTEO PAGE -->
+<div class="page" id="page-ucosteo">
+  <div id="ucosteo-kpis" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;"></div>
+  <div id="ucosteo-list"></div>
+</div>
+
+<!-- MODAL RECETA -->
+<div id="modal-ureceta" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:9100;align-items:center;justify-content:center;" onclick="if(event.target===this)uCerrarModalReceta()">
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:20px;width:93%;max-width:500px;max-height:90vh;overflow-y:auto;display:flex;flex-direction:column;gap:12px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;">
+      <div style="font-family:'Space Mono',monospace;font-size:.65rem;color:var(--muted);" id="ureceta-modal-titulo">NUEVA RECETA</div>
+      <button onclick="uCerrarModalReceta()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:1.2rem;">✕</button>
+    </div>
+    <div style="font-size:.88rem;font-weight:700;" id="ureceta-modal-sku"></div>
+    <div style="font-size:.65rem;color:var(--muted);font-family:'Space Mono',monospace;margin-bottom:-4px;">MATERIALES INDIRECTOS</div>
+    <div id="ureceta-items-list" style="display:flex;flex-direction:column;gap:8px;"></div>
+    <button onclick="uRecetaAgregarItem()" style="width:100%;background:var(--surface2);border:1px dashed var(--border);border-radius:8px;padding:9px;cursor:pointer;font-size:.75rem;color:var(--muted);">+ Agregar material</button>
+    <div style="display:flex;gap:8px;padding-top:10px;border-top:1px solid var(--border);">
+      <button onclick="uCerrarModalReceta()" style="flex:1;padding:10px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);cursor:pointer;font-size:.8rem;color:var(--text);">Cancelar</button>
+      <button onclick="uGuardarReceta()" style="flex:2;padding:10px;border-radius:8px;border:none;background:var(--accent);color:#000;cursor:pointer;font-size:.8rem;font-weight:700;">Guardar Receta</button>
+    </div>
+  </div>
+</div>
 </main>
 
 <!-- MODAL VENTA INLINE URNAS -->
@@ -2070,11 +2129,16 @@ function addProduct(){
   const stock=parseInt(document.getElementById('np-stock').value)||0;
   const min=parseInt(document.getElementById('np-min').value)||0;
   const cost=parseFloat(document.getElementById('np-cost').value)||0;
+  const formato = parseFloat(document.getElementById('np-formato')?.value)||0;
+  const um     = document.getElementById('np-um')?.value.trim()||'';
+  const tipo   = document.getElementById('np-tipo')?.value||'directo';
   if(!id||!name)return showToast('ID y nombre obligatorios','error');
   if(products.find(p=>p.id===id))return showToast('Ya existe ese ID','error');
-  products.push({id,name,cat,stock,min,cost});
+  products.push({id,name,cat,stock,min,cost,formato,um,tipo});
   document.getElementById('add-product-form').style.display='none';
-  ['np-id','np-name','np-cat'].forEach(x=>document.getElementById(x).value='');
+  ['np-id','np-name','np-cat','np-um'].forEach(x=>document.getElementById(x).value='');
+  const _nf=document.getElementById('np-formato'); if(_nf) _nf.value='';
+  const _nt=document.getElementById('np-tipo'); if(_nt) _nt.value='directo';
   renderInventory();updateHeader();
   lsGuardar();
   showToast('✓ Producto agregado: '+name,'success');
@@ -2121,10 +2185,20 @@ function _renderEditorProductos(){
           <input id="ep-m-min-${i}" type="number" value="${p.min}" min="0" style="width:100%;padding:6px 9px;border-radius:7px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:.83rem;"></div>
         <div><label style="font-size:.65rem;color:var(--muted);">Costo unitario ($)</label>
           <input id="ep-m-cost-${i}" type="number" value="${p.cost}" min="0" step="0.01" style="width:100%;padding:6px 9px;border-radius:7px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:.83rem;"></div>
+        <div><label style="font-size:.65rem;color:var(--muted);">Formato <span style="font-weight:400;opacity:.7;">(Opcional)</span></label>
+          <input id="ep-m-formato-${i}" type="number" value="${p.formato||''}" min="0" step="any" placeholder="ej: 500" style="width:100%;padding:6px 9px;border-radius:7px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:.83rem;"></div>
+        <div><label style="font-size:.65rem;color:var(--muted);">Unidad de medida</label>
+          <input id="ep-m-um-${i}" type="text" value="${p.um||''}" placeholder="ej: ml, kg, m" list="ep-um-dl" style="width:100%;padding:6px 9px;border-radius:7px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:.83rem;"></div>
+        <div style="grid-column:1/-1"><label style="font-size:.65rem;color:var(--muted);">Tipo <span style="font-weight:400;opacity:.7;">(fabricación)</span></label>
+          <select id="ep-m-tipo-${i}" style="width:100%;padding:6px 9px;border-radius:7px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:.83rem;">
+            <option value="directo" ${(p.tipo||'directo')==='directo'?'selected':''}>➡ Directo</option>
+            <option value="indirecto" ${p.tipo==='indirecto'?'selected':''}>🔄 Indirecto</option>
+          </select></div>
       </div>
       <button onclick="guardarEdicionMat(${i})" class="btn btn-primary" style="font-size:.75rem;padding:6px 14px;">Guardar</button>
     </div>`).join('')}
-    <datalist id="ep-cat-dl">${cats.map(c=>`<option value="${c}">`).join('')}</datalist>`;
+    <datalist id="ep-cat-dl">${cats.map(c=>`<option value="${c}">`).join('')}</datalist>
+    <datalist id="ep-um-dl"><option value="ml"><option value="lt"><option value="cc"><option value="kg"><option value="g"><option value="m"><option value="cm"><option value="m²"><option value="unidad"><option value="par"><option value="rollo"><option value="hoja"></datalist>`;
   panel.scrollIntoView({behavior:'smooth'});
 }
 function guardarEdicionMat(i){
@@ -2133,8 +2207,11 @@ function guardarEdicionMat(i){
   const cat=document.getElementById(`ep-m-cat-${i}`)?.value.trim();
   const min=parseFloat(document.getElementById(`ep-m-min-${i}`)?.value)||0;
   const cost=parseFloat(document.getElementById(`ep-m-cost-${i}`)?.value)||0;
+  const formato = parseFloat(document.getElementById(`ep-m-formato-${i}`)?.value)||0;
+  const um     = document.getElementById(`ep-m-um-${i}`)?.value.trim()||'';
+  const tipo   = document.getElementById(`ep-m-tipo-${i}`)?.value||'directo';
   if(!nombre) return showToast('El nombre no puede estar vacío','error');
-  p.name=nombre; p.cat=cat; p.min=min; p.cost=cost;
+  p.name=nombre; p.cat=cat; p.min=min; p.cost=cost; p.formato=formato; p.um=um; p.tipo=tipo;
   lsGuardar(); renderInventory(); _renderEditorProductos();
   showToast('✓ '+nombre+' actualizado','success');
 }
@@ -2460,6 +2537,8 @@ function importarBackup(input){
       if(data.uProductos)   uProducts  = data.uProductos;
       if(data.uMovimientos) uMovements = data.uMovimientos;
       if(data.uOPs)         uOPs       = data.uOPs;
+      if(data.uRecetas)     uRecetas   = data.uRecetas   || {};
+      if(data.uCosteos)     uCosteos   = data.uCosteos   || {};
       if(data.uUnidades)    uUnidades  = data.uUnidades;
       lsGuardarU();
       updateHeader();
@@ -2516,7 +2595,9 @@ const LS_U_UNIDADES  = 'inventapp_u_unidades';
 let uProducts  = [];   // catálogo SKU [{id,name,terminacion,cost,min}]
 let uMovements = [];   // historial movimientos
 let uOPs       = [];   // órdenes de producción
-let uUnidades  = [];   // NUEVA: unidades serializadas
+let uUnidades  = [];   // unidades serializadas
+let uRecetas   = {};   // {skuId: [{matId, matName, cantidad, um}]}
+let uCosteos   = {};   // {skuId: {costo_total, unidades, historial:[]}}
 
 let uCurrentSKU  = null;  // SKU activo en ingreso
 let uCurrentTerm = null;  // terminación activa en ingreso
@@ -2530,6 +2611,8 @@ function lsGuardarU() {
     localStorage.setItem(LS_U_MOVEMENTS, JSON.stringify(uMovements));
     localStorage.setItem(LS_U_OPS,       JSON.stringify(uOPs));
     localStorage.setItem(LS_U_UNIDADES,  JSON.stringify(uUnidades));
+    localStorage.setItem('inventapp_u_recetas',  JSON.stringify(uRecetas));
+    localStorage.setItem('inventapp_u_costeos',  JSON.stringify(uCosteos));
   } catch(e) {}
   clearTimeout(_saveUrnTimer);
   _saveUrnTimer = setTimeout(() => fbSaveUrn(), 800);
@@ -2539,7 +2622,7 @@ async function fbSaveUrn() {
   try {
     await window._fbSetDoc(
       window._fbDoc(window._fbDb, 'inventario', 'urnas'),
-      { uProducts, uMovements, uOPs, uUnidades, updatedAt: new Date().toISOString() }
+      { uProducts, uMovements, uOPs, uUnidades, uRecetas, uCosteos, updatedAt: new Date().toISOString() }
     );
   } catch(e) { console.warn('Firestore save error (urn):', e); }
 }
@@ -2549,6 +2632,8 @@ function lsCargarU() {
     const m=localStorage.getItem(LS_U_MOVEMENTS); if(m) uMovements=JSON.parse(m);
     const o=localStorage.getItem(LS_U_OPS);       if(o) uOPs=JSON.parse(o);
     const u=localStorage.getItem(LS_U_UNIDADES);  if(u) uUnidades=JSON.parse(u);
+    const _r=localStorage.getItem('inventapp_u_recetas'); if(_r) uRecetas=JSON.parse(_r);
+    const _c=localStorage.getItem('inventapp_u_costeos'); if(_c) uCosteos=JSON.parse(_c);
   } catch(e) {}
 }
 
@@ -2595,12 +2680,14 @@ function uNavTo(name) {
   uCloseMenu();
   document.querySelectorAll('#seccion-urnas .page').forEach(p => p.classList.remove('active'));
   document.getElementById('page-' + name).classList.add('active');
-  const tabMap = { uscan:'utab-scan', uinventory:'utab-inventory', uunidades:'utab-uunidades', umovements:'utab-umovements', uop:'utab-op', uresumen:'utab-resumen' };
+  const tabMap = { uscan:'utab-scan', uinventory:'utab-inventory', uunidades:'utab-uunidades', umovements:'utab-umovements', uop:'utab-op', ureceta:'utab-receta', ucosteo:'utab-costeo', uresumen:'utab-resumen' };
   Object.values(tabMap).forEach(id => { const el = document.getElementById(id); if(el) el.classList.remove('active'); });
   const at = document.getElementById(tabMap[name]); if(at) at.classList.add('active');
   setSeccionHeader(U_NAV_LABELS[name] || 'Urnas', 'var(--accent)');
   if(name !== 'uscan') uStopScanner();
   if(name === 'uinventory')        uRenderInventory();
+  if(name === 'ureceta')          uRenderReceta();
+  if(name === 'ucosteo')          uRenderCosteo();
   if(name === 'uunidades')         uRenderUnidades();
   if(name === 'umovements')        uRenderMovements();
   if(name === 'uop')               uRenderOP();
@@ -3772,6 +3859,7 @@ function uGuardarOP() {
       });
     });
     showToast('✓ OP '+op.id+' terminada: '+_opLineas.length+' unidad'+(  _opLineas.length!==1?'es':'')+' transformadas','success');
+    uAplicarRecetasOP(op);  // descontar materiales + registrar costeo
   }
 
   lsGuardarU();
@@ -3788,6 +3876,313 @@ function uEliminarOP(opId) {
   lsGuardarU();
   uRenderOP();
   showToast('OP '+opId+' eliminada','success');
+}
+
+
+// ════════════════════════════════════════════════════════════════
+// RECETAS — cuánto material indirecto gasta cada SKU al fabricarse
+// ════════════════════════════════════════════════════════════════
+
+let _uRecetaSkuId  = null;  // SKU que se está editando
+let _uRecetaItems  = [];    // [{matId, matName, cantidad, um}]
+
+function uRenderReceta() {
+  const cont = document.getElementById('ureceta-list');
+  if(!cont) return;
+  cont.innerHTML = '';
+
+  // Agrupar uProducts por nombre (igual que inventario)
+  const byName = {};
+  uProducts.forEach(p => {
+    if(!byName[p.name]) byName[p.name] = [];
+    byName[p.name].push(p);
+  });
+
+  if(!Object.keys(byName).length) {
+    cont.innerHTML = '<div style="text-align:center;padding:30px;color:var(--muted);font-size:.82rem;">Sin productos. Agrega SKUs en Inventario.</div>';
+    return;
+  }
+
+  Object.entries(byName).forEach(([nombre, skus], gi) => {
+    const grpId = 'rec-grp-'+gi;
+
+    // Fila producto (clickable para expandir)
+    const grpRow = document.createElement('div');
+    grpRow.style.cssText = 'background:var(--surface);border:1px solid var(--border);border-radius:10px;margin-bottom:6px;overflow:hidden;';
+
+    const header = document.createElement('div');
+    header.style.cssText = 'display:flex;justify-content:space-between;align-items:center;padding:12px 14px;cursor:pointer;';
+    header.innerHTML =
+      '<div style="display:flex;align-items:center;gap:10px;">'
+        +'<span id="'+grpId+'-arrow" style="color:var(--accent);font-size:.75rem;">▶</span>'
+        +'<b style="font-size:.88rem;">'+nombre+'</b>'
+        +'<span style="font-size:.68rem;color:var(--muted);">'+skus.length+' variación'+(skus.length!==1?'es':'')+'</span>'
+      +'</div>';
+    header.onclick = () => uToggleRecetaGrupo(grpId);
+    grpRow.appendChild(header);
+
+    // Sub-filas: una por terminación
+    const subWrap = document.createElement('div');
+    subWrap.id = grpId+'-sub';
+    subWrap.style.display = 'none';
+
+    skus.forEach(sku => {
+      const receta = uRecetas[sku.id] || [];
+      const tieneReceta = receta.length > 0;
+      const row = document.createElement('div');
+      row.style.cssText = 'display:flex;justify-content:space-between;align-items:center;padding:10px 14px 10px 32px;border-top:1px solid var(--border);background:var(--surface2);';
+      row.innerHTML =
+        '<div style="display:flex;align-items:center;gap:8px;">'
+          +'<span style="font-size:.72rem;padding:2px 8px;border-radius:5px;background:'+uTermBg(sku.terminacion)+';color:'+uTermColor(sku.terminacion)+';font-family:\'Space Mono\',monospace;">'+( sku.terminacion||'Bruto')+'</span>'
+          +'<span style="font-family:\'Space Mono\',monospace;font-size:.65rem;color:var(--muted);">'+sku.id+'</span>'
+          +(tieneReceta
+            ? '<span style="font-size:.65rem;color:var(--accent);">✓ '+receta.length+' material'+(receta.length!==1?'es':'')+'</span>'
+            : '<span style="font-size:.65rem;color:var(--muted);">Sin receta</span>')
+        +'</div>'
+        +'<button data-skuid="'+sku.id+'" data-nombre="'+nombre+' · '+(sku.terminacion||'Bruto')+'" data-tiene="'+tieneReceta+'" '
+          +'style="background:'+(tieneReceta?'var(--surface)':'var(--accent)')+';color:'+(tieneReceta?'var(--text)':'#000')+';'
+          +'border:1px solid '+(tieneReceta?'var(--border)':'var(--accent)')+';border-radius:7px;padding:5px 12px;cursor:pointer;font-size:.72rem;font-weight:700;">'
+          +(tieneReceta ? '✏️ Editar' : '+ Agregar receta')
+        +'</button>';
+      row.querySelector('button').onclick = (e) => {
+        const b = e.currentTarget;
+        uAbrirModalReceta(b.dataset.skuid, b.dataset.nombre);
+      };
+      subWrap.appendChild(row);
+    });
+
+    grpRow.appendChild(subWrap);
+    cont.appendChild(grpRow);
+  });
+}
+
+function uToggleRecetaGrupo(grpId) {
+  const sub   = document.getElementById(grpId+'-sub');
+  const arrow = document.getElementById(grpId+'-arrow');
+  if(!sub) return;
+  const open = sub.style.display !== 'none';
+  sub.style.display = open ? 'none' : 'block';
+  if(arrow) arrow.textContent = open ? '▶' : '▼';
+}
+
+// ── Modal receta ──────────────────────────────────────
+function uAbrirModalReceta(skuId, label) {
+  _uRecetaSkuId = skuId;
+  _uRecetaItems = (uRecetas[skuId] || []).map(i=>({...i}));
+  document.getElementById('ureceta-modal-titulo').textContent = (uRecetas[skuId]||[]).length ? 'EDITAR RECETA' : 'NUEVA RECETA';
+  document.getElementById('ureceta-modal-sku').textContent = label;
+  uRenderRecetaItems();
+  const m = document.getElementById('modal-ureceta');
+  m.style.display = 'flex';
+}
+function uCerrarModalReceta() {
+  document.getElementById('modal-ureceta').style.display = 'none';
+  _uRecetaSkuId = null; _uRecetaItems = [];
+}
+
+function uRenderRecetaItems() {
+  const cont = document.getElementById('ureceta-items-list');
+  if(!cont) return;
+  cont.innerHTML = '';
+  // Solo materiales con tipo 'indirecto'
+  const indirectos = products.filter(p => p.tipo === 'indirecto');
+
+  if(!indirectos.length) {
+    cont.innerHTML = '<div style="padding:10px;background:rgba(255,165,0,.1);border-radius:8px;font-size:.75rem;color:orange;">⚠️ No hay materiales marcados como Indirecto. Ve a Materiales → editar y asigna Tipo = Indirecto a los materiales que correspondan.</div>';
+  }
+
+  _uRecetaItems.forEach((item, idx) => {
+    const div = document.createElement('div');
+    div.style.cssText = 'background:var(--surface2);border-radius:8px;padding:10px;display:grid;grid-template-columns:1fr auto;gap:8px;align-items:start;';
+
+    const matOpts = products.map(m =>
+      '<option value="'+m.id+'"'+(m.id===item.matId?' selected':'')+'>'+
+      (m.tipo==='indirecto'?'🔄 ':'➡ ')+m.name+(m.um?' ('+m.um+')':'')+'</option>'
+    ).join('');
+
+    div.innerHTML =
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">'
+        +'<div style="grid-column:1/-1"><div style="font-size:.6rem;color:var(--muted);margin-bottom:2px;">MATERIAL</div>'
+          +'<select onchange="uRecetaItemMat('+idx+',this.value)" style="width:100%;padding:6px 8px;border-radius:7px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:.8rem;">'
+          +'<option value="">— Seleccionar —</option>'+matOpts+'</select></div>'
+        +'<div><div style="font-size:.6rem;color:var(--muted);margin-bottom:2px;">CANTIDAD</div>'
+          +'<input type="number" min="0.001" step="any" value="'+(item.cantidad||'')+'" placeholder="ej: 1" '
+          +'onchange="_uRecetaItems['+idx+'].cantidad=parseFloat(this.value)||0" '
+          +'style="width:100%;padding:6px 8px;border-radius:7px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:.8rem;"></div>'
+        +'<div><div style="font-size:.6rem;color:var(--muted);margin-bottom:2px;">UNIDAD</div>'
+          +'<input type="text" value="'+(item.um||'')+'" placeholder="kg, m, lt…" '
+          +'onchange="_uRecetaItems['+idx+'].um=this.value.trim()" '
+          +'style="width:100%;padding:6px 8px;border-radius:7px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:.8rem;"></div>'
+      +'</div>'
+      +'<button onclick="_uRecetaItems.splice('+idx+',1);uRenderRecetaItems()" style="background:none;border:1px solid var(--danger);border-radius:6px;padding:5px 8px;cursor:pointer;color:var(--danger);margin-top:16px;">✕</button>';
+    cont.appendChild(div);
+  });
+}
+
+function uRecetaAgregarItem() {
+  _uRecetaItems.push({matId:'', matName:'', cantidad:0, um:''});
+  uRenderRecetaItems();
+}
+function uRecetaItemMat(idx, matId) {
+  const m = products.find(p=>p.id===matId);
+  _uRecetaItems[idx].matId   = matId;
+  _uRecetaItems[idx].matName = m?.name || '';
+  _uRecetaItems[idx].um      = m?.um   || '';
+  uRenderRecetaItems();
+}
+
+function uGuardarReceta() {
+  if(!_uRecetaSkuId) return;
+  const items = _uRecetaItems.filter(i => i.matId && i.cantidad > 0);
+  uRecetas[_uRecetaSkuId] = items;
+  lsGuardarU();
+  uCerrarModalReceta();
+  uRenderReceta();
+  showToast('✓ Receta guardada','success');
+}
+
+// ════════════════════════════════════════════════════════════════
+// COSTEO
+// ════════════════════════════════════════════════════════════════
+
+function uRenderCosteo() {
+  const kpis = document.getElementById('ucosteo-kpis');
+  const cont = document.getElementById('ucosteo-list');
+  if(!cont) return;
+
+  const skusConCosteo = Object.keys(uCosteos);
+  const totalFab = skusConCosteo.reduce((s,id) => s+(uCosteos[id].unidades||0), 0);
+  const totalCosto = skusConCosteo.reduce((s,id) => s+(uCosteos[id].costo_total||0), 0);
+
+  if(kpis) kpis.innerHTML = [
+    ['SKUs fabricados', skusConCosteo.length, 'var(--text)'],
+    ['Unidades totales', totalFab, 'var(--accent)'],
+    ['Costo total mat.', '$'+fmtNum(totalCosto), 'var(--accent2)'],
+  ].map(([l,v,c]) =>
+    '<div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px;text-align:center;">'
+    +'<div style="font-size:.58rem;color:var(--muted);margin-bottom:3px;">'+l.toUpperCase()+'</div>'
+    +'<div style="font-family:\'Space Mono\',monospace;font-size:.9rem;font-weight:700;color:'+c+';">'+v+'</div>'
+    +'</div>'
+  ).join('');
+
+  if(!skusConCosteo.length) {
+    cont.innerHTML = '<div style="text-align:center;padding:30px;color:var(--muted);font-size:.82rem;">Sin datos. Termina una OP con receta asignada para registrar costos.</div>';
+    return;
+  }
+
+  cont.innerHTML = '';
+  skusConCosteo.forEach(skuId => {
+    const c   = uCosteos[skuId];
+    const sku = uProducts.find(p=>p.id===skuId);
+    const nombre = sku ? sku.name+' · '+(sku.terminacion||'Bruto') : skuId;
+    const cxu = c.unidades > 0 ? c.costo_total/c.unidades : 0;
+
+    const card = document.createElement('div');
+    card.style.cssText = 'background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:8px;';
+    card.innerHTML =
+      '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;">'
+        +'<div>'
+          +'<div style="font-size:.88rem;font-weight:700;">'+nombre+'</div>'
+          +'<div style="font-size:.7rem;color:var(--muted);font-family:\'Space Mono\',monospace;">'+skuId+'</div>'
+        +'</div>'
+        +'<div style="text-align:right;">'
+          +'<div style="font-size:.92rem;font-weight:700;color:var(--accent);font-family:\'Space Mono\',monospace;">$'+fmtNum(c.costo_total||0)+'</div>'
+          +'<div style="font-size:.65rem;color:var(--muted);">'+fmtNum(c.unidades||0)+' uds · $'+fmtNum(cxu)+'/u</div>'
+        +'</div>'
+      +'</div>'
+      // Historial
+      +'<div style="font-family:\'Space Mono\',monospace;font-size:.58rem;color:var(--muted);margin-bottom:5px;">HISTORIAL OPs</div>'
+      +(c.historial||[]).slice(0,5).map(h =>
+        '<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--border);font-size:.72rem;">'
+          +'<span style="color:var(--muted);">'+h.opId+' · '+h.fecha+' · '+h.unidades+'u</span>'
+          +'<span style="color:var(--accent2);font-weight:600;">$'+fmtNum(h.costo)+'</span>'
+        +'</div>'
+      ).join('')
+    ;
+    cont.appendChild(card);
+  });
+}
+
+// ════════════════════════════════════════════════════════════════
+// HOOK EN OP TERMINADA — descontar materiales + registrar costeo
+// ════════════════════════════════════════════════════════════════
+
+function uAplicarRecetasOP(op) {
+  const hoy = new Date().toISOString().split('T')[0];
+  // Agrupar consumos por matId
+  const consumos = {};  // {matId: {matName, total_qty, costo, um}}
+
+  op.lineas.forEach(l => {
+    const receta = uRecetas[l.destSkuId];
+    if(!receta || !receta.length) return;
+    receta.forEach(item => {
+      if(!consumos[item.matId]) {
+        consumos[item.matId] = { matName: item.matName, total_qty: 0, um: item.um };
+      }
+      consumos[item.matId].total_qty += (item.cantidad || 0);
+    });
+  });
+
+  if(!Object.keys(consumos).length) return;  // Sin recetas, no hacer nada
+
+  // Descontar del inventario de materiales y calcular costo
+  let alertas = [];
+  const batchId = 'BATCH-OP-'+op.id+'-'+Date.now();
+
+  Object.entries(consumos).forEach(([matId, info]) => {
+    const mat = products.find(p => p.id === matId);
+    if(!mat) return;
+    const qty = info.total_qty;
+    if(mat.stock < qty) {
+      alertas.push('⚠️ '+mat.name+': necesitaba '+fmtNum(qty)+' '+info.um+', había '+fmtNum(mat.stock));
+    }
+    const qty_real = Math.min(qty, mat.stock);
+    const costo    = qty_real * (mat.cost || 0);
+    info.costo     = costo;
+
+    mat.stock = Math.max(0, mat.stock - qty_real);
+
+    // Movimiento en historial de Materiales
+    const movId = 'MOV-'+String(movements.length+1).padStart(3,'0');
+    movements.unshift({
+      id: movId, batchId, date: hoy,
+      prodId: mat.id, prodName: mat.name,
+      type: 'Salida', qty: qty_real, cost: 0,
+      worker: '', obs: 'OP '+op.id+' — fabricación (receta)'
+    });
+  });
+
+  lsGuardar();  // Guardar inventario materiales
+
+  // Registrar en Costeo por SKU
+  op.lineas.forEach(l => {
+    const receta = uRecetas[l.destSkuId];
+    if(!receta || !receta.length) return;
+
+    let costo_op = 0;
+    receta.forEach(item => {
+      const info = consumos[item.matId];
+      if(info) costo_op += (info.costo || 0) * ((item.cantidad||0) / (consumos[item.matId].total_qty||1));
+    });
+    // Reparto proporcional: costo por unidad * 1 unidad
+    const matCostoPorUnidad = receta.reduce((s, item) => {
+      const mat = products.find(p=>p.id===item.matId);
+      return s + (item.cantidad||0) * (mat?.cost||0);
+    }, 0);
+
+    if(!uCosteos[l.destSkuId]) uCosteos[l.destSkuId] = { costo_total:0, unidades:0, historial:[] };
+    const c = uCosteos[l.destSkuId];
+    c.costo_total += matCostoPorUnidad;
+    c.unidades    += 1;
+    c.historial   = c.historial || [];
+    c.historial.unshift({ opId: op.id, fecha: hoy, unidades: 1, costo: matCostoPorUnidad });
+  });
+
+  lsGuardarU();
+
+  if(alertas.length) {
+    setTimeout(() => alert('OP '+op.id+' terminada con alertas de stock:\n\n'+alertas.join('\n')), 300);
+  }
 }
 
 // Legacy aliases
@@ -4918,6 +5313,15 @@ function _renderEditorProductosConEliminar() {
           <input id="ep-m-min-${i}" type="number" value="${p.min}" min="0" style="width:100%;padding:6px 9px;border-radius:7px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:.83rem;"></div>
         <div><label style="font-size:.65rem;color:var(--muted);">Costo unitario ($)</label>
           <input id="ep-m-cost-${i}" type="number" value="${p.cost}" min="0" step="0.01" style="width:100%;padding:6px 9px;border-radius:7px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:.83rem;"></div>
+        <div><label style="font-size:.65rem;color:var(--muted);">Formato <span style="font-weight:400;opacity:.7;">(Opcional)</span></label>
+          <input id="ep-m-formato-${i}" type="number" value="${p.formato||''}" min="0" step="any" placeholder="ej: 500" style="width:100%;padding:6px 9px;border-radius:7px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:.83rem;"></div>
+        <div><label style="font-size:.65rem;color:var(--muted);">Unidad de medida</label>
+          <input id="ep-m-um-${i}" type="text" value="${p.um||''}" placeholder="ej: ml, kg, m" list="ep-um-dl" style="width:100%;padding:6px 9px;border-radius:7px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:.83rem;"></div>
+        <div style="grid-column:1/-1"><label style="font-size:.65rem;color:var(--muted);">Tipo <span style="font-weight:400;opacity:.7;">(fabricación)</span></label>
+          <select id="ep-m-tipo-${i}" style="width:100%;padding:6px 9px;border-radius:7px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:.83rem;">
+            <option value="directo" ${(p.tipo||'directo')==='directo'?'selected':''}>➡ Directo</option>
+            <option value="indirecto" ${p.tipo==='indirecto'?'selected':''}>🔄 Indirecto</option>
+          </select></div>
       </div>
       <button onclick="guardarEdicionMat(${i})" class="btn btn-primary" style="font-size:.75rem;padding:6px 14px;">Guardar</button>
     </div>`).join('')}
