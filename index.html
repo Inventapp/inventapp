@@ -3751,8 +3751,43 @@ function opRenderLineas() {
           ${workerOpts}
         </select>
       </div>
+      <!-- Materiales directos -->
+      ${_opRenderDirectos(l, i)}
     </div>`;
   }).join('');
+}
+
+function _opRenderDirectos(l, i) {
+  var directos = l.directos || [];
+  var directosMats = products.filter(function(p){ return (p.tipo||'directo')==='directo'; });
+  var out = '<div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border);">';
+  out += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">';
+  out += '<span style="font-size:.62rem;color:var(--muted);font-family:Space Mono,monospace;">MATERIALES DIRECTOS</span>';
+  out += '<button onclick="opLineaAgregarDirecto('+i+')" style="background:none;border:1px solid var(--accent);border-radius:5px;padding:2px 8px;cursor:pointer;font-size:.65rem;color:var(--accent);">+ Agregar</button>';
+  out += '</div>';
+  if (!directos.length) {
+    out += '<div style="font-size:.72rem;color:var(--muted);padding:4px 0;">Sin materiales directos asignados.</div>';
+  } else {
+    var totalDir = 0;
+    directos.forEach(function(d, di) {
+      var mat   = products.find(function(p){ return p.id === d.matId; });
+      var costo = (d.qty||0) * (mat ? mat.cost||0 : 0);
+      totalDir += costo;
+      var matOpts = '<option value="">— Material directo —</option>';
+      directosMats.forEach(function(m) {
+        matOpts += '<option value="'+m.id+'"'+(m.id===d.matId?' selected':'')+'>'+m.name+(m.um?' ('+m.um+')':'')+' — $'+fmtNum(m.cost)+'</option>';
+      });
+      out += '<div style="display:grid;grid-template-columns:1fr 68px auto;gap:5px;align-items:center;margin-bottom:4px;">';
+      out += '<select onchange="opLineaDirectoMat('+i+','+di+',this.value)" style="padding:5px 7px;border-radius:6px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:.75rem;">'+matOpts+'</select>';
+      out += '<input type="number" min="0.001" step="any" value="'+(d.qty||'')+'" placeholder="cant." onchange="opLineaDirectoQty('+i+','+di+',this.value)" style="width:100%;padding:5px 6px;border-radius:6px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:.75rem;text-align:center;">';
+      out += '<button onclick="opLineaEliminarDirecto('+i+','+di+')" style="background:none;border:none;cursor:pointer;color:var(--danger);font-size:.9rem;padding:2px 4px;">✕</button>';
+      out += '</div>';
+      out += '<div style="font-size:.63rem;color:var(--accent2);text-align:right;margin-bottom:4px;">Costo: $'+fmtNum(costo)+'</div>';
+    });
+    out += '<div style="font-size:.70rem;color:var(--accent);text-align:right;font-weight:700;padding-top:4px;border-top:1px solid var(--border);">Total directos: $'+fmtNum(totalDir)+'</div>';
+  }
+  out += '</div>';
+  return out;
 }
 
 // ── Handlers para cambios en líneas ───────────────────
@@ -3763,6 +3798,7 @@ function opLineaSerial(i, serial) {
   _opLineas[i].terminacionDest = '';
   _opLineas[i].destSkuId = '';
   _opLineas[i].responsable = _opLineas[i].responsable || '';
+  _opLineas[i].directos = _opLineas[i].directos || [];
   opRenderLineas();
 }
 function opLineaTerminacion(i, term) {
@@ -3780,8 +3816,28 @@ function opEliminarLinea(i) {
   _opLineas.splice(i,1);
   opRenderLineas();
 }
+function opLineaAgregarDirecto(i) {
+  if(!_opLineas[i]) return;
+  if(!_opLineas[i].directos) _opLineas[i].directos = [];
+  _opLineas[i].directos.push({matId:'', matName:'', qty:1});
+  opRenderLineas();
+}
+function opLineaDirectoMat(i, di, matId) {
+  const m = products.find(p=>p.id===matId);
+  _opLineas[i].directos[di].matId   = matId;
+  _opLineas[i].directos[di].matName = m?.name || '';
+  opRenderLineas();
+}
+function opLineaDirectoQty(i, di, val) {
+  _opLineas[i].directos[di].qty = parseFloat(val)||0;
+  opRenderLineas();
+}
+function opLineaEliminarDirecto(i, di) {
+  _opLineas[i].directos.splice(di,1);
+  opRenderLineas();
+}
 function opAgregarLinea() {
-  _opLineas.push({serial:'', nombre:'', terminacionDest:'', destSkuId:'', responsable:''});
+  _opLineas.push({serial:'', nombre:'', terminacionDest:'', destSkuId:'', responsable:'', directos:[]});
   opRenderLineas();
   // Scroll to bottom of lineas
   const c = document.getElementById('op-lineas-lista');
@@ -4051,14 +4107,14 @@ function uRenderCosteo() {
   if(!cont) return;
 
   const skusConCosteo = Object.keys(uCosteos);
-  const totalFab = skusConCosteo.reduce((s,id) => s+(uCosteos[id].unidades||0), 0);
-  const totalCosto = skusConCosteo.reduce((s,id) => s+(uCosteos[id].costo_total||0), 0);
+  const totalUnidades = skusConCosteo.reduce((s,id)=>s+(uCosteos[id].unidades||0),0);
+  const totalCosto    = skusConCosteo.reduce((s,id)=>s+(uCosteos[id].costo_total||0),0);
 
   if(kpis) kpis.innerHTML = [
     ['SKUs fabricados', skusConCosteo.length, 'var(--text)'],
-    ['Unidades totales', totalFab, 'var(--accent)'],
+    ['Unidades totales', totalUnidades, 'var(--accent)'],
     ['Costo total mat.', '$'+fmtNum(totalCosto), 'var(--accent2)'],
-  ].map(([l,v,c]) =>
+  ].map(([l,v,c])=>
     '<div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px;text-align:center;">'
     +'<div style="font-size:.58rem;color:var(--muted);margin-bottom:3px;">'+l.toUpperCase()+'</div>'
     +'<div style="font-family:\'Space Mono\',monospace;font-size:.9rem;font-weight:700;color:'+c+';">'+v+'</div>'
@@ -4066,7 +4122,7 @@ function uRenderCosteo() {
   ).join('');
 
   if(!skusConCosteo.length) {
-    cont.innerHTML = '<div style="text-align:center;padding:30px;color:var(--muted);font-size:.82rem;">Sin datos. Termina una OP con receta asignada para registrar costos.</div>';
+    cont.innerHTML = '<div style="text-align:center;padding:30px;color:var(--muted);font-size:.82rem;">Sin datos. Termina una OP para registrar costos.</div>';
     return;
   }
 
@@ -4079,29 +4135,54 @@ function uRenderCosteo() {
 
     const card = document.createElement('div');
     card.style.cssText = 'background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:8px;';
+
+    // Calcular totales de directos e indirectos del historial
+    const historial = c.historial || [];
+    const totDir = historial.reduce((s,h)=>s+(h.costo_dir||0),0);
+    const totInd = historial.reduce((s,h)=>s+(h.costo_ind||0),0);
+
     card.innerHTML =
-      '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;">'
+      '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;">'
         +'<div>'
           +'<div style="font-size:.88rem;font-weight:700;">'+nombre+'</div>'
-          +'<div style="font-size:.7rem;color:var(--muted);font-family:\'Space Mono\',monospace;">'+skuId+'</div>'
+          +'<div style="font-family:\'Space Mono\',monospace;font-size:.65rem;color:var(--muted);">'+skuId+'</div>'
+          +'<div style="font-size:.68rem;color:var(--muted);margin-top:4px;">'+fmtNum(c.unidades||0)+' unidades fabricadas</div>'
         +'</div>'
         +'<div style="text-align:right;">'
-          +'<div style="font-size:.92rem;font-weight:700;color:var(--accent);font-family:\'Space Mono\',monospace;">$'+fmtNum(c.costo_total||0)+'</div>'
-          +'<div style="font-size:.65rem;color:var(--muted);">'+fmtNum(c.unidades||0)+' uds · $'+fmtNum(cxu)+'/u</div>'
+          +'<div style="font-family:\'Space Mono\',monospace;font-size:.95rem;font-weight:700;color:var(--accent);">$'+fmtNum(c.costo_total||0)+'</div>'
+          +'<div style="font-size:.65rem;color:var(--accent2);">$'+fmtNum(cxu)+'/u</div>'
         +'</div>'
       +'</div>'
+      // Desglose directo / indirecto
+      +(totDir>0||totInd>0
+        ? '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:12px;">'
+            +'<div style="background:var(--surface2);border-radius:7px;padding:8px;text-align:center;">'
+              +'<div style="font-size:.58rem;color:var(--muted);">DIRECTO</div>'
+              +'<div style="font-family:\'Space Mono\',monospace;font-size:.78rem;font-weight:700;color:var(--accent2);">$'+fmtNum(totDir)+'</div>'
+            +'</div>'
+            +'<div style="background:var(--surface2);border-radius:7px;padding:8px;text-align:center;">'
+              +'<div style="font-size:.58rem;color:var(--muted);">INDIRECTO</div>'
+              +'<div style="font-family:\'Space Mono\',monospace;font-size:.78rem;font-weight:700;color:var(--accent2);">$'+fmtNum(totInd)+'</div>'
+            +'</div>'
+          +'</div>'
+        : '')
       // Historial
       +'<div style="font-family:\'Space Mono\',monospace;font-size:.58rem;color:var(--muted);margin-bottom:5px;">HISTORIAL OPs</div>'
-      +(c.historial||[]).slice(0,5).map(h =>
-        '<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--border);font-size:.72rem;">'
-          +'<span style="color:var(--muted);">'+h.opId+' · '+h.fecha+' · '+h.unidades+'u</span>'
-          +'<span style="color:var(--accent2);font-weight:600;">$'+fmtNum(h.costo)+'</span>'
+      +historial.slice(0,6).map(h =>
+        '<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border);font-size:.72rem;">'
+          +'<span style="color:var(--muted);">'+h.opId+' · '+h.fecha+' · serial '+h.serial+'</span>'
+          +'<span style="text-align:right;">'
+            +'<b style="color:var(--accent);">$'+fmtNum(h.costo)+'</b>'
+            +(h.costo_dir||h.costo_ind
+              ? ' <span style="color:var(--muted);font-size:.65rem;">dir $'+fmtNum(h.costo_dir||0)+' / ind $'+fmtNum(h.costo_ind||0)+'</span>'
+              : '')
+          +'</span>'
         +'</div>'
-      ).join('')
-    ;
+      ).join('');
     cont.appendChild(card);
   });
 }
+
 
 // ════════════════════════════════════════════════════════════════
 // HOOK EN OP TERMINADA — descontar materiales + registrar costeo
@@ -4109,80 +4190,85 @@ function uRenderCosteo() {
 
 function uAplicarRecetasOP(op) {
   const hoy = new Date().toISOString().split('T')[0];
-  // Agrupar consumos por matId
-  const consumos = {};  // {matId: {matName, total_qty, costo, um}}
+  const batchId = 'BATCH-OP-'+op.id+'-'+Date.now();
+  let alertas = [];
 
+  // ── INDIRECTOS: agrupar por matId para 1 movimiento por material ──
+  const consumosInd = {};
   op.lineas.forEach(l => {
     const receta = uRecetas[l.destSkuId];
     if(!receta || !receta.length) return;
     receta.forEach(item => {
-      if(!consumos[item.matId]) {
-        consumos[item.matId] = { matName: item.matName, total_qty: 0, um: item.um };
-      }
-      consumos[item.matId].total_qty += (item.cantidad || 0);
+      if(!consumosInd[item.matId])
+        consumosInd[item.matId] = { matName: item.matName, total_qty: 0, um: item.um };
+      consumosInd[item.matId].total_qty += (item.cantidad || 0);
     });
   });
 
-  if(!Object.keys(consumos).length) return;  // Sin recetas, no hacer nada
-
-  // Descontar del inventario de materiales y calcular costo
-  let alertas = [];
-  const batchId = 'BATCH-OP-'+op.id+'-'+Date.now();
-
-  Object.entries(consumos).forEach(([matId, info]) => {
+  Object.entries(consumosInd).forEach(([matId, info]) => {
     const mat = products.find(p => p.id === matId);
     if(!mat) return;
-    const qty = info.total_qty;
-    if(mat.stock < qty) {
-      alertas.push('⚠️ '+mat.name+': necesitaba '+fmtNum(qty)+' '+info.um+', había '+fmtNum(mat.stock));
-    }
-    const qty_real = Math.min(qty, mat.stock);
-    const costo    = qty_real * (mat.cost || 0);
-    info.costo     = costo;
-
+    if(mat.stock < info.total_qty)
+      alertas.push('⚠️ '+mat.name+' (indirecto): necesitaba '+fmtNum(info.total_qty)+' '+info.um+', había '+fmtNum(mat.stock));
+    const qty_real  = Math.min(info.total_qty, mat.stock);
+    info.costo_unit = mat.cost || 0;
+    info.qty_real   = qty_real;
     mat.stock = Math.max(0, mat.stock - qty_real);
-
-    // Movimiento en historial de Materiales
     const movId = 'MOV-'+String(movements.length+1).padStart(3,'0');
-    movements.unshift({
-      id: movId, batchId, date: hoy,
-      prodId: mat.id, prodName: mat.name,
-      type: 'Salida', qty: qty_real, cost: 0,
-      worker: '', obs: 'OP '+op.id+' — fabricación (receta)'
+    movements.unshift({ id:movId, batchId, date:hoy, prodId:mat.id, prodName:mat.name,
+      type:'Salida', qty:qty_real, cost:0, worker:'', obs:'OP '+op.id+' — indirecto (receta)' });
+  });
+
+  // ── DIRECTOS: un movimiento individual por línea × material ──
+  op.lineas.forEach(l => {
+    (l.directos || []).forEach(d => {
+      if(!d.matId || !d.qty) return;
+      const mat = products.find(p => p.id === d.matId);
+      if(!mat) return;
+      if(mat.stock < d.qty)
+        alertas.push('⚠️ '+mat.name+' (directo): necesitaba '+fmtNum(d.qty)+', había '+fmtNum(mat.stock));
+      const qty_real = Math.min(d.qty, mat.stock);
+      d.costo_real   = qty_real * (mat.cost || 0);
+      mat.stock = Math.max(0, mat.stock - qty_real);
+      const movId = 'MOV-'+String(movements.length+1).padStart(3,'0');
+      movements.unshift({ id:movId, batchId, date:hoy, prodId:mat.id, prodName:mat.name,
+        type:'Salida', qty:qty_real, cost:0, worker:'',
+        obs:'OP '+op.id+' serial '+l.serial+' — directo' });
     });
   });
 
-  lsGuardar();  // Guardar inventario materiales
+  lsGuardar();
 
-  // Registrar en Costeo por SKU
+  // ── COSTEO por SKU: indirectos (receta) + directos (línea) ──
   op.lineas.forEach(l => {
-    const receta = uRecetas[l.destSkuId];
-    if(!receta || !receta.length) return;
-
-    let costo_op = 0;
-    receta.forEach(item => {
-      const info = consumos[item.matId];
-      if(info) costo_op += (info.costo || 0) * ((item.cantidad||0) / (consumos[item.matId].total_qty||1));
-    });
-    // Reparto proporcional: costo por unidad * 1 unidad
-    const matCostoPorUnidad = receta.reduce((s, item) => {
-      const mat = products.find(p=>p.id===item.matId);
-      return s + (item.cantidad||0) * (mat?.cost||0);
+    // Costo indirecto de esta unidad
+    const receta = uRecetas[l.destSkuId] || [];
+    const costoInd = receta.reduce((s, item) => {
+      const info = consumosInd[item.matId];
+      return s + (item.cantidad||0) * (info?.costo_unit||0);
     }, 0);
+
+    // Costo directo de esta línea
+    const costoDir = (l.directos||[]).reduce((s,d) => s + (d.costo_real||0), 0);
+
+    const costoTotal = costoInd + costoDir;
 
     if(!uCosteos[l.destSkuId]) uCosteos[l.destSkuId] = { costo_total:0, unidades:0, historial:[] };
     const c = uCosteos[l.destSkuId];
-    c.costo_total += matCostoPorUnidad;
+    c.costo_total += costoTotal;
     c.unidades    += 1;
-    c.historial   = c.historial || [];
-    c.historial.unshift({ opId: op.id, fecha: hoy, unidades: 1, costo: matCostoPorUnidad });
+    c.historial    = c.historial || [];
+    c.historial.unshift({
+      opId: op.id, fecha: hoy, unidades: 1,
+      costo: costoTotal, costo_ind: costoInd, costo_dir: costoDir,
+      serial: l.serial
+    });
   });
 
   lsGuardarU();
 
-  if(alertas.length) {
+  if(alertas.length)
     setTimeout(() => alert('OP '+op.id+' terminada con alertas de stock:\n\n'+alertas.join('\n')), 300);
-  }
 }
 
 // Legacy aliases
