@@ -4,20 +4,12 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>InventApp · FAZOCAR</title>
-<!-- PWA -->
-<link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#00e5a0">
-<meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="InventApp">
-<link rel="apple-touch-icon" href="icon-192.png">
 <!-- Firebase SDK -->
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
   import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged }
     from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-  import { getFirestore, doc, getDoc, setDoc, deleteDoc, onSnapshot, collection }
+  import { getFirestore, doc, getDoc, setDoc, onSnapshot, collection }
     from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
   const firebaseConfig = {
@@ -40,7 +32,6 @@
   window._fbGetDoc = getDoc;
   window._fbSetDoc = setDoc;
   window._fbOnSnap = onSnapshot;
-  window._fbDeleteDoc = deleteDoc;
   window._fbCol    = collection;
   window._fbSignIn = (email, pass) => signInWithEmailAndPassword(fbAuth, email, pass);
   window._fbSignOut = () => signOut(fbAuth);
@@ -63,11 +54,9 @@
         const allUsersSnap = await getDoc(doc(fbDb, 'meta', 'stats'));
         const isFirst = !allUsersSnap.exists();
         const rol = isFirst ? 'admin' : 'viewer';
-        var nombre = user.email.split('@')[0];
-        await setDoc(uRef, { email: user.email, nombre: nombre, rol: rol, activo: true });
+        await setDoc(uRef, { email: user.email, nombre: user.email.split('@')[0], rol, activo: true });
         if (isFirst) await setDoc(doc(fbDb, 'meta', 'stats'), { creado: new Date().toISOString() });
-        try{var _ls=await getDoc(doc(fbDb,'meta','userList'));var _us=_ls.exists()?(_ls.data().uids||[]):[];if(!_us.includes(user.uid)){_us.push(user.uid);await setDoc(doc(fbDb,'meta','userList'),{uids:_us});}}catch(_){}
-        window._currentUser = { uid: user.uid, email: user.email, rol: rol, nombre: nombre };
+        window._currentUser = { uid: user.uid, email: user.email, rol, nombre: user.email.split('@')[0] };
       } else {
         const data = uSnap.data();
         if (!data.activo) {
@@ -95,8 +84,6 @@
       if(mrl) mrl.textContent = u.rol;
       const adminSection = document.getElementById('menu-admin-section');
       if(adminSection) adminSection.style.display = u.rol === 'admin' ? 'block' : 'none';
-      // Aplicar restricciones de rol
-      aplicarRol(u.rol);
     } catch(e) {
       console.error('Auth error:', e);
       showLoginError('Error al cargar perfil: ' + e.message);
@@ -442,11 +429,9 @@ tr:hover td{background:rgba(255,255,255,.02);}
   <!-- NAVEGACION -->
   <div style="padding:6px 8px;border-bottom:1px solid var(--border);">
     <div style="font-family:'Space Mono',monospace;font-size:.58rem;color:var(--muted);padding:6px 8px 4px;letter-spacing:.06em;">NAVEGAR</div>
-    <a id="mnav-materiales" onclick="entrarSeccionMenu('materiales')" style="border-radius:7px;margin-bottom:2px;">📦 Materiales</a>
-    <a id="mnav-urnas" onclick="entrarSeccionMenu('urnas')" style="border-radius:7px;margin-bottom:2px;">🪦 Urnas</a>
-    <a id="mnav-trabajadores" onclick="entrarSeccionMenu('trabajadores')" style="border-radius:7px;margin-bottom:2px;">👷 Trabajadores</a>
-    <a id="mnav-operaciones" onclick="entrarSeccionMenu('operaciones')" style="border-radius:7px;margin-bottom:2px;">⚱️ Funerales / Instalaciones</a>
-    <a id="mnav-vendedores" onclick="entrarSeccionMenu('vendedores')" style="border-radius:7px;">🛍 Vendedores</a>
+    <a onclick="entrarSeccionMenu('materiales')" style="border-radius:7px;margin-bottom:2px;">📦 Materiales</a>
+    <a onclick="entrarSeccionMenu('urnas')" style="border-radius:7px;margin-bottom:2px;">🪦 Urnas</a>
+    <a onclick="entrarSeccionMenu('trabajadores')" style="border-radius:7px;margin-bottom:2px;">👷 Trabajadores</a>
     <a onclick="irQRsMenu()" style="border-radius:7px;">🔲 Mis QRs</a>
   </div>
 
@@ -516,27 +501,27 @@ tr:hover td{background:rgba(255,255,255,.02);}
   <div class="home-logo">Invent<span>App</span></div>
   <div class="home-sub">Sistema de inventario</div>
   <div class="home-grid">
-    <div id="hbtn-materiales" class="home-btn active-section" onclick="entrarSeccion('materiales')">
+    <div class="home-btn active-section" onclick="entrarSeccion('materiales')">
       <div class="hb-icon">📦</div>
       <div class="hb-label">Materiales</div>
       <div class="hb-sub">Escaneo, stock y movimientos</div>
     </div>
-    <div id="hbtn-urnas" class="home-btn active-section" onclick="entrarSeccion('urnas')">
+    <div class="home-btn active-section" onclick="entrarSeccion('urnas')">
       <div class="hb-icon">⚰️</div>
       <div class="hb-label">Urnas</div>
       <div class="hb-sub">Inventario y producción</div>
     </div>
-    <div id="hbtn-vendedores" class="home-btn active-section" onclick="entrarSeccion('vendedores')">
-      <div class="hb-icon">🛍</div>
-      <div class="hb-label">Vendedores</div>
-      <div class="hb-sub">Inventario de urnas</div>
+    <div class="home-btn disabled">
+      <div class="hb-icon">📋</div>
+      <div class="hb-label">Próximamente</div>
+      <div class="hb-sub">—</div>
     </div>
-    <div id="hbtn-operaciones" class="home-btn active-section" onclick="entrarSeccion('operaciones')">
-      <div class="hb-icon">⚱️</div>
-      <div class="hb-label">Funerales</div>
-      <div class="hb-sub">Funerales e instalaciones</div>
+    <div class="home-btn disabled">
+      <div class="hb-icon">📊</div>
+      <div class="hb-label">Próximamente</div>
+      <div class="hb-sub">—</div>
     </div>
-    <div id="hbtn-trabajadores" class="home-btn active-section" onclick="entrarSeccion('trabajadores')">
+    <div class="home-btn active-section" onclick="entrarSeccion('trabajadores')">
       <div class="hb-icon">👷</div>
       <div class="hb-label">Trabajadores</div>
       <div class="hb-sub">Gestión de personal</div>
@@ -676,31 +661,6 @@ tr:hover td{background:rgba(255,255,255,.02);}
       <div><label>Stock inicial</label><input type="number" id="np-stock" value="0" min="0"></div>
       <div><label>Stock mínimo</label><input type="number" id="np-min" value="5" min="0"></div>
     </div>
-    <div class="form-row">
-      <div>
-        <label>Formato <span style="font-size:.75em;color:var(--muted);font-weight:400;">(Opcional) · ej: 500, 1, 2.5</span></label>
-        <input type="number" id="np-formato" min="0" step="any" placeholder="ej: 500">
-      </div>
-      <div>
-        <label>Unidad de medida <span style="font-size:.75em;color:var(--muted);font-weight:400;">ej: ml, kg, m</span></label>
-        <input type="text" id="np-um" placeholder="ej: ml, kg, m" list="um-datalist">
-      </div>
-    </div>
-    <div class="form-row">
-      <div style="grid-column:1/-1">
-        <label>Tipo <span style="font-size:.75em;color:var(--muted);font-weight:400;">(para fabricación)</span></label>
-        <select id="np-tipo" style="width:100%">
-          <option value="directo">➡ Directo — se entrega con cantidad exacta a la OP</option>
-          <option value="indirecto">🔄 Indirecto — se descuenta por receta al terminar OP</option>
-        </select>
-      </div>
-    </div>
-    <datalist id="um-datalist">
-      <option value="ml"><option value="lt"><option value="cc">
-      <option value="kg"><option value="g"><option value="mg">
-      <option value="m"><option value="cm"><option value="mm"><option value="m²">
-      <option value="unidad"><option value="par"><option value="rollo"><option value="hoja"><option value="pliego">
-    </datalist>
     <datalist id="cat-datalist"></datalist>
     <div class="action-row" style="margin-top:13px;">
       <button class="btn btn-primary" onclick="addProduct()">Guardar</button>
@@ -785,8 +745,6 @@ tr:hover td{background:rgba(255,255,255,.02);}
   <button class="tab"        id="utab-uunidades"  onclick="uNavTo('uunidades')">🔢 Unidades</button>
   <button class="tab"        id="utab-umovements" onclick="uNavTo('umovements')">💰 Ventas</button>
   <button class="tab"        id="utab-op"         onclick="uNavTo('uop')">🗂 Orden Prod.</button>
-  <button class="tab"        id="utab-receta"     onclick="uNavTo('ureceta')">📖 Receta</button>
-  <button class="tab"        id="utab-costeo"     onclick="uNavTo('ucosteo')">💰 Costeo</button>
   <button class="tab"        id="utab-resumen"    onclick="uNavTo('uresumen')">📊 Resumen</button>
 </nav>
 <main>
@@ -1012,6 +970,7 @@ tr:hover td{background:rgba(255,255,255,.02);}
     <button onclick="uSetEstadoFiltro('En Stock')"   id="u-ef-stock"   class="btn btn-secondary" style="font-size:.68rem;padding:5px 11px;">● En Stock</button>
     <button onclick="uSetEstadoFiltro('Vendido')"    id="u-ef-vendido" class="btn btn-secondary" style="font-size:.68rem;padding:5px 11px;">● Vendido</button>
     <button onclick="uSetEstadoFiltro('En Proceso')" id="u-ef-proceso" class="btn btn-secondary" style="font-size:.68rem;padding:5px 11px;">● En Proceso</button>
+    <button onclick="uSetEstadoFiltro('Dañado')"     id="u-ef-danado"  class="btn btn-secondary" style="font-size:.68rem;padding:5px 11px;">● Dañado</button>
   </div>
   <div class="card" style="padding:0;overflow:hidden;">
     <div style="padding:11px 17px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);">
@@ -1020,7 +979,7 @@ tr:hover td{background:rgba(255,255,255,.02);}
     </div>
     <div class="table-wrap" style="border:none;border-radius:0;">
       <table>
-        <thead><tr><th>Código</th><th>Nombre</th><th>Terminación</th><th>●</th><th>Ingreso</th><th>Notas</th><th></th></tr></thead>
+        <thead><tr><th>Código</th><th>Nombre</th><th>Terminación</th><th>●</th><th>Ingreso</th><th>Costo</th><th>Notas</th><th></th></tr></thead>
         <tbody id="u-unidades-tbody"></tbody>
       </table>
     </div>
@@ -1135,38 +1094,6 @@ tr:hover td{background:rgba(255,255,255,.02);}
   <div id="u-resumen-content"></div>
 </div>
 
-
-<!-- RECETA PAGE -->
-<div class="page" id="page-ureceta">
-  <div style="background:rgba(0,229,160,.07);border:1px solid rgba(0,229,160,.2);border-radius:10px;padding:11px 14px;margin-bottom:14px;font-size:.75rem;color:var(--muted);line-height:1.5;">
-    💡 Define cuánto material <b style="color:var(--text);">Indirecto</b> consume cada SKU al fabricarse. Al terminar una OP, el sistema descuenta automáticamente del inventario de Materiales y registra el costo.
-  </div>
-  <div id="ureceta-list"></div>
-</div>
-
-<!-- COSTEO PAGE -->
-<div class="page" id="page-ucosteo">
-  <div id="ucosteo-kpis" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;"></div>
-  <div id="ucosteo-list"></div>
-</div>
-
-<!-- MODAL RECETA -->
-<div id="modal-ureceta" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:9100;align-items:center;justify-content:center;" onclick="if(event.target===this)uCerrarModalReceta()">
-  <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:20px;width:93%;max-width:500px;max-height:90vh;overflow-y:auto;display:flex;flex-direction:column;gap:12px;">
-    <div style="display:flex;justify-content:space-between;align-items:center;">
-      <div style="font-family:'Space Mono',monospace;font-size:.65rem;color:var(--muted);" id="ureceta-modal-titulo">NUEVA RECETA</div>
-      <button onclick="uCerrarModalReceta()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:1.2rem;">✕</button>
-    </div>
-    <div style="font-size:.88rem;font-weight:700;" id="ureceta-modal-sku"></div>
-    <div style="font-size:.65rem;color:var(--muted);font-family:'Space Mono',monospace;margin-bottom:-4px;">MATERIALES INDIRECTOS</div>
-    <div id="ureceta-items-list" style="display:flex;flex-direction:column;gap:8px;"></div>
-    <button onclick="uRecetaAgregarItem()" style="width:100%;background:var(--surface2);border:1px dashed var(--border);border-radius:8px;padding:9px;cursor:pointer;font-size:.75rem;color:var(--muted);">+ Agregar material</button>
-    <div style="display:flex;gap:8px;padding-top:10px;border-top:1px solid var(--border);">
-      <button onclick="uCerrarModalReceta()" style="flex:1;padding:10px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);cursor:pointer;font-size:.8rem;color:var(--text);">Cancelar</button>
-      <button onclick="uGuardarReceta()" style="flex:2;padding:10px;border-radius:8px;border:none;background:var(--accent);color:#000;cursor:pointer;font-size:.8rem;font-weight:700;">Guardar Receta</button>
-    </div>
-  </div>
-</div>
 </main>
 
 <!-- MODAL VENTA INLINE URNAS -->
@@ -1225,163 +1152,6 @@ tr:hover td{background:rgba(255,255,255,.02);}
 </div>
 
 </div><!-- fin seccion-trabajadores -->
-<!-- ════════════════════════════════════════════════════ -->
-<!-- SECCION OPERACIONES (Funerales + Instalaciones)      -->
-<!-- ════════════════════════════════════════════════════ -->
-<div id="seccion-operaciones" style="display:none">
-<main>
-
-<!-- FUNERALES -->
-<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:10px;">
-  <div style="font-family:'Space Mono',monospace;font-size:.78rem;color:var(--text);font-weight:700;display:flex;align-items:center;gap:8px;">
-    ⚱️ Funerales <span style="font-size:.65rem;color:var(--muted);" id="count-funerales">0 registros</span>
-  </div>
-  <div style="display:flex;gap:7px;">
-    <button class="btn btn-primary" style="font-size:.75rem;padding:6px 12px;" onclick="abrirModalFuneral(null)">＋ Agregar</button>
-    <button class="btn btn-danger"  style="font-size:.75rem;padding:6px 12px;" onclick="eliminarTodosFunerales()">🗑 Vaciar</button>
-  </div>
-</div>
-<div class="table-wrap" style="margin-bottom:28px;">
-  <table style="min-width:1000px;">
-    <thead><tr>
-      <th>Contrato</th><th>Nombre</th><th>Se encuentra en</th><th>Cementerio</th>
-      <th>Hora</th><th>Llegada</th><th>Conductor</th><th>Acompañante</th>
-      <th>Urna</th><th>Pase</th><th>Fuente</th><th>Obs</th><th style="width:76px;">—</th>
-    </tr></thead>
-    <tbody id="tbody-funerales">
-      <tr><td colspan="13" style="text-align:center;padding:36px;color:var(--muted);">Sin registros</td></tr>
-    </tbody>
-  </table>
-</div>
-
-<!-- INSTALACIONES -->
-<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:10px;">
-  <div style="font-family:'Space Mono',monospace;font-size:.78rem;color:var(--text);font-weight:700;display:flex;align-items:center;gap:8px;">
-    🔧 Instalaciones <span style="font-size:.65rem;color:var(--muted);" id="count-instalaciones">0 registros</span>
-  </div>
-  <div style="display:flex;gap:7px;">
-    <button class="btn btn-primary" style="font-size:.75rem;padding:6px 12px;" onclick="abrirModalInstalacion(null)">＋ Agregar</button>
-    <button class="btn btn-danger"  style="font-size:.75rem;padding:6px 12px;" onclick="eliminarTodasInstalaciones()">🗑 Vaciar</button>
-  </div>
-</div>
-<div class="table-wrap">
-  <table style="min-width:800px;">
-    <thead><tr>
-      <th>Contrato</th><th>Nombre</th><th>Se encuentra en</th><th>Cementerio</th>
-      <th>Conductor</th><th>Ayudante</th><th>Urna</th><th>Fuente</th><th>Obs</th><th>Trámite</th>
-      <th style="width:76px;">—</th>
-    </tr></thead>
-    <tbody id="tbody-instalaciones">
-      <tr><td colspan="11" style="text-align:center;padding:36px;color:var(--muted);">Sin registros</td></tr>
-    </tbody>
-  </table>
-</div>
-
-</main>
-</div><!-- fin seccion-operaciones -->
-
-<!-- ════════════════════════════════════════════════════ -->
-<!-- SECCION VENDEDORES (Inventario Urnas — solo lectura) -->
-<!-- ════════════════════════════════════════════════════ -->
-<div id="seccion-vendedores" style="display:none">
-<main>
-  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px;">
-    <div class="card" style="padding:14px;">
-      <div style="font-family:'Space Mono',monospace;font-size:1.3rem;font-weight:700;color:var(--accent);" id="vk-total">0</div>
-      <div style="font-size:.65rem;color:var(--muted);margin-top:2px;">Total SKUs</div>
-    </div>
-    <div class="card" style="padding:14px;">
-      <div style="font-family:'Space Mono',monospace;font-size:1.3rem;font-weight:700;color:var(--accent);" id="vk-stock">0</div>
-      <div style="font-size:.65rem;color:var(--muted);margin-top:2px;">Con stock</div>
-    </div>
-    <div class="card" style="padding:14px;">
-      <div style="font-family:'Space Mono',monospace;font-size:1.3rem;font-weight:700;color:var(--danger);" id="vk-sinstock">0</div>
-      <div style="font-size:.65rem;color:var(--muted);margin-top:2px;">Sin stock</div>
-    </div>
-  </div>
-  <div class="table-wrap">
-    <table>
-      <thead><tr>
-        <th>SKU</th><th>Terminación</th><th>Stock</th><th>Estado</th>
-      </tr></thead>
-      <tbody id="tbody-vendedores">
-        <tr><td colspan="5" style="text-align:center;padding:36px;color:var(--muted);">Cargando…</td></tr>
-      </tbody>
-    </table>
-  </div>
-</main>
-</div><!-- fin seccion-vendedores -->
-
-<!-- MODAL FUNERAL -->
-<div class="modal-overlay" id="modal-funeral" onclick="if(event.target===this)cerrarModalFuneral()" style="display:none;">
-  <div class="modal-box" style="max-width:580px;width:96%;max-height:90vh;overflow-y:auto;display:flex;flex-direction:column;">
-    <div class="modal-title" id="modal-funeral-title">Nuevo funeral</div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">
-      <div><label style="font-size:.65rem;color:var(--muted);">Contrato</label>
-        <input id="f-contrato" type="text" placeholder="Nº contrato" style="width:100%;margin-top:4px;"></div>
-      <div><label style="font-size:.65rem;color:var(--muted);">Hora</label>
-        <input id="f-hora" type="time" style="width:100%;margin-top:4px;"></div>
-      <div style="grid-column:1/-1;"><label style="font-size:.65rem;color:var(--muted);">Nombre</label>
-        <input id="f-nombre" type="text" placeholder="Nombre fallecido" style="width:100%;margin-top:4px;"></div>
-      <div><label style="font-size:.65rem;color:var(--muted);">Se encuentra en</label>
-        <input id="f-ubicacion" type="text" placeholder="Dirección o lugar" style="width:100%;margin-top:4px;"></div>
-      <div><label style="font-size:.65rem;color:var(--muted);">Cementerio</label>
-        <input id="f-cementerio" type="text" placeholder="Nombre del cementerio" style="width:100%;margin-top:4px;"></div>
-      <div><label style="font-size:.65rem;color:var(--muted);">Llegada</label>
-        <input id="f-llegada" type="time" style="width:100%;margin-top:4px;"></div>
-      <div><label style="font-size:.65rem;color:var(--muted);">Conductor</label>
-        <select id="f-conductor" style="width:100%;margin-top:4px;"><option value="">— Seleccionar —</option></select></div>
-      <div><label style="font-size:.65rem;color:var(--muted);">Acompañante</label>
-        <select id="f-acompanante" style="width:100%;margin-top:4px;"><option value="">— Seleccionar —</option></select></div>
-      <div><label style="font-size:.65rem;color:var(--muted);">Urna</label>
-        <select id="f-urna" style="width:100%;margin-top:4px;"><option value="">— Seleccionar —</option></select></div>
-      <div><label style="font-size:.65rem;color:var(--muted);">Pase</label>
-        <input id="f-pase" type="text" placeholder="Pase" style="width:100%;margin-top:4px;"></div>
-      <div style="grid-column:1/-1;"><label style="font-size:.65rem;color:var(--muted);">Fuente</label>
-        <input id="f-fuente" type="text" placeholder="Fuente" style="width:100%;margin-top:4px;"></div>
-      <div style="grid-column:1/-1;"><label style="font-size:.65rem;color:var(--muted);">Observaciones</label>
-        <textarea id="f-obs" placeholder="Notas…" style="width:100%;margin-top:4px;min-height:56px;resize:vertical;padding:8px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-family:'DM Sans',sans-serif;font-size:.83rem;"></textarea></div>
-    </div>
-    <div style="display:flex;gap:8px;justify-content:flex-end;padding-top:12px;border-top:1px solid var(--border);margin-top:4px;flex-shrink:0;">
-      <button class="btn btn-secondary" onclick="cerrarModalFuneral()">Cancelar</button>
-      <button class="btn btn-primary" onclick="guardarFuneral()">Guardar</button>
-    </div>
-  </div>
-</div>
-
-<!-- MODAL INSTALACION -->
-<div class="modal-overlay" id="modal-instalacion" onclick="if(event.target===this)cerrarModalInstalacion()" style="display:none;">
-  <div class="modal-box" style="max-width:560px;width:96%;max-height:90vh;overflow-y:auto;display:flex;flex-direction:column;">
-    <div class="modal-title" id="modal-inst-title">Nueva instalación</div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">
-      <div style="grid-column:1/-1;"><label style="font-size:.65rem;color:var(--muted);">Contrato</label>
-        <input id="i-contrato" type="text" placeholder="Nº contrato" style="width:100%;margin-top:4px;"></div>
-      <div style="grid-column:1/-1;"><label style="font-size:.65rem;color:var(--muted);">Nombre</label>
-        <input id="i-nombre" type="text" placeholder="Nombre fallecido" style="width:100%;margin-top:4px;"></div>
-      <div><label style="font-size:.65rem;color:var(--muted);">Se encuentra en</label>
-        <input id="i-ubicacion" type="text" placeholder="Dirección o lugar" style="width:100%;margin-top:4px;"></div>
-      <div><label style="font-size:.65rem;color:var(--muted);">Cementerio</label>
-        <input id="i-cementerio" type="text" placeholder="Nombre del cementerio" style="width:100%;margin-top:4px;"></div>
-      <div><label style="font-size:.65rem;color:var(--muted);">Conductor</label>
-        <select id="i-conductor" style="width:100%;margin-top:4px;"><option value="">— Seleccionar —</option></select></div>
-      <div><label style="font-size:.65rem;color:var(--muted);">Ayudante</label>
-        <select id="i-ayudante" style="width:100%;margin-top:4px;"><option value="">— Seleccionar —</option></select></div>
-      <div><label style="font-size:.65rem;color:var(--muted);">Urna</label>
-        <input id="i-urna" type="text" placeholder="Descripción urna" style="width:100%;margin-top:4px;"></div>
-      <div><label style="font-size:.65rem;color:var(--muted);">Fuente</label>
-        <input id="i-fuente" type="text" placeholder="Fuente" style="width:100%;margin-top:4px;"></div>
-      <div><label style="font-size:.65rem;color:var(--muted);">Trámite</label>
-        <input id="i-tramite" type="text" placeholder="Trámite" style="width:100%;margin-top:4px;"></div>
-      <div style="grid-column:1/-1;"><label style="font-size:.65rem;color:var(--muted);">Observaciones</label>
-        <textarea id="i-obs" placeholder="Notas…" style="width:100%;margin-top:4px;min-height:56px;resize:vertical;padding:8px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-family:'DM Sans',sans-serif;font-size:.83rem;"></textarea></div>
-    </div>
-    <div style="display:flex;gap:8px;justify-content:flex-end;padding-top:12px;border-top:1px solid var(--border);margin-top:4px;flex-shrink:0;">
-      <button class="btn btn-secondary" onclick="cerrarModalInstalacion()">Cancelar</button>
-      <button class="btn btn-primary" onclick="guardarInstalacion()">Guardar</button>
-    </div>
-  </div>
-</div>
-
 <!-- MODAL RESET STOCK -->
 <div class="modal-overlay" id="modal-reset-stock" onclick="if(event.target===this)cerrarModalResetStock()">
   <div class="modal-box" style="max-width:480px;width:94%;max-height:85vh;display:flex;flex-direction:column;">
@@ -1480,13 +1250,6 @@ let workers   = DEFAULT_WORKERS;
 let currentProd = null;
 let currentType = null;
 
-function sanitizar(str) {
-  if (!str) return "";
-  var div = document.createElement("div");
-  div.textContent = str;
-  return div.innerHTML;
-}
-
 // Cargar datos guardados al iniciar
 lsCargar();
 
@@ -1497,105 +1260,39 @@ function setSeccionHeader(nombre, color){
   document.getElementById('header-seccion').style.color = color||'var(--text)';
   document.getElementById('header-seccion').textContent = nombre;
 }
-// ════════════════════════════════════════════════════
-// SISTEMA DE ROLES
-// ════════════════════════════════════════════════════
-function aplicarRol(rol) {
-  // Definir qué secciones puede ver cada rol
-  const permisos = {
-    admin:      ['materiales','urnas','vendedores','operaciones','trabajadores'],
-    ventas:     ['vendedores'],
-    instalacion:['operaciones','urnas'],
-    viewer:     ['materiales','urnas','vendedores','operaciones','trabajadores'],
-  };
-
-  const permitidas = permisos[rol] || permisos['viewer'];
-  const todas = ['materiales','urnas','vendedores','operaciones','trabajadores'];
-
-  // Home buttons
-  todas.forEach(sec => {
-    const btn = document.getElementById('hbtn-' + sec);
-    if(btn) btn.style.display = permitidas.includes(sec) ? '' : 'none';
-  });
-
-  // Menu nav links
-  todas.forEach(sec => {
-    const lnk = document.getElementById('mnav-' + sec);
-    if(lnk) lnk.style.display = permitidas.includes(sec) ? '' : 'none';
-  });
-
-  // Si el rol instalacion entra a Urnas, ir directo a pestaña Inventario
-  // (se maneja en entrarSeccion)
-
-  // Si el rol tiene solo 1 sección, entrar directo sin mostrar home
-  if(permitidas.length === 1) {
-    entrarSeccion(permitidas[0]);
-  }
-}
-
-// Verificar si el rol actual puede acceder a una sección
-function rolPuedeVer(seccion) {
-  const u = window._currentUser;
-  if(!u) return false;
-  const permisos = {
-    admin:      ['materiales','urnas','vendedores','operaciones','trabajadores'],
-    ventas:     ['vendedores'],
-    instalacion:['operaciones','urnas'],
-    viewer:     ['materiales','urnas','vendedores','operaciones','trabajadores'],
-  };
-  const permitidas = permisos[u.rol] || permisos['viewer'];
-  return permitidas.includes(seccion);
-}
-
 function entrarSeccion(nombre) {
   document.getElementById('page-home').classList.remove('active');
   document.getElementById('back-btn').style.display = 'block';
   document.getElementById('hamburger-btn').style.display = 'flex';
   document.getElementById('hdr-alert-wrap').style.display = 'none';
   // Hide all sections first
-  ['seccion-materiales','seccion-urnas','seccion-trabajadores','seccion-operaciones','seccion-vendedores'].forEach(s=>{
+  ['seccion-materiales','seccion-urnas','seccion-trabajadores'].forEach(s=>{
     const el=document.getElementById(s); if(el) el.style.display='none';
   });
   if (nombre === 'materiales') {
-    if(!rolPuedeVer('materiales')){ volverHome(); return; }
     document.getElementById('seccion-materiales').style.display = 'block';
     document.getElementById('hdr-chip').style.display = 'flex';
     setSeccionHeader('Materiales','var(--accent)');
     navTo('scan');
   } else if (nombre === 'urnas') {
-    if(!rolPuedeVer('urnas')){ volverHome(); return; }
     document.getElementById('seccion-urnas').style.display = 'block';
     document.getElementById('hdr-chip').style.display = 'none';
     setSeccionHeader('Urnas','var(--accent)');
-    const _r = window._currentUser ? window._currentUser.rol : '';
-    uNavTo(_r === 'instalacion' ? 'uinventory' : 'uscan');
+    uNavTo('uscan');
   } else if (nombre === 'trabajadores') {
-    if(!rolPuedeVer('trabajadores')){ volverHome(); return; }
     document.getElementById('seccion-trabajadores').style.display = 'block';
     document.getElementById('hdr-chip').style.display = 'none';
     setSeccionHeader('Trabajadores','var(--accent)');
     document.getElementById('trab-lista-view').style.display='block';
     document.getElementById('trab-perfil-view').style.display='none';
     renderTrabajadoresGlobal();
-  } else if (nombre === 'operaciones') {
-    if(!rolPuedeVer('operaciones')){ volverHome(); return; }
-    document.getElementById('seccion-operaciones').style.display = 'block';
-    document.getElementById('hdr-chip').style.display = 'none';
-    setSeccionHeader('Funerales / Instalaciones','var(--warn)');
-    opsCargarDatos();
-  } else if (nombre === 'vendedores') {
-    if(!rolPuedeVer('vendedores')){ volverHome(); return; }
-    document.getElementById('seccion-vendedores').style.display = 'block';
-    document.getElementById('hdr-chip').style.display = 'none';
-    setSeccionHeader('Vendedores — Inventario Urnas','var(--accent2)');
-    renderVendedores();
   }
 }
 function volverHome() {
   closeMenu(); stopScanner(); uStopScanner();
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.getElementById('page-home').classList.add('active');
-  ['seccion-materiales','seccion-urnas','seccion-trabajadores','seccion-operaciones','seccion-vendedores'].forEach(s=>{
+  ['seccion-materiales','seccion-urnas','seccion-trabajadores'].forEach(s=>{
     const el=document.getElementById(s); if(el) el.style.display='none';
   });
   document.getElementById('back-btn').style.display = 'none';
@@ -1656,8 +1353,6 @@ function closeMenu() {
 function _seccionActual(){
   if(document.getElementById('seccion-materiales').style.display!=='none') return 'materiales';
   if(document.getElementById('seccion-urnas').style.display!=='none') return 'urnas';
-  if(document.getElementById('seccion-operaciones').style.display!=='none') return 'operaciones';
-  if(document.getElementById('seccion-vendedores').style.display!=='none') return 'vendedores';
   return null;
 }
 function entrarSeccionMenu(nombre){ closeMenu(); entrarSeccion(nombre); }
@@ -2129,16 +1824,11 @@ function addProduct(){
   const stock=parseInt(document.getElementById('np-stock').value)||0;
   const min=parseInt(document.getElementById('np-min').value)||0;
   const cost=parseFloat(document.getElementById('np-cost').value)||0;
-  const formato = parseFloat(document.getElementById('np-formato')?.value)||0;
-  const um     = document.getElementById('np-um')?.value.trim()||'';
-  const tipo   = document.getElementById('np-tipo')?.value||'directo';
   if(!id||!name)return showToast('ID y nombre obligatorios','error');
   if(products.find(p=>p.id===id))return showToast('Ya existe ese ID','error');
-  products.push({id,name,cat,stock,min,cost,formato,um,tipo});
+  products.push({id,name,cat,stock,min,cost});
   document.getElementById('add-product-form').style.display='none';
-  ['np-id','np-name','np-cat','np-um'].forEach(x=>document.getElementById(x).value='');
-  const _nf=document.getElementById('np-formato'); if(_nf) _nf.value='';
-  const _nt=document.getElementById('np-tipo'); if(_nt) _nt.value='directo';
+  ['np-id','np-name','np-cat'].forEach(x=>document.getElementById(x).value='');
   renderInventory();updateHeader();
   lsGuardar();
   showToast('✓ Producto agregado: '+name,'success');
@@ -2185,20 +1875,10 @@ function _renderEditorProductos(){
           <input id="ep-m-min-${i}" type="number" value="${p.min}" min="0" style="width:100%;padding:6px 9px;border-radius:7px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:.83rem;"></div>
         <div><label style="font-size:.65rem;color:var(--muted);">Costo unitario ($)</label>
           <input id="ep-m-cost-${i}" type="number" value="${p.cost}" min="0" step="0.01" style="width:100%;padding:6px 9px;border-radius:7px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:.83rem;"></div>
-        <div><label style="font-size:.65rem;color:var(--muted);">Formato <span style="font-weight:400;opacity:.7;">(Opcional)</span></label>
-          <input id="ep-m-formato-${i}" type="number" value="${p.formato||''}" min="0" step="any" placeholder="ej: 500" style="width:100%;padding:6px 9px;border-radius:7px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:.83rem;"></div>
-        <div><label style="font-size:.65rem;color:var(--muted);">Unidad de medida</label>
-          <input id="ep-m-um-${i}" type="text" value="${p.um||''}" placeholder="ej: ml, kg, m" list="ep-um-dl" style="width:100%;padding:6px 9px;border-radius:7px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:.83rem;"></div>
-        <div style="grid-column:1/-1"><label style="font-size:.65rem;color:var(--muted);">Tipo <span style="font-weight:400;opacity:.7;">(fabricación)</span></label>
-          <select id="ep-m-tipo-${i}" style="width:100%;padding:6px 9px;border-radius:7px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:.83rem;">
-            <option value="directo" ${(p.tipo||'directo')==='directo'?'selected':''}>➡ Directo</option>
-            <option value="indirecto" ${p.tipo==='indirecto'?'selected':''}>🔄 Indirecto</option>
-          </select></div>
       </div>
       <button onclick="guardarEdicionMat(${i})" class="btn btn-primary" style="font-size:.75rem;padding:6px 14px;">Guardar</button>
     </div>`).join('')}
-    <datalist id="ep-cat-dl">${cats.map(c=>`<option value="${c}">`).join('')}</datalist>
-    <datalist id="ep-um-dl"><option value="ml"><option value="lt"><option value="cc"><option value="kg"><option value="g"><option value="m"><option value="cm"><option value="m²"><option value="unidad"><option value="par"><option value="rollo"><option value="hoja"></datalist>`;
+    <datalist id="ep-cat-dl">${cats.map(c=>`<option value="${c}">`).join('')}</datalist>`;
   panel.scrollIntoView({behavior:'smooth'});
 }
 function guardarEdicionMat(i){
@@ -2207,11 +1887,8 @@ function guardarEdicionMat(i){
   const cat=document.getElementById(`ep-m-cat-${i}`)?.value.trim();
   const min=parseFloat(document.getElementById(`ep-m-min-${i}`)?.value)||0;
   const cost=parseFloat(document.getElementById(`ep-m-cost-${i}`)?.value)||0;
-  const formato = parseFloat(document.getElementById(`ep-m-formato-${i}`)?.value)||0;
-  const um     = document.getElementById(`ep-m-um-${i}`)?.value.trim()||'';
-  const tipo   = document.getElementById(`ep-m-tipo-${i}`)?.value||'directo';
   if(!nombre) return showToast('El nombre no puede estar vacío','error');
-  p.name=nombre; p.cat=cat; p.min=min; p.cost=cost; p.formato=formato; p.um=um; p.tipo=tipo;
+  p.name=nombre; p.cat=cat; p.min=min; p.cost=cost;
   lsGuardar(); renderInventory(); _renderEditorProductos();
   showToast('✓ '+nombre+' actualizado','success');
 }
@@ -2392,7 +2069,7 @@ function renderMovements(){
                   <td class="td-mono">${m.qty}</td>
                   <td class="td-mono">${isIn?'$'+fmtNum(m.cost):'—'}</td>
                   <td class="td-mono">${isIn?'$'+fmtNum(m.qty*m.cost):'—'}</td>
-                  <td style="font-size:.72rem;color:var(--muted);">${sanitizar(m.obs||'—')}</td>
+                  <td style="font-size:.72rem;color:var(--muted);">${m.obs||'—'}</td>
                 </tr>`).join('')}
               </tbody>
             </table>
@@ -2422,7 +2099,7 @@ function renderWorkers(){
   tbody.innerHTML='';
   if(!workers.length){tbody.innerHTML='<tr><td colspan="6"><div class="empty"><div class="empty-icon">👷</div>Sin trabajadores</div></td></tr>';return;}
   workers.forEach((w,i)=>{
-    const nm=sanitizar(workerName(w));
+    const nm=workerName(w);
     const salidas=movements.filter(m=>m.worker===nm);
     const qty=salidas.reduce((s,m)=>s+m.qty,0);
     const last=salidas.length?[...salidas].sort((a,b)=>b.date.localeCompare(a.date))[0].date:'—';
@@ -2537,8 +2214,6 @@ function importarBackup(input){
       if(data.uProductos)   uProducts  = data.uProductos;
       if(data.uMovimientos) uMovements = data.uMovimientos;
       if(data.uOPs)         uOPs       = data.uOPs;
-      if(data.uRecetas)     uRecetas   = data.uRecetas   || {};
-      if(data.uCosteos)     uCosteos   = data.uCosteos   || {};
       if(data.uUnidades)    uUnidades  = data.uUnidades;
       lsGuardarU();
       updateHeader();
@@ -2595,9 +2270,7 @@ const LS_U_UNIDADES  = 'inventapp_u_unidades';
 let uProducts  = [];   // catálogo SKU [{id,name,terminacion,cost,min}]
 let uMovements = [];   // historial movimientos
 let uOPs       = [];   // órdenes de producción
-let uUnidades  = [];   // unidades serializadas
-let uRecetas   = {};   // {skuId: [{matId, matName, cantidad, um}]}
-let uCosteos   = {};   // {skuId: {costo_total, unidades, historial:[]}}
+let uUnidades  = [];   // NUEVA: unidades serializadas
 
 let uCurrentSKU  = null;  // SKU activo en ingreso
 let uCurrentTerm = null;  // terminación activa en ingreso
@@ -2611,8 +2284,6 @@ function lsGuardarU() {
     localStorage.setItem(LS_U_MOVEMENTS, JSON.stringify(uMovements));
     localStorage.setItem(LS_U_OPS,       JSON.stringify(uOPs));
     localStorage.setItem(LS_U_UNIDADES,  JSON.stringify(uUnidades));
-    localStorage.setItem('inventapp_u_recetas',  JSON.stringify(uRecetas));
-    localStorage.setItem('inventapp_u_costeos',  JSON.stringify(uCosteos));
   } catch(e) {}
   clearTimeout(_saveUrnTimer);
   _saveUrnTimer = setTimeout(() => fbSaveUrn(), 800);
@@ -2622,7 +2293,7 @@ async function fbSaveUrn() {
   try {
     await window._fbSetDoc(
       window._fbDoc(window._fbDb, 'inventario', 'urnas'),
-      { uProducts, uMovements, uOPs, uUnidades, uRecetas, uCosteos, updatedAt: new Date().toISOString() }
+      { uProducts, uMovements, uOPs, uUnidades, updatedAt: new Date().toISOString() }
     );
   } catch(e) { console.warn('Firestore save error (urn):', e); }
 }
@@ -2632,8 +2303,6 @@ function lsCargarU() {
     const m=localStorage.getItem(LS_U_MOVEMENTS); if(m) uMovements=JSON.parse(m);
     const o=localStorage.getItem(LS_U_OPS);       if(o) uOPs=JSON.parse(o);
     const u=localStorage.getItem(LS_U_UNIDADES);  if(u) uUnidades=JSON.parse(u);
-    const _r=localStorage.getItem('inventapp_u_recetas'); if(_r) uRecetas=JSON.parse(_r);
-    const _c=localStorage.getItem('inventapp_u_costeos'); if(_c) uCosteos=JSON.parse(_c);
   } catch(e) {}
 }
 
@@ -2680,14 +2349,12 @@ function uNavTo(name) {
   uCloseMenu();
   document.querySelectorAll('#seccion-urnas .page').forEach(p => p.classList.remove('active'));
   document.getElementById('page-' + name).classList.add('active');
-  const tabMap = { uscan:'utab-scan', uinventory:'utab-inventory', uunidades:'utab-uunidades', umovements:'utab-umovements', uop:'utab-op', ureceta:'utab-receta', ucosteo:'utab-costeo', uresumen:'utab-resumen' };
+  const tabMap = { uscan:'utab-scan', uinventory:'utab-inventory', uunidades:'utab-uunidades', umovements:'utab-umovements', uop:'utab-op', uresumen:'utab-resumen' };
   Object.values(tabMap).forEach(id => { const el = document.getElementById(id); if(el) el.classList.remove('active'); });
   const at = document.getElementById(tabMap[name]); if(at) at.classList.add('active');
   setSeccionHeader(U_NAV_LABELS[name] || 'Urnas', 'var(--accent)');
   if(name !== 'uscan') uStopScanner();
   if(name === 'uinventory')        uRenderInventory();
-  if(name === 'ureceta')          uRenderReceta();
-  if(name === 'ucosteo')          uRenderCosteo();
   if(name === 'uunidades')         uRenderUnidades();
   if(name === 'umovements')        uRenderMovements();
   if(name === 'uop')               uRenderOP();
@@ -3004,11 +2671,11 @@ function uCambiarEstado(serial, nuevoEstado) {
 // ── INVENTARIO ─────────────────────────────────────────
 function uSetEstadoFiltro(estado) {
   _uEstadoFiltro = estado;
-  ['u-ef-all','u-ef-stock','u-ef-vendido','u-ef-proceso'].forEach(id => {
+  ['u-ef-all','u-ef-stock','u-ef-vendido','u-ef-proceso','u-ef-danado'].forEach(id => {
     const el = document.getElementById(id); if(!el) return;
     el.style.borderColor = 'var(--border)'; el.style.color = 'var(--muted)'; el.style.background = 'transparent';
   });
-  const activeId = estado === null ? 'u-ef-all' : estado === 'En Stock' ? 'u-ef-stock' : estado === 'Vendido' ? 'u-ef-vendido' : 'u-ef-proceso';
+  const activeId = estado === null ? 'u-ef-all' : estado === 'En Stock' ? 'u-ef-stock' : estado === 'Vendido' ? 'u-ef-vendido' : estado === 'En Proceso' ? 'u-ef-proceso' : 'u-ef-danado';
   const active = document.getElementById(activeId);
   if(active) { active.style.borderColor = 'var(--accent)'; active.style.color = 'var(--accent)'; }
   uRenderUnidades();
@@ -3138,7 +2805,7 @@ function uRenderUnidades() {
   if(!tbody) return;
   tbody.innerHTML = '';
   if(!lista.length) {
-    tbody.innerHTML = '<tr><td colspan="8"><div class="empty"><div class="empty-icon">🔢</div>Sin unidades' + (_uEstadoFiltro ? ' con ese estado' : '') + '</div></td></tr>';
+    tbody.innerHTML = '<tr><td colspan="9"><div class="empty"><div class="empty-icon">🔢</div>Sin unidades' + (_uEstadoFiltro ? ' con ese estado' : '') + '</div></td></tr>';
     return;
   }
   lista.forEach(u => {
@@ -3159,6 +2826,7 @@ function uRenderUnidades() {
       <td><span style="font-size:.68rem;padding:1px 7px;border-radius:5px;background:${uTermBg(u.terminacion)};color:${uTermColor(u.terminacion)};font-family:'Space Mono',monospace;">${u.terminacion||'—'}</span></td>
       <td style="text-align:center;">${circulo}</td>
       <td class="td-mono" style="font-size:.72rem;">${fmtFecha(u.fechaIngreso)}</td>
+      <td class="td-mono" style="font-size:.72rem;">${u.costoIngreso>0?'$'+fmtNum(u.costoIngreso):'—'}</td>
       <td style="font-size:.72rem;color:var(--muted);max-width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${u.notas||''}">${u.notas||'—'}</td>
       <td style="text-align:right;white-space:nowrap;">${acciones}</td>
     </tr>`);
@@ -3239,7 +2907,8 @@ function uRenderMovements() {
   const mes  = ventas.filter(m => m.date >= inicioMes).length;
   document.getElementById('u-mov-summary').innerHTML = `
     <div class="sum-card accent"><div class="sum-val">${total}</div><div class="sum-lbl">Total ventas</div></div>
-    <div class="sum-card blue"><div class="sum-val">${mes}</div><div class="sum-lbl">Este mes</div></div>`;
+    <div class="sum-card blue"><div class="sum-val">${mes}</div><div class="sum-lbl">Este mes</div></div>
+    <div class="sum-card" style="background:var(--surface);border:1px solid var(--border);"><div class="sum-val" style="color:var(--accent2);">$${fmtNum(totalVal)}</div><div class="sum-lbl">Ingresos total</div></div>`;
   const tbody = document.getElementById('u-mov-tbody');
   tbody.innerHTML = '';
   if(!ventas.length) {
@@ -3717,10 +3386,11 @@ function opRenderLineas() {
     const nombre = l.nombre || (uUnidades.find(u=>u.id===l.serial)?.nombre||'');
     const destinos = nombre ? uProducts.filter(p=>p.name===nombre && (p.terminacion||'').toLowerCase()!=='bruto') : [];
     // Workers
-    const barnizWorkers = workers.filter(w => (w.area||'').toLowerCase().includes('barniz'));
-    const workerOpts = barnizWorkers.map(w=>{
+    const areaFiltro = l.terminacionDest ? l.terminacionDest.split('-')[0] : '';
+    const workerOpts = workers.map(w=>{
       const nm=workerName(w);
-      return `<option value="${nm}" ${nm===l.responsable?'selected':''}>${nm}</option>`;
+      const match = areaFiltro && (w.area||'').toLowerCase().includes(areaFiltro.toLowerCase());
+      return `<option value="${nm}" ${nm===l.responsable?'selected':''} ${match?'style="font-weight:700"':''}>${nm}${w.area&&w.area!=='Sin área'?' ('+w.area+')':''}</option>`;
     }).join('');
 
     return `<div style="background:var(--surface2);border-radius:8px;padding:10px 12px;position:relative;">
@@ -3751,43 +3421,8 @@ function opRenderLineas() {
           ${workerOpts}
         </select>
       </div>
-      <!-- Materiales directos -->
-      ${_opRenderDirectos(l, i)}
     </div>`;
   }).join('');
-}
-
-function _opRenderDirectos(l, i) {
-  var directos = l.directos || [];
-  var directosMats = products.filter(function(p){ return (p.tipo||'directo')==='directo'; });
-  var out = '<div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border);">';
-  out += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">';
-  out += '<span style="font-size:.62rem;color:var(--muted);font-family:Space Mono,monospace;">MATERIALES DIRECTOS</span>';
-  out += '<button onclick="opLineaAgregarDirecto('+i+')" style="background:none;border:1px solid var(--accent);border-radius:5px;padding:2px 8px;cursor:pointer;font-size:.65rem;color:var(--accent);">+ Agregar</button>';
-  out += '</div>';
-  if (!directos.length) {
-    out += '<div style="font-size:.72rem;color:var(--muted);padding:4px 0;">Sin materiales directos asignados.</div>';
-  } else {
-    var totalDir = 0;
-    directos.forEach(function(d, di) {
-      var mat   = products.find(function(p){ return p.id === d.matId; });
-      var costo = (d.qty||0) * (mat ? mat.cost||0 : 0);
-      totalDir += costo;
-      var matOpts = '<option value="">— Material directo —</option>';
-      directosMats.forEach(function(m) {
-        matOpts += '<option value="'+m.id+'"'+(m.id===d.matId?' selected':'')+'>'+m.name+(m.um?' ('+m.um+')':'')+' — $'+fmtNum(m.cost)+'</option>';
-      });
-      out += '<div style="display:grid;grid-template-columns:1fr 68px auto;gap:5px;align-items:center;margin-bottom:4px;">';
-      out += '<select onchange="opLineaDirectoMat('+i+','+di+',this.value)" style="padding:5px 7px;border-radius:6px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:.75rem;">'+matOpts+'</select>';
-      out += '<input type="number" min="0.001" step="any" value="'+(d.qty||'')+'" placeholder="cant." onchange="opLineaDirectoQty('+i+','+di+',this.value)" style="width:100%;padding:5px 6px;border-radius:6px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:.75rem;text-align:center;">';
-      out += '<button onclick="opLineaEliminarDirecto('+i+','+di+')" style="background:none;border:none;cursor:pointer;color:var(--danger);font-size:.9rem;padding:2px 4px;">✕</button>';
-      out += '</div>';
-      out += '<div style="font-size:.63rem;color:var(--accent2);text-align:right;margin-bottom:4px;">Costo: $'+fmtNum(costo)+'</div>';
-    });
-    out += '<div style="font-size:.70rem;color:var(--accent);text-align:right;font-weight:700;padding-top:4px;border-top:1px solid var(--border);">Total directos: $'+fmtNum(totalDir)+'</div>';
-  }
-  out += '</div>';
-  return out;
 }
 
 // ── Handlers para cambios en líneas ───────────────────
@@ -3798,7 +3433,6 @@ function opLineaSerial(i, serial) {
   _opLineas[i].terminacionDest = '';
   _opLineas[i].destSkuId = '';
   _opLineas[i].responsable = _opLineas[i].responsable || '';
-  _opLineas[i].directos = _opLineas[i].directos || [];
   opRenderLineas();
 }
 function opLineaTerminacion(i, term) {
@@ -3816,28 +3450,8 @@ function opEliminarLinea(i) {
   _opLineas.splice(i,1);
   opRenderLineas();
 }
-function opLineaAgregarDirecto(i) {
-  if(!_opLineas[i]) return;
-  if(!_opLineas[i].directos) _opLineas[i].directos = [];
-  _opLineas[i].directos.push({matId:'', matName:'', qty:1});
-  opRenderLineas();
-}
-function opLineaDirectoMat(i, di, matId) {
-  const m = products.find(p=>p.id===matId);
-  _opLineas[i].directos[di].matId   = matId;
-  _opLineas[i].directos[di].matName = m?.name || '';
-  opRenderLineas();
-}
-function opLineaDirectoQty(i, di, val) {
-  _opLineas[i].directos[di].qty = parseFloat(val)||0;
-  opRenderLineas();
-}
-function opLineaEliminarDirecto(i, di) {
-  _opLineas[i].directos.splice(di,1);
-  opRenderLineas();
-}
 function opAgregarLinea() {
-  _opLineas.push({serial:'', nombre:'', terminacionDest:'', destSkuId:'', responsable:'', directos:[]});
+  _opLineas.push({serial:'', nombre:'', terminacionDest:'', destSkuId:'', responsable:''});
   opRenderLineas();
   // Scroll to bottom of lineas
   const c = document.getElementById('op-lineas-lista');
@@ -3915,7 +3529,6 @@ function uGuardarOP() {
       });
     });
     showToast('✓ OP '+op.id+' terminada: '+_opLineas.length+' unidad'+(  _opLineas.length!==1?'es':'')+' transformadas','success');
-    uAplicarRecetasOP(op);  // descontar materiales + registrar costeo
   }
 
   lsGuardarU();
@@ -3932,343 +3545,6 @@ function uEliminarOP(opId) {
   lsGuardarU();
   uRenderOP();
   showToast('OP '+opId+' eliminada','success');
-}
-
-
-// ════════════════════════════════════════════════════════════════
-// RECETAS — cuánto material indirecto gasta cada SKU al fabricarse
-// ════════════════════════════════════════════════════════════════
-
-let _uRecetaSkuId  = null;  // SKU que se está editando
-let _uRecetaItems  = [];    // [{matId, matName, cantidad, um}]
-
-function uRenderReceta() {
-  const cont = document.getElementById('ureceta-list');
-  if(!cont) return;
-  cont.innerHTML = '';
-
-  // Agrupar uProducts por nombre (igual que inventario)
-  const byName = {};
-  uProducts.forEach(p => {
-    if(!byName[p.name]) byName[p.name] = [];
-    byName[p.name].push(p);
-  });
-
-  if(!Object.keys(byName).length) {
-    cont.innerHTML = '<div style="text-align:center;padding:30px;color:var(--muted);font-size:.82rem;">Sin productos. Agrega SKUs en Inventario.</div>';
-    return;
-  }
-
-  Object.entries(byName).forEach(([nombre, skus], gi) => {
-    const grpId = 'rec-grp-'+gi;
-
-    // Fila producto (clickable para expandir)
-    const grpRow = document.createElement('div');
-    grpRow.style.cssText = 'background:var(--surface);border:1px solid var(--border);border-radius:10px;margin-bottom:6px;overflow:hidden;';
-
-    const header = document.createElement('div');
-    header.style.cssText = 'display:flex;justify-content:space-between;align-items:center;padding:12px 14px;cursor:pointer;';
-    header.innerHTML =
-      '<div style="display:flex;align-items:center;gap:10px;">'
-        +'<span id="'+grpId+'-arrow" style="color:var(--accent);font-size:.75rem;">▶</span>'
-        +'<b style="font-size:.88rem;">'+nombre+'</b>'
-        +'<span style="font-size:.68rem;color:var(--muted);">'+skus.length+' variación'+(skus.length!==1?'es':'')+'</span>'
-      +'</div>';
-    header.onclick = () => uToggleRecetaGrupo(grpId);
-    grpRow.appendChild(header);
-
-    // Sub-filas: una por terminación
-    const subWrap = document.createElement('div');
-    subWrap.id = grpId+'-sub';
-    subWrap.style.display = 'none';
-
-    skus.forEach(sku => {
-      const receta = uRecetas[sku.id] || [];
-      const tieneReceta = receta.length > 0;
-      const row = document.createElement('div');
-      row.style.cssText = 'display:flex;justify-content:space-between;align-items:center;padding:10px 14px 10px 32px;border-top:1px solid var(--border);background:var(--surface2);';
-      row.innerHTML =
-        '<div style="display:flex;align-items:center;gap:8px;">'
-          +'<span style="font-size:.72rem;padding:2px 8px;border-radius:5px;background:'+uTermBg(sku.terminacion)+';color:'+uTermColor(sku.terminacion)+';font-family:\'Space Mono\',monospace;">'+( sku.terminacion||'Bruto')+'</span>'
-          +'<span style="font-family:\'Space Mono\',monospace;font-size:.65rem;color:var(--muted);">'+sku.id+'</span>'
-          +(tieneReceta
-            ? '<span style="font-size:.65rem;color:var(--accent);">✓ '+receta.length+' material'+(receta.length!==1?'es':'')+'</span>'
-            : '<span style="font-size:.65rem;color:var(--muted);">Sin receta</span>')
-        +'</div>'
-        +'<button data-skuid="'+sku.id+'" data-nombre="'+nombre+' · '+(sku.terminacion||'Bruto')+'" data-tiene="'+tieneReceta+'" '
-          +'style="background:'+(tieneReceta?'var(--surface)':'var(--accent)')+';color:'+(tieneReceta?'var(--text)':'#000')+';'
-          +'border:1px solid '+(tieneReceta?'var(--border)':'var(--accent)')+';border-radius:7px;padding:5px 12px;cursor:pointer;font-size:.72rem;font-weight:700;">'
-          +(tieneReceta ? '✏️ Editar' : '+ Agregar receta')
-        +'</button>';
-      row.querySelector('button').onclick = (e) => {
-        const b = e.currentTarget;
-        uAbrirModalReceta(b.dataset.skuid, b.dataset.nombre);
-      };
-      subWrap.appendChild(row);
-    });
-
-    grpRow.appendChild(subWrap);
-    cont.appendChild(grpRow);
-  });
-}
-
-function uToggleRecetaGrupo(grpId) {
-  const sub   = document.getElementById(grpId+'-sub');
-  const arrow = document.getElementById(grpId+'-arrow');
-  if(!sub) return;
-  const open = sub.style.display !== 'none';
-  sub.style.display = open ? 'none' : 'block';
-  if(arrow) arrow.textContent = open ? '▶' : '▼';
-}
-
-// ── Modal receta ──────────────────────────────────────
-function uAbrirModalReceta(skuId, label) {
-  _uRecetaSkuId = skuId;
-  _uRecetaItems = (uRecetas[skuId] || []).map(i=>({...i}));
-  document.getElementById('ureceta-modal-titulo').textContent = (uRecetas[skuId]||[]).length ? 'EDITAR RECETA' : 'NUEVA RECETA';
-  document.getElementById('ureceta-modal-sku').textContent = label;
-  uRenderRecetaItems();
-  const m = document.getElementById('modal-ureceta');
-  m.style.display = 'flex';
-}
-function uCerrarModalReceta() {
-  document.getElementById('modal-ureceta').style.display = 'none';
-  _uRecetaSkuId = null; _uRecetaItems = [];
-}
-
-function uRenderRecetaItems() {
-  const cont = document.getElementById('ureceta-items-list');
-  if(!cont) return;
-  cont.innerHTML = '';
-  // Solo materiales con tipo 'indirecto'
-  const indirectos = products.filter(p => p.tipo === 'indirecto');
-
-  if(!indirectos.length) {
-    cont.innerHTML = '<div style="padding:10px;background:rgba(255,165,0,.1);border-radius:8px;font-size:.75rem;color:orange;">⚠️ No hay materiales marcados como Indirecto. Ve a Materiales → editar y asigna Tipo = Indirecto a los materiales que correspondan.</div>';
-  }
-
-  _uRecetaItems.forEach((item, idx) => {
-    const div = document.createElement('div');
-    div.style.cssText = 'background:var(--surface2);border-radius:8px;padding:10px;display:grid;grid-template-columns:1fr auto;gap:8px;align-items:start;';
-
-    const matOpts = products.map(m =>
-      '<option value="'+m.id+'"'+(m.id===item.matId?' selected':'')+'>'+
-      (m.tipo==='indirecto'?'🔄 ':'➡ ')+m.name+(m.um?' ('+m.um+')':'')+'</option>'
-    ).join('');
-
-    div.innerHTML =
-      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">'
-        +'<div style="grid-column:1/-1"><div style="font-size:.6rem;color:var(--muted);margin-bottom:2px;">MATERIAL</div>'
-          +'<select onchange="uRecetaItemMat('+idx+',this.value)" style="width:100%;padding:6px 8px;border-radius:7px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:.8rem;">'
-          +'<option value="">— Seleccionar —</option>'+matOpts+'</select></div>'
-        +'<div><div style="font-size:.6rem;color:var(--muted);margin-bottom:2px;">CANTIDAD</div>'
-          +'<input type="number" min="0.001" step="any" value="'+(item.cantidad||'')+'" placeholder="ej: 1" '
-          +'onchange="_uRecetaItems['+idx+'].cantidad=parseFloat(this.value)||0" '
-          +'style="width:100%;padding:6px 8px;border-radius:7px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:.8rem;"></div>'
-        +'<div><div style="font-size:.6rem;color:var(--muted);margin-bottom:2px;">UNIDAD</div>'
-          +'<input type="text" value="'+(item.um||'')+'" placeholder="kg, m, lt…" '
-          +'onchange="_uRecetaItems['+idx+'].um=this.value.trim()" '
-          +'style="width:100%;padding:6px 8px;border-radius:7px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:.8rem;"></div>'
-      +'</div>'
-      +'<button onclick="_uRecetaItems.splice('+idx+',1);uRenderRecetaItems()" style="background:none;border:1px solid var(--danger);border-radius:6px;padding:5px 8px;cursor:pointer;color:var(--danger);margin-top:16px;">✕</button>';
-    cont.appendChild(div);
-  });
-}
-
-function uRecetaAgregarItem() {
-  _uRecetaItems.push({matId:'', matName:'', cantidad:0, um:''});
-  uRenderRecetaItems();
-}
-function uRecetaItemMat(idx, matId) {
-  const m = products.find(p=>p.id===matId);
-  _uRecetaItems[idx].matId   = matId;
-  _uRecetaItems[idx].matName = m?.name || '';
-  _uRecetaItems[idx].um      = m?.um   || '';
-  uRenderRecetaItems();
-}
-
-function uGuardarReceta() {
-  if(!_uRecetaSkuId) return;
-  const items = _uRecetaItems.filter(i => i.matId && i.cantidad > 0);
-  uRecetas[_uRecetaSkuId] = items;
-  lsGuardarU();
-  uCerrarModalReceta();
-  uRenderReceta();
-  showToast('✓ Receta guardada','success');
-}
-
-// ════════════════════════════════════════════════════════════════
-// COSTEO
-// ════════════════════════════════════════════════════════════════
-
-function uRenderCosteo() {
-  const kpis = document.getElementById('ucosteo-kpis');
-  const cont = document.getElementById('ucosteo-list');
-  if(!cont) return;
-
-  const skusConCosteo = Object.keys(uCosteos);
-  const totalUnidades = skusConCosteo.reduce((s,id)=>s+(uCosteos[id].unidades||0),0);
-  const totalCosto    = skusConCosteo.reduce((s,id)=>s+(uCosteos[id].costo_total||0),0);
-
-  if(kpis) kpis.innerHTML = [
-    ['SKUs fabricados', skusConCosteo.length, 'var(--text)'],
-    ['Unidades totales', totalUnidades, 'var(--accent)'],
-    ['Costo total mat.', '$'+fmtNum(totalCosto), 'var(--accent2)'],
-  ].map(([l,v,c])=>
-    '<div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px;text-align:center;">'
-    +'<div style="font-size:.58rem;color:var(--muted);margin-bottom:3px;">'+l.toUpperCase()+'</div>'
-    +'<div style="font-family:\'Space Mono\',monospace;font-size:.9rem;font-weight:700;color:'+c+';">'+v+'</div>'
-    +'</div>'
-  ).join('');
-
-  if(!skusConCosteo.length) {
-    cont.innerHTML = '<div style="text-align:center;padding:30px;color:var(--muted);font-size:.82rem;">Sin datos. Termina una OP para registrar costos.</div>';
-    return;
-  }
-
-  cont.innerHTML = '';
-  skusConCosteo.forEach(skuId => {
-    const c   = uCosteos[skuId];
-    const sku = uProducts.find(p=>p.id===skuId);
-    const nombre = sku ? sku.name+' · '+(sku.terminacion||'Bruto') : skuId;
-    const cxu = c.unidades > 0 ? c.costo_total/c.unidades : 0;
-
-    const card = document.createElement('div');
-    card.style.cssText = 'background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:8px;';
-
-    // Calcular totales de directos e indirectos del historial
-    const historial = c.historial || [];
-    const totDir = historial.reduce((s,h)=>s+(h.costo_dir||0),0);
-    const totInd = historial.reduce((s,h)=>s+(h.costo_ind||0),0);
-
-    card.innerHTML =
-      '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;">'
-        +'<div>'
-          +'<div style="font-size:.88rem;font-weight:700;">'+nombre+'</div>'
-          +'<div style="font-family:\'Space Mono\',monospace;font-size:.65rem;color:var(--muted);">'+skuId+'</div>'
-          +'<div style="font-size:.68rem;color:var(--muted);margin-top:4px;">'+fmtNum(c.unidades||0)+' unidades fabricadas</div>'
-        +'</div>'
-        +'<div style="text-align:right;">'
-          +'<div style="font-family:\'Space Mono\',monospace;font-size:.95rem;font-weight:700;color:var(--accent);">$'+fmtNum(c.costo_total||0)+'</div>'
-          +'<div style="font-size:.65rem;color:var(--accent2);">$'+fmtNum(cxu)+'/u</div>'
-        +'</div>'
-      +'</div>'
-      // Desglose directo / indirecto
-      +(totDir>0||totInd>0
-        ? '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:12px;">'
-            +'<div style="background:var(--surface2);border-radius:7px;padding:8px;text-align:center;">'
-              +'<div style="font-size:.58rem;color:var(--muted);">DIRECTO</div>'
-              +'<div style="font-family:\'Space Mono\',monospace;font-size:.78rem;font-weight:700;color:var(--accent2);">$'+fmtNum(totDir)+'</div>'
-            +'</div>'
-            +'<div style="background:var(--surface2);border-radius:7px;padding:8px;text-align:center;">'
-              +'<div style="font-size:.58rem;color:var(--muted);">INDIRECTO</div>'
-              +'<div style="font-family:\'Space Mono\',monospace;font-size:.78rem;font-weight:700;color:var(--accent2);">$'+fmtNum(totInd)+'</div>'
-            +'</div>'
-          +'</div>'
-        : '')
-      // Historial
-      +'<div style="font-family:\'Space Mono\',monospace;font-size:.58rem;color:var(--muted);margin-bottom:5px;">HISTORIAL OPs</div>'
-      +historial.slice(0,6).map(h =>
-        '<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border);font-size:.72rem;">'
-          +'<span style="color:var(--muted);">'+h.opId+' · '+h.fecha+' · serial '+h.serial+'</span>'
-          +'<span style="text-align:right;">'
-            +'<b style="color:var(--accent);">$'+fmtNum(h.costo)+'</b>'
-            +(h.costo_dir||h.costo_ind
-              ? ' <span style="color:var(--muted);font-size:.65rem;">dir $'+fmtNum(h.costo_dir||0)+' / ind $'+fmtNum(h.costo_ind||0)+'</span>'
-              : '')
-          +'</span>'
-        +'</div>'
-      ).join('');
-    cont.appendChild(card);
-  });
-}
-
-
-// ════════════════════════════════════════════════════════════════
-// HOOK EN OP TERMINADA — descontar materiales + registrar costeo
-// ════════════════════════════════════════════════════════════════
-
-function uAplicarRecetasOP(op) {
-  const hoy = new Date().toISOString().split('T')[0];
-  const batchId = 'BATCH-OP-'+op.id+'-'+Date.now();
-  let alertas = [];
-
-  // ── INDIRECTOS: agrupar por matId para 1 movimiento por material ──
-  const consumosInd = {};
-  op.lineas.forEach(l => {
-    const receta = uRecetas[l.destSkuId];
-    if(!receta || !receta.length) return;
-    receta.forEach(item => {
-      if(!consumosInd[item.matId])
-        consumosInd[item.matId] = { matName: item.matName, total_qty: 0, um: item.um };
-      consumosInd[item.matId].total_qty += (item.cantidad || 0);
-    });
-  });
-
-  Object.entries(consumosInd).forEach(([matId, info]) => {
-    const mat = products.find(p => p.id === matId);
-    if(!mat) return;
-    if(mat.stock < info.total_qty)
-      alertas.push('⚠️ '+mat.name+' (indirecto): necesitaba '+fmtNum(info.total_qty)+' '+info.um+', había '+fmtNum(mat.stock));
-    const qty_real  = Math.min(info.total_qty, mat.stock);
-    info.costo_unit = mat.cost || 0;
-    info.qty_real   = qty_real;
-    mat.stock = Math.max(0, mat.stock - qty_real);
-    const movId = 'MOV-'+String(movements.length+1).padStart(3,'0');
-    movements.unshift({ id:movId, batchId, date:hoy, prodId:mat.id, prodName:mat.name,
-      type:'Salida', qty:qty_real, cost:0, worker:'', obs:'OP '+op.id+' — indirecto (receta)' });
-  });
-
-  // ── DIRECTOS: un movimiento individual por línea × material ──
-  op.lineas.forEach(l => {
-    (l.directos || []).forEach(d => {
-      if(!d.matId || !d.qty) return;
-      const mat = products.find(p => p.id === d.matId);
-      if(!mat) return;
-      if(mat.stock < d.qty)
-        alertas.push('⚠️ '+mat.name+' (directo): necesitaba '+fmtNum(d.qty)+', había '+fmtNum(mat.stock));
-      const qty_real = Math.min(d.qty, mat.stock);
-      d.costo_real   = qty_real * (mat.cost || 0);
-      mat.stock = Math.max(0, mat.stock - qty_real);
-      const movId = 'MOV-'+String(movements.length+1).padStart(3,'0');
-      movements.unshift({ id:movId, batchId, date:hoy, prodId:mat.id, prodName:mat.name,
-        type:'Salida', qty:qty_real, cost:0, worker:'',
-        obs:'OP '+op.id+' serial '+l.serial+' — directo' });
-    });
-  });
-
-  lsGuardar();
-
-  // ── COSTEO por SKU: indirectos (receta) + directos (línea) ──
-  op.lineas.forEach(l => {
-    // Costo indirecto de esta unidad
-    const receta = uRecetas[l.destSkuId] || [];
-    const costoInd = receta.reduce((s, item) => {
-      const info = consumosInd[item.matId];
-      return s + (item.cantidad||0) * (info?.costo_unit||0);
-    }, 0);
-
-    // Costo directo de esta línea
-    const costoDir = (l.directos||[]).reduce((s,d) => s + (d.costo_real||0), 0);
-
-    const costoTotal = costoInd + costoDir;
-
-    if(!uCosteos[l.destSkuId]) uCosteos[l.destSkuId] = { costo_total:0, unidades:0, historial:[] };
-    const c = uCosteos[l.destSkuId];
-    c.costo_total += costoTotal;
-    c.unidades    += 1;
-    c.historial    = c.historial || [];
-    c.historial.unshift({
-      opId: op.id, fecha: hoy, unidades: 1,
-      costo: costoTotal, costo_ind: costoInd, costo_dir: costoDir,
-      serial: l.serial
-    });
-  });
-
-  lsGuardarU();
-
-  if(alertas.length)
-    setTimeout(() => alert('OP '+op.id+' terminada con alertas de stock:\n\n'+alertas.join('\n')), 300);
 }
 
 // Legacy aliases
@@ -4542,18 +3818,9 @@ function renderTrabajadoresGlobal(){
   const areaColors=['var(--accent)','var(--accent2)','var(--warn)','#8B5CF6','#EC4899','#14B8A6'];
   const areaMap={};
   [...new Set(workers.map(w=>w.area||'Sin área'))].forEach((a,i)=>areaMap[a]=areaColors[i%areaColors.length]);
-  // Ordenar: categoría alfabética → nombre alfabético
-  const sorted = workers
-    .map((w,i)=>({w,i}))
-    .sort((a,b)=>{
-      const areaA=(a.w.area||'Sin área').toLowerCase();
-      const areaB=(b.w.area||'Sin área').toLowerCase();
-      if(areaA!==areaB) return areaA.localeCompare(areaB,'es');
-      return workerName(a.w).localeCompare(workerName(b.w),'es');
-    });
-  sorted.forEach(({w,i})=>{
+  workers.forEach((w,i)=>{
     const nm=workerName(w);
-    const area=sanitizar(w.area||'Sin área');
+    const area=w.area||'Sin área';
     const c=areaMap[area]||'var(--muted)';
     tbody.insertAdjacentHTML('beforeend',`<tr style="cursor:pointer;" onclick="abrirPerfilTrabajador(${i})">
       <td><b>${nm}</b> <span style="font-size:.65rem;color:var(--muted);margin-left:4px;">→</span></td>
@@ -4693,7 +3960,7 @@ function renderPerfilTrabajador(w, nm){
             ${entMat.length ? [...entMat].sort((a,b)=>b.date.localeCompare(a.date)).map(m=>`
               <tr>
                 <td class="td-mono">${fmtFecha(m.date)}</td>
-                <td>${sanitizar(m.prodName||'—')}</td>
+                <td>${m.prodName||'—'}</td>
                 <td class="td-mono">${m.qty}</td>
                 <td class="td-mono">$${fmtNum(m.cost||0)}</td>
               </tr>`).join('') :
@@ -5279,65 +4546,27 @@ async function abrirAdminUsuarios() {
 function adminRenderUsers(users) {
   const c = document.getElementById('admin-users-list');
   if(!users.length) { c.innerHTML = '<div style="padding:14px;color:var(--muted);">Sin usuarios registrados.</div>'; return; }
-  const ROLES = ['admin','instalacion','ventas','viewer'];
+  const ROLES = ['admin','bodega','produccion','viewer'];
   c.innerHTML = users.map(u => `
-    <div style="padding:12px 0;border-bottom:1px solid var(--border);">
-      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:8px;">
-        <div style="min-width:0;">
-          <div style="font-weight:700;font-size:.88rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${u.nombre||u.email}</div>
-          <div style="font-size:.65rem;color:var(--muted);margin-top:1px;">${u.email}</div>
-        </div>
-        <div style="display:flex;gap:5px;flex-shrink:0;">
-          <button onclick="adminToggleActivo('${u.uid}',${u.activo})" style="background:none;border:1px solid ${u.activo?'var(--accent)':'var(--danger)'};border-radius:6px;padding:3px 9px;cursor:pointer;font-size:.62rem;color:${u.activo?'var(--accent)':'var(--danger)'};">
-            ${u.activo?'Activo':'Inactivo'}
-          </button>
-          <button onclick="adminEliminarUsuario('${u.uid}','${u.nombre||u.email}')" style="background:none;border:1px solid var(--danger);border-radius:6px;padding:3px 9px;cursor:pointer;font-size:.62rem;color:var(--danger);">
-            🗑
-          </button>
-        </div>
+    <div style="padding:10px 0;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;gap:8px;">
+      <div>
+        <div style="font-weight:600;font-size:.85rem;">${u.nombre||u.email}</div>
+        <div style="font-size:.68rem;color:var(--muted);">${u.email}</div>
       </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-        <div>
-          <div style="font-size:.6rem;color:var(--muted);margin-bottom:3px;">NOMBRE</div>
-          <input value="${u.nombre||''}" placeholder="Nombre" onblur="adminCambiarNombre('${u.uid}',this.value)"
-            style="width:100%;padding:6px 8px;border-radius:7px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:.78rem;">
-        </div>
-        <div>
-          <div style="font-size:.6rem;color:var(--muted);margin-bottom:3px;">ROL</div>
-          <select onchange="adminCambiarRol('${u.uid}',this.value)"
-            style="width:100%;padding:6px 8px;border-radius:7px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:.78rem;">
-            ${ROLES.map(r=>`<option value="${r}" ${r===u.rol?'selected':''}>${r==='admin'?'Admin':r==='instalacion'?'Instalacion':r==='ventas'?'Ventas':'Solo lectura'}</option>`).join('')}
-          </select>
-        </div>
+      <div style="display:flex;gap:6px;align-items:center;">
+        <select onchange="adminCambiarRol('${u.uid}',this.value)" style="font-size:.72rem;padding:4px 6px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--text);">
+          ${ROLES.map(r=>`<option value="${r}" ${r===u.rol?'selected':''}>${r}</option>`).join('')}
+        </select>
+        <button onclick="adminToggleActivo('${u.uid}',${u.activo})" style="background:none;border:1px solid ${u.activo?'var(--accent)':'var(--danger)'};border-radius:5px;padding:3px 8px;cursor:pointer;font-size:.65rem;color:${u.activo?'var(--accent)':'var(--danger)'};">
+          ${u.activo?'Activo':'Inactivo'}
+        </button>
       </div>
     </div>`).join('');
-}
-async function adminEliminarUsuario(uid, nombre) {
-  if(!confirm('¿Eliminar a ' + nombre + ' de la app? Esto borra su perfil y acceso.')) return;
-  try {
-    // Borrar doc de users
-    await window._fbDeleteDoc(window._fbDoc(window._fbDb,'users',uid));
-    // Sacar del userList
-    const snap = await window._fbGetDoc(window._fbDoc(window._fbDb,'meta','userList'));
-    if(snap.exists()) {
-      const uids = (snap.data().uids||[]).filter(u => u !== uid);
-      await window._fbSetDoc(window._fbDoc(window._fbDb,'meta','userList'), {uids});
-    }
-    showToast('Usuario eliminado de la app','success');
-    abrirAdminUsuarios();
-  } catch(e) { showToast('Error: '+e.message,'error'); }
 }
 async function adminCambiarRol(uid, rol) {
   try {
     await window._fbSetDoc(window._fbDoc(window._fbDb,'users',uid), {rol}, {merge:true});
     showToast('✓ Rol actualizado a '+rol,'success');
-  } catch(e) { showToast('Error: '+e.message,'error'); }
-}
-async function adminCambiarNombre(uid, nombre) {
-  if(!nombre.trim()) return;
-  try {
-    await window._fbSetDoc(window._fbDoc(window._fbDb,'users',uid), {nombre:nombre.trim()}, {merge:true});
-    showToast('Nombre actualizado','success');
   } catch(e) { showToast('Error: '+e.message,'error'); }
 }
 async function adminToggleActivo(uid, activo) {
@@ -5399,15 +4628,6 @@ function _renderEditorProductosConEliminar() {
           <input id="ep-m-min-${i}" type="number" value="${p.min}" min="0" style="width:100%;padding:6px 9px;border-radius:7px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:.83rem;"></div>
         <div><label style="font-size:.65rem;color:var(--muted);">Costo unitario ($)</label>
           <input id="ep-m-cost-${i}" type="number" value="${p.cost}" min="0" step="0.01" style="width:100%;padding:6px 9px;border-radius:7px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:.83rem;"></div>
-        <div><label style="font-size:.65rem;color:var(--muted);">Formato <span style="font-weight:400;opacity:.7;">(Opcional)</span></label>
-          <input id="ep-m-formato-${i}" type="number" value="${p.formato||''}" min="0" step="any" placeholder="ej: 500" style="width:100%;padding:6px 9px;border-radius:7px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:.83rem;"></div>
-        <div><label style="font-size:.65rem;color:var(--muted);">Unidad de medida</label>
-          <input id="ep-m-um-${i}" type="text" value="${p.um||''}" placeholder="ej: ml, kg, m" list="ep-um-dl" style="width:100%;padding:6px 9px;border-radius:7px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:.83rem;"></div>
-        <div style="grid-column:1/-1"><label style="font-size:.65rem;color:var(--muted);">Tipo <span style="font-weight:400;opacity:.7;">(fabricación)</span></label>
-          <select id="ep-m-tipo-${i}" style="width:100%;padding:6px 9px;border-radius:7px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:.83rem;">
-            <option value="directo" ${(p.tipo||'directo')==='directo'?'selected':''}>➡ Directo</option>
-            <option value="indirecto" ${p.tipo==='indirecto'?'selected':''}>🔄 Indirecto</option>
-          </select></div>
       </div>
       <button onclick="guardarEdicionMat(${i})" class="btn btn-primary" style="font-size:.75rem;padding:6px 14px;">Guardar</button>
     </div>`).join('')}
@@ -5635,324 +4855,6 @@ function menuUrnEditarOPs() {
   uNavTo('uop');
 }
 
-
-
-// ════════════════════════════════════════════════════
-// OPERACIONES — Funerales e Instalaciones
-// ════════════════════════════════════════════════════
-
-let funerales     = [];
-let instalaciones = [];
-let _editFuneralId = null;
-let _editInstalId  = null;
-
-// Nav tabs within operaciones
-function oNavTo(tab) {
-  ['funerales','instalaciones'].forEach(t => {
-    const pg = document.getElementById('opage-'+t);
-    const tb = document.getElementById('otab-'+t);
-    if(pg) pg.classList.remove('active');
-    if(tb) tb.classList.remove('active');
-  });
-  const pg = document.getElementById('opage-'+tab);
-  const tb = document.getElementById('otab-'+tab);
-  if(pg) pg.classList.add('active');
-  if(tb) tb.classList.add('active');
-}
-
-// ── Firestore load/save ──────────────────────────────
-function opsCargarDatos() {
-  if(!window._fbDb) return;
-  window._fbOnSnap(
-    window._fbDoc(window._fbDb, 'inventario', 'operaciones'),
-    snap => {
-      if(!snap.exists()) { renderFunerales(); renderInstalaciones(); return; }
-      const d = snap.data();
-      if(d.funerales)     funerales     = d.funerales;
-      if(d.instalaciones) instalaciones = d.instalaciones;
-      renderFunerales();
-      renderInstalaciones();
-    }
-  );
-}
-async function opsSaveFirestore() {
-  if(!window._fbDb) return;
-  try {
-    await window._fbSetDoc(
-      window._fbDoc(window._fbDb, 'inventario', 'operaciones'),
-      { funerales, instalaciones, updatedAt: new Date().toISOString() }
-    );
-  } catch(e) { showToast('Error guardando: ' + e.message, 'error'); }
-}
-
-// ── Helpers ──────────────────────────────────────────
-function opsGenId() { return Date.now().toString(36) + Math.random().toString(36).slice(2,5); }
-function opsEsc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
-
-function opsPoblarConductores() {
-  // Trabajadores de área Instalaciones (o todos si no hay)
-  const inst = workers.filter(w => (w.area||'').toLowerCase().includes('instalac'));
-  const lista = inst.length ? inst : workers;
-  const makeOpts = (sel='') =>
-    '<option value="">— Seleccionar —</option>' +
-    lista.map(w => `<option value="${opsEsc(w.name)}" ${w.name===sel?'selected':''}>${opsEsc(w.name)}${w.area?' ('+w.area+')':''}</option>`).join('');
-  ['f-conductor','f-acompanante','i-conductor','i-ayudante'].forEach(id => {
-    const el = document.getElementById(id);
-    if(el) { const cur = el.value; el.innerHTML = makeOpts(cur); }
-  });
-}
-
-function opsPoblarUrnas() {
-  const opts = '<option value="">— Seleccionar —</option>' +
-    uProducts.map(p =>
-      `<option value="${opsEsc(p.name+(p.terminacion?' · '+p.terminacion:''))}">${opsEsc(p.name)}${p.terminacion?' · '+p.terminacion:''}</option>`
-    ).join('');
-  const sel = document.getElementById('f-urna');
-  if(sel) sel.innerHTML = opts;
-}
-
-// ── FUNERALES ────────────────────────────────────────
-function renderFunerales() {
-  const tbody = document.getElementById('tbody-funerales');
-  if(!tbody) return;
-  const cnt = document.getElementById('count-funerales');
-  if(cnt) cnt.textContent = funerales.length + ' registros';
-  if(!funerales.length) {
-    tbody.innerHTML = '<tr><td colspan="13" style="text-align:center;padding:36px;color:var(--muted);">Sin registros. Agrega el primero.</td></tr>';
-    return;
-  }
-  tbody.innerHTML = funerales.map(f => `
-    <tr>
-      <td style="font-family:'Space Mono',monospace;font-size:.72rem;color:var(--accent);">${opsEsc(f.contrato||'—')}</td>
-      <td style="font-weight:600;">${opsEsc(f.nombre||'—')}</td>
-      <td style="color:var(--muted);font-size:.75rem;">${opsEsc(f.ubicacion||'—')}</td>
-      <td style="color:var(--muted);font-size:.75rem;">${opsEsc(f.cementerio||'—')}</td>
-      <td style="font-family:'Space Mono',monospace;font-size:.72rem;">${opsEsc(f.hora||'—')}</td>
-      <td style="font-family:'Space Mono',monospace;font-size:.72rem;">${opsEsc(f.llegada||'—')}</td>
-      <td style="font-size:.78rem;">${opsEsc(f.conductor||'—')}</td>
-      <td style="font-size:.78rem;">${opsEsc(f.acompanante||'—')}</td>
-      <td style="color:var(--muted);font-size:.75rem;">${opsEsc(f.urna||'—')}</td>
-      <td style="color:var(--muted);font-size:.75rem;">${opsEsc(f.pase||'—')}</td>
-      <td style="color:var(--muted);font-size:.75rem;">${opsEsc(f.fuente||'—')}</td>
-      <td style="color:var(--muted);font-size:.73rem;max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${opsEsc(f.obs||'')}">${opsEsc(f.obs||'—')}</td>
-      <td style="white-space:nowrap;display:flex;gap:4px;padding:7px 10px;">
-        <button onclick="abrirModalFuneral('${f.id}')" style="background:none;border:1px solid var(--border);border-radius:5px;padding:3px 8px;cursor:pointer;font-size:.68rem;color:var(--text);">✏</button>
-        <button onclick="eliminarFuneral('${f.id}')" style="background:none;border:1px solid var(--danger);border-radius:5px;padding:3px 8px;cursor:pointer;font-size:.68rem;color:var(--danger);">🗑</button>
-      </td>
-    </tr>`).join('');
-}
-
-function abrirModalFuneral(id) {
-  _editFuneralId = id;
-  opsPoblarConductores();
-  opsPoblarUrnas();
-  const f = id ? funerales.find(x => x.id === id) : null;
-  document.getElementById('modal-funeral-title').textContent = f ? 'Editar funeral' : 'Nuevo funeral';
-  document.getElementById('f-contrato').value   = f?.contrato   || '';
-  document.getElementById('f-nombre').value     = f?.nombre     || '';
-  document.getElementById('f-ubicacion').value  = f?.ubicacion  || '';
-  document.getElementById('f-cementerio').value = f?.cementerio || '';
-  document.getElementById('f-hora').value       = f?.hora       || '';
-  document.getElementById('f-llegada').value    = f?.llegada    || '';
-  document.getElementById('f-conductor').value  = f?.conductor  || '';
-  document.getElementById('f-acompanante').value= f?.acompanante|| '';
-  document.getElementById('f-urna').value       = f?.urna       || '';
-  document.getElementById('f-pase').value       = f?.pase       || '';
-  document.getElementById('f-fuente').value     = f?.fuente     || '';
-  document.getElementById('f-obs').value        = f?.obs        || '';
-  document.getElementById('modal-funeral').style.display = 'flex';
-}
-function cerrarModalFuneral() {
-  document.getElementById('modal-funeral').style.display = 'none';
-  _editFuneralId = null;
-}
-async function guardarFuneral() {
-  const data = {
-    id:          _editFuneralId || opsGenId(),
-    contrato:    document.getElementById('f-contrato').value.trim(),
-    nombre:      document.getElementById('f-nombre').value.trim(),
-    ubicacion:   document.getElementById('f-ubicacion').value.trim(),
-    cementerio:  document.getElementById('f-cementerio').value.trim(),
-    hora:        document.getElementById('f-hora').value,
-    llegada:     document.getElementById('f-llegada').value,
-    conductor:   document.getElementById('f-conductor').value,
-    acompanante: document.getElementById('f-acompanante').value,
-    urna:        document.getElementById('f-urna').value,
-    pase:        document.getElementById('f-pase').value.trim(),
-    fuente:      document.getElementById('f-fuente').value.trim(),
-    obs:         document.getElementById('f-obs').value.trim(),
-  };
-  if(!data.nombre) return showToast('El nombre es obligatorio','error');
-  if(_editFuneralId) funerales = funerales.map(f => f.id===_editFuneralId ? data : f);
-  else funerales.push(data);
-  await opsSaveFirestore();
-  cerrarModalFuneral();
-  renderFunerales();
-  showToast(_editFuneralId ? '✓ Funeral actualizado' : '✓ Funeral agregado','success');
-}
-async function eliminarFuneral(id) {
-  const f = funerales.find(x => x.id===id);
-  if(!confirm('¿Eliminar funeral de "' + (f?.nombre||id) + '"?')) return;
-  funerales = funerales.filter(x => x.id!==id);
-  await opsSaveFirestore();
-  renderFunerales();
-  showToast('Funeral eliminado','error');
-}
-async function eliminarTodosFunerales() {
-  if(!confirm('¿Vaciar toda la tabla de Funerales?')) return;
-  funerales = [];
-  await opsSaveFirestore();
-  renderFunerales();
-  showToast('Tabla vaciada','error');
-}
-
-// ── INSTALACIONES ────────────────────────────────────
-function renderInstalaciones() {
-  const tbody = document.getElementById('tbody-instalaciones');
-  if(!tbody) return;
-  const cnt = document.getElementById('count-instalaciones');
-  if(cnt) cnt.textContent = instalaciones.length + ' registros';
-  if(!instalaciones.length) {
-    tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;padding:36px;color:var(--muted);">Sin registros. Agrega el primero.</td></tr>';
-    return;
-  }
-  tbody.innerHTML = instalaciones.map(i => `
-    <tr>
-      <td style="font-family:'Space Mono',monospace;font-size:.72rem;color:var(--accent);">${opsEsc(i.contrato||'—')}</td>
-      <td style="font-weight:600;">${opsEsc(i.nombre||'—')}</td>
-      <td style="color:var(--muted);font-size:.75rem;">${opsEsc(i.ubicacion||'—')}</td>
-      <td style="color:var(--muted);font-size:.75rem;">${opsEsc(i.cementerio||'—')}</td>
-      <td style="font-size:.78rem;">${opsEsc(i.conductor||'—')}</td>
-      <td style="font-size:.78rem;">${opsEsc(i.ayudante||'—')}</td>
-      <td style="color:var(--muted);font-size:.75rem;">${opsEsc(i.urna||'—')}</td>
-      <td style="color:var(--muted);font-size:.75rem;">${opsEsc(i.fuente||'—')}</td>
-      <td style="color:var(--muted);font-size:.73rem;max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${opsEsc(i.obs||'')}">${opsEsc(i.obs||'—')}</td>
-      <td style="color:var(--muted);font-size:.75rem;">${opsEsc(i.tramite||'—')}</td>
-      <td style="white-space:nowrap;display:flex;gap:4px;padding:7px 10px;">
-        <button onclick="abrirModalInstalacion('${i.id}')" style="background:none;border:1px solid var(--border);border-radius:5px;padding:3px 8px;cursor:pointer;font-size:.68rem;color:var(--text);">✏</button>
-        <button onclick="eliminarInstalacion('${i.id}')" style="background:none;border:1px solid var(--danger);border-radius:5px;padding:3px 8px;cursor:pointer;font-size:.68rem;color:var(--danger);">🗑</button>
-      </td>
-    </tr>`).join('');
-}
-
-function abrirModalInstalacion(id) {
-  _editInstalId = id;
-  opsPoblarConductores();
-  const inst = id ? instalaciones.find(x => x.id===id) : null;
-  document.getElementById('modal-inst-title').textContent = inst ? 'Editar instalación' : 'Nueva instalación';
-  document.getElementById('i-contrato').value  = inst?.contrato  || '';
-  document.getElementById('i-nombre').value    = inst?.nombre    || '';
-  document.getElementById('i-ubicacion').value = inst?.ubicacion || '';
-  document.getElementById('i-cementerio').value= inst?.cementerio|| '';
-  document.getElementById('i-conductor').value = inst?.conductor || '';
-  document.getElementById('i-ayudante').value  = inst?.ayudante  || '';
-  document.getElementById('i-urna').value      = inst?.urna      || '';
-  document.getElementById('i-fuente').value    = inst?.fuente    || '';
-  document.getElementById('i-tramite').value   = inst?.tramite   || '';
-  document.getElementById('i-obs').value       = inst?.obs       || '';
-  document.getElementById('modal-instalacion').style.display = 'flex';
-}
-function cerrarModalInstalacion() {
-  document.getElementById('modal-instalacion').style.display = 'none';
-  _editInstalId = null;
-}
-async function guardarInstalacion() {
-  const data = {
-    id:         _editInstalId || opsGenId(),
-    contrato:   document.getElementById('i-contrato').value.trim(),
-    nombre:     document.getElementById('i-nombre').value.trim(),
-    ubicacion:  document.getElementById('i-ubicacion').value.trim(),
-    cementerio: document.getElementById('i-cementerio').value.trim(),
-    conductor:  document.getElementById('i-conductor').value,
-    ayudante:   document.getElementById('i-ayudante').value,
-    urna:       document.getElementById('i-urna').value.trim(),
-    fuente:     document.getElementById('i-fuente').value.trim(),
-    tramite:    document.getElementById('i-tramite').value.trim(),
-    obs:        document.getElementById('i-obs').value.trim(),
-  };
-  if(!data.nombre) return showToast('El nombre es obligatorio','error');
-  if(_editInstalId) instalaciones = instalaciones.map(i => i.id===_editInstalId ? data : i);
-  else instalaciones.push(data);
-  await opsSaveFirestore();
-  cerrarModalInstalacion();
-  renderInstalaciones();
-  showToast(_editInstalId ? '✓ Instalación actualizada' : '✓ Instalación agregada','success');
-}
-async function eliminarInstalacion(id) {
-  const inst = instalaciones.find(x => x.id===id);
-  if(!confirm('¿Eliminar instalación de "' + (inst?.nombre||id) + '"?')) return;
-  instalaciones = instalaciones.filter(x => x.id!==id);
-  await opsSaveFirestore();
-  renderInstalaciones();
-  showToast('Instalación eliminada','error');
-}
-async function eliminarTodasInstalaciones() {
-  if(!confirm('¿Vaciar toda la tabla de Instalaciones?')) return;
-  instalaciones = [];
-  await opsSaveFirestore();
-  renderInstalaciones();
-  showToast('Tabla vaciada','error');
-}
-
-// ── VENDEDORES — Inventario Urnas (solo lectura) ──────
-let _vendExpandidos = new Set();
-function renderVendedores() {
-  const tbody = document.getElementById('tbody-vendedores');
-  if(!tbody) return;
-  if(!uProducts.length) {
-    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:36px;color:var(--muted);">Sin productos en inventario.</td></tr>';
-    ['vk-total','vk-stock','vk-sinstock'].forEach(id => { const el=document.getElementById(id); if(el) el.textContent='0'; });
-    return;
-  }
-  // Agrupar por nombre
-  const grupos = {};
-  uProducts.forEach(p => {
-    if(!grupos[p.name]) grupos[p.name] = [];
-    grupos[p.name].push(p);
-  });
-  const nombres = Object.keys(grupos).sort((a,b) => a.localeCompare(b,'es'));
-  const totalSkus = uProducts.length;
-  const conStock  = uProducts.filter(p=>(p.stock||0)>0).length;
-  const sinStock  = uProducts.filter(p=>(p.stock||0)===0).length;
-  const vkT = document.getElementById('vk-total');    if(vkT) vkT.textContent = totalSkus;
-  const vkS = document.getElementById('vk-stock');    if(vkS) vkS.textContent = conStock;
-  const vkN = document.getElementById('vk-sinstock'); if(vkN) vkN.textContent = sinStock;
-
-  let html = '';
-  nombres.forEach(nombre => {
-    const skus = grupos[nombre];
-    const totalStock = skus.reduce((s,p)=>(s+(p.stock||0)),0);
-    const expanded = _vendExpandidos.has(nombre);
-    const stockColor = totalStock===0?'var(--danger)':totalStock<=skus.reduce((s,p)=>(s+(p.min||0)),0)?'var(--warn)':'var(--accent)';
-    // Header row
-    html += `<tr style="cursor:pointer;background:var(--surface2);" onclick="vendToggle('${opsEsc(nombre)}')">
-      <td colspan="2" style="font-weight:700;font-size:.85rem;padding:10px 14px;">${opsEsc(nombre)}</td>
-      <td style="font-family:'Space Mono',monospace;font-weight:700;color:${stockColor};text-align:center;">${totalStock}</td>
-      <td style="text-align:right;padding-right:14px;color:var(--muted);font-size:.8rem;">${expanded?'▲':'▼'} ${skus.length} terminac.</td>
-    </tr>`;
-    if(expanded) {
-      skus.forEach(p => {
-        const stock = p.stock||0;
-        const term = p.terminacion||'Bruto';
-        const [elbl,ecls] = stock===0?['Sin stock','background:rgba(255,71,87,.15);color:var(--danger);']:
-          stock<=(p.min||0)?['Stock bajo','background:rgba(255,165,2,.15);color:var(--warn);']:
-          ['Disponible','background:rgba(0,229,160,.15);color:var(--accent);'];
-        html += `<tr style="background:var(--bg);">
-          <td style="padding-left:28px;font-size:.75rem;color:var(--muted);">${opsEsc(p.id)}</td>
-          <td><span style="font-size:.7rem;padding:2px 8px;border-radius:5px;background:${uTermBg(term)};color:${uTermColor(term)};font-family:'Space Mono',monospace;">${opsEsc(term)}</span></td>
-          <td style="font-family:'Space Mono',monospace;font-weight:700;text-align:center;color:${stock===0?'var(--danger)':stock<=(p.min||0)?'var(--warn)':'var(--accent)'};">${stock}</td>
-          <td><span style="font-size:.65rem;padding:2px 8px;border-radius:5px;font-weight:700;font-family:'Space Mono',monospace;${ecls}">${elbl}</span></td>
-        </tr>`;
-      });
-    }
-  });
-  tbody.innerHTML = html;
-}
-function vendToggle(nombre) {
-  if(_vendExpandidos.has(nombre)) _vendExpandidos.delete(nombre);
-  else _vendExpandidos.add(nombre);
-  renderVendedores();
-}
 </script>
 <!-- MODAL EDITAR UNIDADES -->
 <div class="modal-overlay" id="modal-editar-unidades" onclick="if(event.target===this)cerrarEditarUnidades()" style="display:none;">
@@ -6142,15 +5044,5 @@ function vendToggle(nombre) {
 </div>
 
 </div><!-- /app-root -->
-
-<script>
-if('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('sw.js')
-      .then(() => console.log('SW registrado'))
-      .catch(e => console.log('SW error:', e));
-  });
-}
-</script>
 </body>
 </html>
