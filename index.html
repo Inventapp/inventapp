@@ -2652,15 +2652,25 @@ function uConfirmarVentaModal() {
 function uPopulateProductSelect() {
   const sel = document.getElementById('u-product-select');
   sel.innerHTML = '<option value="">— Elige un producto —</option>';
-  // Unique product names (base product without terminacion duplication)
-  const seen = new Set();
-  uProducts.forEach(p => {
-    if(seen.has(p.name)) return;
-    seen.add(p.name);
-    const o = document.createElement('option');
-    o.value = p.name;
-    o.textContent = p.name;
-    sel.appendChild(o);
+  // Order matches Inventory: estandar → especial → restos, then by insertion order within each cat
+  const CAT_ORDER = ['estandar','especial','restos'];
+  const CAT_LABELS = {estandar:'Urnas Estándar', especial:'Especiales', restos:'Restos y Párvulo'};
+  CAT_ORDER.forEach(cat => {
+    const prods = uProducts.filter(p => (p.categoria||'estandar') === cat);
+    // Get unique names in insertion order
+    const seen = new Set();
+    const names = [];
+    prods.forEach(p => { if(!seen.has(p.name)){ seen.add(p.name); names.push(p.name); }});
+    if(!names.length) return;
+    const grp = document.createElement('optgroup');
+    grp.label = CAT_LABELS[cat] || cat;
+    names.forEach(name => {
+      const o = document.createElement('option');
+      o.value = name;
+      o.textContent = name;
+      grp.appendChild(o);
+    });
+    sel.appendChild(grp);
   });
   document.getElementById('u-term-select-wrap').style.display = 'none';
   document.getElementById('u-ingreso-form').style.display = 'none';
@@ -3110,11 +3120,21 @@ function uRenderResumen() {
   // Variaciones sin stock
   const varSinStock = uProducts.filter(p => uStockDe(p.id) === 0);
 
-  // C · Detalle por producto (agrupado por nombre)
+  // C · Detalle por producto (agrupado por nombre, mismo orden que Inventario)
+  const CAT_ORDER_RES = ['estandar','especial','restos'];
+  // Build ordered list of unique names following inventory category order
+  const _seenNames = new Set();
+  const _orderedProds = [];
+  CAT_ORDER_RES.forEach(cat => {
+    uProducts.filter(p => (p.categoria||'estandar') === cat).forEach(p => {
+      if(!_seenNames.has(p.name)){ _seenNames.add(p.name); _orderedProds.push(p.name); }
+    });
+  });
   const byName = {};
   uProducts.forEach(p => { if(!byName[p.name]) byName[p.name]=[]; byName[p.name].push(p); });
 
-  const detCards = Object.entries(byName).map(([nombre, skus], gi) => {
+  const detCards = _orderedProds.map((nombre, gi) => {
+    const skus = byName[nombre] || [];
     const stockTotal = skus.reduce((s,p)=>s+uStockDe(p.id),0);
     const vendidas30 = ventas30.filter(m=>skus.some(p=>p.id===m.skuId)).length;
     const sinStockCount = skus.filter(p=>uStockDe(p.id)===0).length;
