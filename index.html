@@ -550,6 +550,7 @@ tr:hover td{background:rgba(255,255,255,.02);}
   <button class="tab"        id="tab-inventory"  onclick="navTo('inventory')">📦 Inventario</button>
   <button class="tab"        id="tab-movements"  onclick="navTo('movements')">📋 Movimientos</button>
   <button class="tab"        id="tab-resumen"    onclick="navTo('resumen')">📊 Resumen</button>
+  <button class="tab"        id="tab-proveedores" onclick="navTo('proveedores')">🏭 Proveedores</button>
 </nav>
 
 <main>
@@ -746,6 +747,21 @@ tr:hover td{background:rgba(255,255,255,.02);}
 <div class="page" id="page-resumen">
   <div class="summary-grid" id="mat-res-summary"></div>
   <div id="mat-res-content"></div>
+</div>
+
+<!-- PROVEEDORES -->
+<div class="page" id="page-proveedores">
+
+  <!-- Barra superior: buscar + botón agregar -->
+  <div style="display:flex;gap:8px;align-items:center;margin-bottom:14px;flex-wrap:wrap;">
+    <input type="text" id="prov-search" placeholder="🔍 Buscar material o proveedor…"
+      style="flex:1;min-width:0;" oninput="provFiltrar()">
+    <button class="btn btn-primary" style="white-space:nowrap;" onclick="provAbrirModal()">+ Proveedor</button>
+  </div>
+
+  <!-- Lista de materiales agrupados por categoría -->
+  <div id="prov-lista"></div>
+
 </div>
 
 </main>
@@ -1231,6 +1247,7 @@ tr:hover td{background:rgba(255,255,255,.02);}
 const LS_PRODUCTS  = 'inventapp_products';
 const LS_MOVEMENTS = 'inventapp_movements';
 const LS_WORKERS   = 'inventapp_workers';
+const LS_PROVEEDORES = 'inventapp_proveedores';
 
 const DEFAULT_PRODUCTS = [
   {id:"PROD-001",name:"Laptop Dell Inspiron", stock:15,min:5, cost:850.00},
@@ -1260,9 +1277,10 @@ let _saveMatTimer = null;
 function lsGuardar() {
   // Keep localStorage as fast local cache
   try {
-    localStorage.setItem(LS_PRODUCTS,  JSON.stringify(products));
-    localStorage.setItem(LS_MOVEMENTS, JSON.stringify(movements));
-    localStorage.setItem(LS_WORKERS,   JSON.stringify(workers));
+    localStorage.setItem(LS_PRODUCTS,    JSON.stringify(products));
+    localStorage.setItem(LS_MOVEMENTS,  JSON.stringify(movements));
+    localStorage.setItem(LS_WORKERS,     JSON.stringify(workers));
+    localStorage.setItem(LS_PROVEEDORES, JSON.stringify(proveedores));
   } catch(e) {}
   // Debounced Firestore write
   clearTimeout(_saveMatTimer);
@@ -1273,7 +1291,7 @@ async function fbSaveMat() {
   try {
     await window._fbSetDoc(
       window._fbDoc(window._fbDb, 'inventario', 'materiales'),
-      { products, movements, workers, updatedAt: new Date().toISOString() }
+      { products, movements, workers, proveedores, updatedAt: new Date().toISOString() }
     );
   } catch(e) { console.warn('Firestore save error (mat):', e); }
 }
@@ -1288,6 +1306,7 @@ function lsCargar() {
       const parsed = JSON.parse(w);
       workers = parsed.map(x => typeof x === 'string' ? {name:x, area:'Sin área'} : x);
     }
+    const pv = localStorage.getItem(LS_PROVEEDORES); if(pv) proveedores = JSON.parse(pv);
   } catch(e) { console.warn('Error leyendo localStorage:', e); }
 }
 // Helper: get worker name from object or string
@@ -1299,6 +1318,7 @@ let movements = DEFAULT_MOVEMENTS;
 let workers   = DEFAULT_WORKERS;
 let currentProd = null;
 let currentType = null;
+let proveedores = []; // [{id, prodId, nombre, rut, precio, unidad, contacto, notas, fecha}]
 
 function sanitizar(str) {
   if (!str) return "";
@@ -1415,8 +1435,8 @@ function volverHome() {
 }
 
 // ── NAV ── (sin depender de `event`)
-const MAIN_TABS = ['scan','inventory','movements','resumen'];
-const NAV_LABELS = {scan:'Materiales',inventory:'Inventario',movements:'Movimientos',resumen:'Resumen',workers:'Trabajadores',qrcodes:'Mis QRs','delete-products':'Eliminar productos'};
+const MAIN_TABS = ['scan','inventory','movements','resumen','proveedores'];
+const NAV_LABELS = {scan:'Materiales',inventory:'Inventario',movements:'Movimientos',resumen:'Resumen',proveedores:'Proveedores',workers:'Trabajadores',qrcodes:'Mis QRs','delete-products':'Eliminar productos'};
 function navTo(name) {
   closeMenu();
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
@@ -1434,7 +1454,8 @@ function navTo(name) {
   if (name === 'workers')   renderWorkers();
   if (name === 'qrcodes')   renderQR();
   if (name === 'delete-products') renderDeleteProducts();
-  if (name === 'resumen')   renderResumenMat();
+  if (name === 'resumen')     renderResumenMat();
+  if (name === 'proveedores') renderProveedores();
 }
 
 function toggleMenu() {
@@ -3700,6 +3721,265 @@ let _uRecetaItems  = [];    // [{matId, matName, cantidad, um}]
 // ════════════════════════════════════════════════════════════════
 
 
+
+// ════════════════════════════════════════════════════
+// PROVEEDORES — módulo completo
+// ════════════════════════════════════════════════════
+
+let _provEditId  = null;  // null = nuevo, string = editando
+let _provFiltroQ = '';    // texto de búsqueda activo
+let _provExpanded = {};   // {prodId: bool} expandidos
+
+// ── Render principal ─────────────────────────────────
+function renderProveedores() {
+  _provFiltroQ = (document.getElementById('prov-search')?.value || '').toLowerCase().trim();
+  const lista  = document.getElementById('prov-lista');
+  if (!lista) return;
+
+  if (!products.length) {
+    lista.innerHTML = '<div class="empty"><div class="empty-icon">🏭</div>Sin materiales registrados</div>';
+    return;
+  }
+
+  // Agrupar proveedores por prodId
+  const porProd = {};
+  proveedores.forEach(pv => {
+    if (!porProd[pv.prodId]) porProd[pv.prodId] = [];
+    porProd[pv.prodId].push(pv);
+  });
+
+  // Agrupar products por categoría
+  const cats = {};
+  products.forEach(p => {
+    const c = p.cat || 'Sin categoría';
+    if (!cats[c]) cats[c] = [];
+    cats[c].push(p);
+  });
+
+  // Filtrar
+  const filtrar = (p) => {
+    if (!_provFiltroQ) return true;
+    if (p.name.toLowerCase().includes(_provFiltroQ)) return true;
+    if (p.id.toLowerCase().includes(_provFiltroQ)) return true;
+    if ((p.cat||'').toLowerCase().includes(_provFiltroQ)) return true;
+    const pvs = porProd[p.id] || [];
+    return pvs.some(pv =>
+      pv.nombre.toLowerCase().includes(_provFiltroQ) ||
+      (pv.rut||'').toLowerCase().includes(_provFiltroQ) ||
+      (pv.notas||'').toLowerCase().includes(_provFiltroQ)
+    );
+  };
+
+  let html = '';
+  Object.entries(cats).sort((a,b) => a[0].localeCompare(b[0],'es')).forEach(([cat, prods]) => {
+    const filtrados = prods.filter(filtrar);
+    if (!filtrados.length) return;
+
+    html += `<div style="font-family:'Space Mono',monospace;font-size:.6rem;color:var(--muted);
+      letter-spacing:.08em;padding:8px 4px 4px;margin-top:6px;">${sanitizar(cat).toUpperCase()}</div>`;
+
+    filtrados.sort((a,b) => a.name.localeCompare(b.name,'es')).forEach(p => {
+      const pvs   = porProd[p.id] || [];
+      const count = pvs.length;
+      const open  = _provExpanded[p.id] || _provFiltroQ;
+      const minPrecio = count ? Math.min(...pvs.map(pv => pv.precio || 0)) : null;
+      const countBadge = count
+        ? `<span style="background:var(--accent);color:var(--bg);font-size:.6rem;font-family:'Space Mono',monospace;
+            padding:2px 7px;border-radius:10px;font-weight:700;">${count} proveedor${count !== 1 ? 'es' : ''}</span>`
+        : `<span style="color:var(--muted);font-size:.68rem;">Sin proveedores</span>`;
+
+      const precioMin = (minPrecio !== null && minPrecio > 0)
+        ? `<span style="font-family:'Space Mono',monospace;font-size:.7rem;color:var(--accent2);">desde $${fmtNum(minPrecio)}</span>`
+        : '';
+
+      // Header del producto (siempre visible)
+      html += `<div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;
+        margin-bottom:8px;overflow:hidden;">
+        <div onclick="provToggle('${p.id}')" style="display:flex;align-items:center;gap:10px;
+          padding:11px 14px;cursor:pointer;user-select:none;">
+          <div style="flex:1;min-width:0;">
+            <div style="font-size:.85rem;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
+              ${sanitizar(p.name)}</div>
+            <div style="font-family:'Space Mono',monospace;font-size:.62rem;color:var(--muted);">${p.id}</div>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center;flex-shrink:0;">
+            ${precioMin}
+            ${countBadge}
+            <span style="color:var(--muted);font-size:.8rem;transition:transform .2s;
+              transform:${open ? 'rotate(180deg)' : 'rotate(0deg)'}"
+              id="prov-arrow-${p.id}">▼</span>
+          </div>
+        </div>`;
+
+      // Detalle (collapsible)
+      html += `<div id="prov-detail-${p.id}" style="display:${open ? 'block' : 'none'};
+        border-top:1px solid var(--border);">`;
+
+      if (!count) {
+        html += `<div style="padding:10px 14px;font-size:.78rem;color:var(--muted);font-style:italic;">
+          Sin proveedores registrados.
+          <button class="btn btn-secondary" style="font-size:.68rem;padding:4px 10px;margin-left:8px;"
+            onclick="provAbrirModal('${p.id}')">+ Agregar</button></div>`;
+      } else {
+        // Tabla de proveedores
+        html += `<div style="padding:10px 14px;">`;
+        pvs.sort((a,b) => (a.precio||0) - (b.precio||0)).forEach(pv => {
+          const esMejorPrecio = pvs.length > 1 && (pv.precio||0) === Math.min(...pvs.map(x => x.precio||0)) && (pv.precio||0) > 0;
+          html += `<div style="background:var(--surface2);border-radius:8px;padding:10px 12px;
+            margin-bottom:8px;border:1px solid ${esMejorPrecio ? 'var(--accent)' : 'transparent'};">
+            <div style="display:flex;align-items:flex-start;gap:8px;">
+              <div style="flex:1;min-width:0;">
+                <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:4px;">
+                  <span style="font-size:.85rem;font-weight:600;">${sanitizar(pv.nombre)}</span>
+                  ${pv.rut ? `<span style="font-family:'Space Mono',monospace;font-size:.62rem;
+                    color:var(--muted);background:var(--surface);padding:1px 6px;border-radius:4px;">${sanitizar(pv.rut)}</span>` : ''}
+                  ${esMejorPrecio ? `<span style="font-size:.6rem;font-family:'Space Mono',monospace;
+                    background:rgba(0,229,160,.15);color:var(--accent);padding:2px 6px;border-radius:4px;">✓ MEJOR PRECIO</span>` : ''}
+                </div>
+                <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;">
+                  ${(pv.precio||0) > 0 ? `<span style="font-family:'Space Mono',monospace;font-size:.9rem;
+                    font-weight:700;color:var(--accent2);">$${fmtNum(pv.precio)}</span>` : ''}
+                  ${pv.unidad ? `<span style="font-size:.75rem;color:var(--muted);">por ${sanitizar(pv.unidad)}</span>` : ''}
+                </div>
+                ${pv.contacto ? `<div style="font-size:.72rem;color:var(--muted);margin-top:4px;">📞 ${sanitizar(pv.contacto)}</div>` : ''}
+                ${pv.notas ? `<div style="font-size:.72rem;color:var(--muted);font-style:italic;margin-top:2px;">${sanitizar(pv.notas)}</div>` : ''}
+                <div style="font-size:.62rem;color:var(--muted);margin-top:4px;">${pv.fecha || ''}</div>
+              </div>
+              <div style="display:flex;gap:4px;flex-shrink:0;">
+                <button class="btn btn-secondary" style="font-size:.65rem;padding:4px 9px;"
+                  onclick="provEditar('${pv.id}')">✏</button>
+                <button class="btn btn-secondary" style="font-size:.65rem;padding:4px 9px;color:var(--danger);"
+                  onclick="provEliminar('${pv.id}','${sanitizar(pv.nombre)}')">🗑</button>
+              </div>
+            </div>
+          </div>`;
+        });
+        html += `<button class="btn btn-secondary btn-full" style="font-size:.72rem;margin-top:2px;"
+          onclick="provAbrirModal('${p.id}')">+ Agregar otro proveedor</button>`;
+        html += `</div>`;
+      }
+
+      html += `</div></div>`;
+    });
+  });
+
+  lista.innerHTML = html || '<div class="empty"><div class="empty-icon">🔍</div>Sin resultados</div>';
+}
+
+function provFiltrar() {
+  renderProveedores();
+}
+
+function provToggle(prodId) {
+  _provExpanded[prodId] = !_provExpanded[prodId];
+  renderProveedores();
+}
+
+// ── Modal: abrir ─────────────────────────────────────
+function provAbrirModal(prodIdPreset) {
+  _provEditId = null;
+  document.getElementById('prov-modal-title').textContent = 'Agregar proveedor';
+  document.getElementById('prov-form-nombre').value   = '';
+  document.getElementById('prov-form-rut').value      = '';
+  document.getElementById('prov-form-precio').value   = '';
+  document.getElementById('prov-form-unidad').value   = '';
+  document.getElementById('prov-form-contacto').value = '';
+  document.getElementById('prov-form-notas').value    = '';
+  _provPopulateSelect(prodIdPreset || '');
+  document.getElementById('modal-proveedor').style.display = 'flex';
+  setTimeout(() => document.getElementById('prov-form-nombre').focus(), 80);
+}
+
+function _provPopulateSelect(selectedProdId) {
+  const sel = document.getElementById('prov-form-prod');
+  sel.innerHTML = '<option value="">— Selecciona un material —</option>';
+  const cats = {};
+  products.forEach(p => {
+    const c = p.cat || 'Sin categoría';
+    if (!cats[c]) cats[c] = [];
+    cats[c].push(p);
+  });
+  Object.entries(cats).sort((a,b) => a[0].localeCompare(b[0],'es')).forEach(([cat, prods]) => {
+    const grp = document.createElement('optgroup');
+    grp.label = cat;
+    prods.sort((a,b) => a.name.localeCompare(b.name,'es')).forEach(p => {
+      const o = document.createElement('option');
+      o.value = p.id;
+      o.textContent = p.name;
+      if (p.id === selectedProdId) o.selected = true;
+      grp.appendChild(o);
+    });
+    sel.appendChild(grp);
+  });
+}
+
+function provModalCatChange() { /* placeholder */ }
+
+function provCerrarModal() {
+  document.getElementById('modal-proveedor').style.display = 'none';
+  _provEditId = null;
+}
+
+// ── Modal: editar ────────────────────────────────────
+function provEditar(pvId) {
+  const pv = proveedores.find(x => x.id === pvId);
+  if (!pv) return;
+  _provEditId = pvId;
+  document.getElementById('prov-modal-title').textContent = 'Editar proveedor';
+  _provPopulateSelect(pv.prodId);
+  document.getElementById('prov-form-nombre').value   = pv.nombre   || '';
+  document.getElementById('prov-form-rut').value      = pv.rut      || '';
+  document.getElementById('prov-form-precio').value   = pv.precio   || '';
+  document.getElementById('prov-form-unidad').value   = pv.unidad   || '';
+  document.getElementById('prov-form-contacto').value = pv.contacto || '';
+  document.getElementById('prov-form-notas').value    = pv.notas    || '';
+  document.getElementById('modal-proveedor').style.display = 'flex';
+}
+
+// ── Guardar ──────────────────────────────────────────
+function provGuardar() {
+  const prodId   = document.getElementById('prov-form-prod').value.trim();
+  const nombre   = document.getElementById('prov-form-nombre').value.trim();
+  const rut      = document.getElementById('prov-form-rut').value.trim();
+  const precio   = parseFloat(document.getElementById('prov-form-precio').value) || 0;
+  const unidad   = document.getElementById('prov-form-unidad').value.trim();
+  const contacto = document.getElementById('prov-form-contacto').value.trim();
+  const notas    = document.getElementById('prov-form-notas').value.trim();
+
+  if (!prodId)  return showToast('Selecciona un material', 'error');
+  if (!nombre)  return showToast('Ingresa el nombre del proveedor', 'error');
+
+  const hoy = new Date().toISOString().split('T')[0];
+
+  if (_provEditId) {
+    const pv = proveedores.find(x => x.id === _provEditId);
+    if (!pv) return;
+    pv.prodId = prodId; pv.nombre = nombre; pv.rut = rut;
+    pv.precio = precio; pv.unidad = unidad;
+    pv.contacto = contacto; pv.notas = notas; pv.fecha = hoy;
+    showToast('✓ Proveedor actualizado', 'success');
+  } else {
+    const newId = 'PV-' + Date.now();
+    proveedores.push({ id:newId, prodId, nombre, rut, precio, unidad, contacto, notas, fecha:hoy });
+    _provExpanded[prodId] = true; // auto-expand
+    showToast('✓ Proveedor agregado', 'success');
+  }
+
+  lsGuardar();
+  provCerrarModal();
+  renderProveedores();
+}
+
+// ── Eliminar ─────────────────────────────────────────
+function provEliminar(pvId, nombre) {
+  if (!confirm('¿Eliminar proveedor "' + nombre + '"?')) return;
+  proveedores = proveedores.filter(x => x.id !== pvId);
+  lsGuardar();
+  renderProveedores();
+  showToast('"' + nombre + '" eliminado', 'error');
+}
+
+
 // Legacy aliases
 function uShowAddOP() { uAbrirNuevaOP(); }
 function uSaveOP()    { uGuardarOP(); }
@@ -4642,7 +4922,7 @@ window._fbSubscribe = function() {
         workers = data.workers.map(x => typeof x === 'string' ? {name:x, area:'Sin área'} : x);
         localStorage.setItem(LS_WORKERS, JSON.stringify(workers));
       }
-      // Refresh active views
+      if(data.proveedores) { proveedores = data.proveedores; localStorage.setItem(LS_PROVEEDORES, JSON.stringify(proveedores)); }
       updateHeader();
       const active = document.querySelector('#seccion-materiales .page.active');
       if(active) {
@@ -5057,6 +5337,60 @@ function menuUrnEditarOPs() {
 
 </script>
 
+
+<!-- MODAL PROVEEDOR -->
+<div class="modal-overlay" id="modal-proveedor" onclick="if(event.target===this)provCerrarModal()" style="display:none;">
+  <div class="modal-box" style="max-width:460px;width:94%;">
+    <div class="modal-title" id="prov-modal-title">Agregar proveedor</div>
+
+    <!-- Selector de material -->
+    <div style="margin-bottom:12px;">
+      <label style="font-size:.72rem;color:var(--muted);">Material</label>
+      <select id="prov-form-prod" style="width:100%;margin-top:4px;" onchange="provModalCatChange()">
+        <option value="">— Selecciona un material —</option>
+      </select>
+    </div>
+
+    <!-- Datos del proveedor -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;">
+      <div>
+        <label style="font-size:.72rem;color:var(--muted);">Nombre proveedor</label>
+        <input type="text" id="prov-form-nombre" placeholder="ej: Quimicinter" style="width:100%;margin-top:4px;">
+      </div>
+      <div>
+        <label style="font-size:.72rem;color:var(--muted);">RUT</label>
+        <input type="text" id="prov-form-rut" placeholder="ej: 76.123.456-7" style="width:100%;margin-top:4px;">
+      </div>
+    </div>
+
+    <!-- Precio + unidad -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;">
+      <div>
+        <label style="font-size:.72rem;color:var(--muted);">Precio ($)</label>
+        <input type="number" id="prov-form-precio" placeholder="0" min="0" style="width:100%;margin-top:4px;">
+      </div>
+      <div>
+        <label style="font-size:.72rem;color:var(--muted);">Unidad / presentación</label>
+        <input type="text" id="prov-form-unidad" placeholder="ej: kg, litro, caja x12" style="width:100%;margin-top:4px;">
+      </div>
+    </div>
+
+    <!-- Contacto y notas -->
+    <div style="margin-bottom:10px;">
+      <label style="font-size:.72rem;color:var(--muted);">Contacto (opcional)</label>
+      <input type="text" id="prov-form-contacto" placeholder="email, teléfono…" style="width:100%;margin-top:4px;">
+    </div>
+    <div style="margin-bottom:16px;">
+      <label style="font-size:.72rem;color:var(--muted);">Notas (opcional)</label>
+      <input type="text" id="prov-form-notas" placeholder="ej: requiere pedido mínimo, entrega lunes" style="width:100%;margin-top:4px;">
+    </div>
+
+    <div style="display:flex;gap:8px;">
+      <button class="btn btn-primary" style="flex:1;" onclick="provGuardar()">✓ Guardar</button>
+      <button class="btn btn-secondary" style="flex:1;" onclick="provCerrarModal()">Cancelar</button>
+    </div>
+  </div>
+</div>
 
 <!-- MODAL EDITAR UNIDADES -->
 <div class="modal-overlay" id="modal-editar-unidades" onclick="if(event.target===this)cerrarEditarUnidades()" style="display:none;">
