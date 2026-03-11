@@ -2439,13 +2439,10 @@ function lsCargarU() {
 }
 
 // ── SERIAL GENERATION ─────────────────────────────────
-// Format: YY-NNN  (e.g. 26-001, 26-002)
-// Global correlative per year — resets each year
-function uGetYY() { return String(new Date().getFullYear()).slice(-2); }
+// Format: A-NNN  (e.g. A-001, A-002) — correlativo global continuo
 function uGenerarSeriales(skuId, cantidad) {
-  const yy = uGetYY();
-  const prefix = yy + '-';
-  // Find max correlative for this year across all units
+  const prefix = 'A-';
+  // Find max correlative across ALL units (global, no reset)
   let max = uUnidades.reduce((m, u) => {
     if(!u.id.startsWith(prefix)) return m;
     const n = parseInt(u.id.slice(prefix.length)) || 0;
