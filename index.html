@@ -445,6 +445,7 @@ tr:hover td{background:rgba(255,255,255,.02);}
     <a id="mnav-materiales" onclick="entrarSeccionMenu('materiales')" style="border-radius:7px;margin-bottom:2px;">📦 Materiales</a>
     <a id="mnav-urnas" onclick="entrarSeccionMenu('urnas')" style="border-radius:7px;margin-bottom:2px;">🪦 Urnas</a>
     <a id="mnav-trabajadores" onclick="entrarSeccionMenu('trabajadores')" style="border-radius:7px;margin-bottom:2px;">👷 Trabajadores</a>
+    <a id="mnav-costos" onclick="entrarSeccionMenu('costos')" style="border-radius:7px;margin-bottom:2px;">💰 Costos</a>
 
     <a onclick="irQRsMenu()" style="border-radius:7px;">🔲 Mis QRs</a>
   </div>
@@ -530,10 +531,10 @@ tr:hover td{background:rgba(255,255,255,.02);}
       <div class="hb-label">Vendedores</div>
       <div class="hb-sub" style="color:var(--accent);">Próximamente</div>
     </div>
-    <div class="home-btn" style="opacity:.5;cursor:not-allowed;">
-      <div class="hb-icon">⚱️</div>
-      <div class="hb-label">Funerales</div>
-      <div class="hb-sub" style="color:var(--accent);">Próximamente</div>
+    <div id="hbtn-costos" class="home-btn active-section" onclick="entrarSeccion('costos')">
+      <div class="hb-icon">💰</div>
+      <div class="hb-label">Costos</div>
+      <div class="hb-sub">Cálculo de costos</div>
     </div>
     <div id="hbtn-trabajadores" class="home-btn active-section" onclick="entrarSeccion('trabajadores')">
       <div class="hb-icon">👷</div>
@@ -594,7 +595,9 @@ tr:hover td{background:rgba(255,255,255,.02);}
   <div id="scan-result" style="display:none;">
     <div class="card" style="border-color:var(--accent);">
       <div class="card-title">Registrar movimiento</div>
-      <div style="margin-bottom:10px;">
+
+      <!-- Tipo -->
+      <div style="margin-bottom:12px;">
         <label>Tipo de movimiento</label>
         <div class="type-toggle">
           <button class="type-btn" id="btn-in"  onclick="setType('Ingreso')">⬇ INGRESO</button>
@@ -602,8 +605,8 @@ tr:hover td{background:rgba(255,255,255,.02);}
         </div>
       </div>
 
-      <!-- Trabajador (solo Salida) -->
-      <div id="worker-field-wrap" style="display:none;margin-bottom:13px;">
+      <!-- Trabajador (Salida) -->
+      <div id="worker-field-wrap" style="display:none;margin-bottom:12px;">
         <label>Entregado a</label>
         <div style="display:flex;gap:8px;">
           <select id="mov-worker" style="flex:1"><option value="">— Seleccionar trabajador —</option></select>
@@ -617,14 +620,23 @@ tr:hover td{background:rgba(255,255,255,.02);}
         </div>
       </div>
 
+      <!-- Proveedor (solo Ingreso) -->
+      <div id="mov-prov-wrap" style="display:none;margin-bottom:12px;">
+        <label>Proveedor (opcional)</label>
+        <select id="mov-proveedor" style="width:100%;"><option value="">— Sin especificar —</option></select>
+      </div>
+
+      <!-- Filas de productos -->
       <label>Productos</label>
-      <div id="mov-items-list" style="display:flex;flex-direction:column;gap:8px;margin-top:8px;"></div>
+      <div id="mov-items-list" style="display:flex;flex-direction:column;gap:10px;margin-top:8px;"></div>
       <button class="btn btn-secondary" style="margin-top:8px;font-size:.72rem;width:100%;" onclick="addMovItem()">+ Agregar producto</button>
 
+      <!-- Observaciones -->
       <div style="margin-top:12px;">
         <label>Observaciones (opcional)</label>
-        <input type="text" id="mov-obs" placeholder="ej: Compra proveedor A">
+        <input type="text" id="mov-obs" placeholder="ej: Compra proveedor A, Lote #23">
       </div>
+
       <button class="btn btn-primary btn-full" style="margin-top:13px;" onclick="registerMovement()">✓ Registrar movimiento</button>
       <button class="btn btn-secondary btn-full" style="margin-top:8px;" onclick="cancelarMovimiento()">Cancelar</button>
     </div>
@@ -665,16 +677,59 @@ tr:hover td{background:rgba(255,255,255,.02);}
   <div class="card" id="add-product-form" style="display:none;border-color:var(--accent);">
     <div class="card-title">Nuevo producto</div>
     <div class="form-row">
-      <div><label>SKU / ID</label><input type="text" id="np-id" placeholder="MAT-001"></div>
-      <div><label>Nombre</label><input type="text" id="np-name" placeholder="ej: Adhesivo PVC"></div>
+      <div><label>SKU / ID</label><input type="text" id="np-id" placeholder="Auto" style="font-family:'Space Mono',monospace;color:var(--accent);font-weight:700;"></div>
+      <div><label>Nombre</label><input type="text" id="np-name" placeholder="ej: Adhesivo PVC" oninput="npAutoId(this.value)"></div>
     </div>
     <div class="form-row">
       <div><label>Categoría</label><input type="text" id="np-cat" placeholder="ej: Adhesivos" list="cat-datalist"></div>
-      <div><label>Costo unitario ($)</label><input type="number" id="np-cost" value="0" min="0" step="0.01"></div>
+      <div><label>Costo unitario ($)</label><input type="number" id="np-cost" value="0" min="0" step="0.01" oninput="npCalcCostoBase()"></div>
+    </div>
+    <!-- Presentación / formato -->
+    <div style="background:var(--surface2);border-radius:9px;padding:10px 12px;margin-top:2px;margin-bottom:2px;">
+      <div style="font-family:'Space Mono',monospace;font-size:.58rem;color:var(--muted);letter-spacing:.08em;margin-bottom:8px;">PRESENTACIÓN</div>
+      <div class="form-row" style="margin-bottom:6px;">
+        <div>
+          <label>Formato (cantidad por presentación)</label>
+          <input type="number" id="np-formato" value="1" min="0.001" step="any" placeholder="ej: 28" oninput="npCalcCostoBase()">
+        </div>
+        <div>
+          <label>Unidad base</label>
+          <select id="np-unidad" onchange="npCalcCostoBase()" style="width:100%;">
+            <option value="u">u (unidad simple)</option>
+            <option value="gr">gr (gramos)</option>
+            <option value="ml">ml (mililitros)</option>
+            <option value="L">L (litros)</option>
+            <option value="kg">kg (kilogramos)</option>
+            <option value="m">m (metros)</option>
+            <option value="m2">m² (metro cuadrado)</option>
+            <option value="Gl">Gl (galón)</option>
+          </select>
+        </div>
+      </div>
+      <!-- Nombre de la presentación (bolsa, envase, frasco, etc.) -->
+      <div id="np-nombre-pres-wrap" style="margin-bottom:8px;display:none;">
+        <label style="font-size:.72rem;">Nombre de la presentación <span style="color:var(--muted);font-weight:400;">(opcional, ej: bolsa, envase, frasco, rollo)</span></label>
+        <input type="text" id="np-nombre-pres" placeholder="ej: bolsa" style="margin-top:4px;">
+      </div>
+      <!-- Resumen de conversión -->
+      <div id="np-conversion-wrap" style="display:none;background:rgba(0,229,160,.07);border:1px solid rgba(0,229,160,.2);border-radius:7px;padding:8px 10px;margin-top:4px;">
+        <div id="np-conversion-label" style="font-family:'Space Mono',monospace;font-size:.78rem;color:var(--accent);font-weight:700;"></div>
+        <div id="np-costo-base" style="font-family:'Space Mono',monospace;font-size:.72rem;color:var(--muted);margin-top:2px;"></div>
+      </div>
+      <div id="np-costo-base-simple" style="display:flex;align-items:center;gap:10px;margin-top:4px;">
+        <div style="font-size:.72rem;color:var(--muted);">Costo / unidad base:</div>
+        <div style="font-family:'Space Mono',monospace;font-size:.85rem;font-weight:700;color:var(--accent);">—</div>
+      </div>
     </div>
     <div class="form-row">
-      <div><label>Stock inicial</label><input type="number" id="np-stock" value="0" min="0"></div>
-      <div><label>Stock mínimo</label><input type="number" id="np-min" value="5" min="0"></div>
+      <div>
+        <label>Stock inicial <span id="np-stock-lbl" style="font-family:'Space Mono',monospace;font-size:.65rem;color:var(--accent);margin-left:4px;"></span></label>
+        <input type="number" id="np-stock" value="0" min="0">
+      </div>
+      <div>
+        <label>Stock mínimo <span style="font-family:'Space Mono',monospace;font-size:.65rem;color:var(--muted);" id="np-min-lbl"></span></label>
+        <input type="number" id="np-min" value="5" min="0">
+      </div>
     </div>
     <datalist id="cat-datalist"></datalist>
     <div class="action-row" style="margin-top:13px;">
@@ -1181,42 +1236,140 @@ tr:hover td{background:rgba(255,255,255,.02);}
 </div>
 
 </div><!-- fin seccion-trabajadores -->
-<!-- ════════════════════════════════════════════════════ -->
 
-<!-- SECCION TRABAJADORES GLOBAL -->
-<div id="seccion-trabajadores" style="display:none">
+<!-- SECCION COSTOS -->
+<div id="seccion-costos" style="display:none">
+<nav id="c-nav" style="overflow-x:auto;display:flex;gap:4px;padding:0 8px;flex-wrap:nowrap;">
+  <button class="tab active" id="ctab-productos"   onclick="cNavTo('productos')">📋 Productos</button>
+  <button class="tab"        id="ctab-catalogo"    onclick="cNavTo('catalogo')">📦 Catálogo</button>
+  <button class="tab"        id="ctab-barniz"      onclick="cNavTo('barniz')">🎨 Barniz</button>
+  <button class="tab"        id="ctab-enzincado"   onclick="cNavTo('enzincado')">⚡ Enzincado</button>
+  <button class="tab"        id="ctab-telas"       onclick="cNavTo('telas')">🧵 Telas</button>
+  <button class="tab"        id="ctab-terminacion" onclick="cNavTo('terminacion')">✨ Terminación</button>
+  <button class="tab"        id="ctab-resultados"  onclick="cNavTo('resultados')">📊 Resultados</button>
+</nav>
+<main>
 
-<!-- LISTA DE TRABAJADORES -->
-<div id="trab-lista-view" style="padding:16px;max-width:700px;margin:0 auto;">
-  <div class="card" style="border-color:var(--accent);margin-bottom:14px;">
-    <div class="card-title">Agregar trabajador</div>
-    <div style="display:flex;gap:8px;margin-bottom:10px;">
-      <input type="text" id="trab-name" placeholder="Nombre completo" style="flex:2" onkeydown="if(event.key==='Enter')document.getElementById('trab-area').focus()">
-      <input type="text" id="trab-area" placeholder="Área (ej: Producción)" style="flex:1" onkeydown="if(event.key==='Enter')addTrabajadorGlobal()">
-    </div>
-    <button class="btn btn-primary" style="width:100%;justify-content:center;" onclick="addTrabajadorGlobal()">+ Agregar trabajador</button>
+<!-- C: PRODUCTOS -->
+<div class="page active" id="cpage-productos">
+  <div class="card" style="border-color:var(--accent);margin-bottom:12px;">
+    <div style="font-size:.72rem;color:var(--muted);margin-bottom:8px;">Selecciona un producto para configurar sus procesos de costeo</div>
+    <div id="c-prod-lista" style="display:flex;flex-direction:column;gap:8px;"></div>
   </div>
+</div>
+
+<!-- C: CATÁLOGO -->
+<div class="page" id="cpage-catalogo">
   <div class="card" style="padding:0;overflow:hidden;">
-    <div style="padding:12px 17px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;">
-      <div class="card-title" style="margin:0">Trabajadores</div>
-      <span class="td-mono" id="trab-count">—</span>
+    <div style="padding:12px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">
+      <div class="card-title" style="margin:0;">Catálogo de Materiales</div>
+      <span style="font-size:.68rem;color:var(--muted);">Edita Formato y Unidad para el cálculo de costos</span>
     </div>
     <div class="table-wrap" style="border:none;border-radius:0;">
       <table>
-        <thead><tr><th>Nombre</th><th>Área de trabajo</th><th></th></tr></thead>
-        <tbody id="trab-tbody"></tbody>
+        <thead><tr>
+          <th>ID</th><th>Material</th><th>Categoría</th>
+          <th style="width:90px;">Formato</th>
+          <th style="width:90px;">Unidad</th>
+          <th style="width:110px;">Precio ($)</th>
+          <th style="width:110px;">Costo/Unidad base</th>
+        </tr></thead>
+        <tbody id="c-cat-tbody"></tbody>
       </table>
     </div>
   </div>
 </div>
 
-<!-- PERFIL DE TRABAJADOR -->
-<div id="trab-perfil-view" style="display:none;padding:16px;max-width:700px;margin:0 auto;">
-  <button onclick="volverListaTrabajadores()" style="background:none;border:none;cursor:pointer;color:var(--accent);font-family:'Space Mono',monospace;font-size:.78rem;margin-bottom:14px;display:flex;align-items:center;gap:5px;">← Todos los trabajadores</button>
-  <div id="trab-perfil-content"></div>
+<!-- C: BARNIZ -->
+<div class="page" id="cpage-barniz">
+  <div style="font-family:'Space Mono',monospace;font-size:.6rem;color:var(--muted);padding:4px 0 8px;letter-spacing:.08em;">PRODUCTO: <span id="c-prod-lbl-barniz" style="color:var(--accent);">—</span></div>
+  <div class="card" style="padding:0;overflow:hidden;margin-bottom:12px;">
+    <div style="padding:11px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">
+      <div class="card-title" style="margin:0;">🎨 Materiales — Barniz</div>
+      <button class="btn btn-primary" style="font-size:.7rem;padding:5px 11px;" onclick="cAgregarMat('barniz')">+ Agregar</button>
+    </div>
+    <div class="table-wrap" style="border:none;border-radius:0;">
+      <table><thead><tr><th>Material</th><th style="width:90px;">Cant.</th><th style="width:80px;">Unidad</th><th style="width:100px;">Costo unit.</th><th style="width:100px;">Total</th><th style="width:40px;"></th></tr></thead>
+      <tbody id="c-mat-barniz"></tbody></table>
+    </div>
+  </div>
+  <div id="c-mod-barniz"></div>
 </div>
 
-</div><!-- fin seccion-trabajadores -->
+<!-- C: ENZINCADO -->
+<div class="page" id="cpage-enzincado">
+  <div style="font-family:'Space Mono',monospace;font-size:.6rem;color:var(--muted);padding:4px 0 8px;letter-spacing:.08em;">PRODUCTO: <span id="c-prod-lbl-enzincado" style="color:var(--accent);">—</span></div>
+  <div class="card" style="padding:0;overflow:hidden;margin-bottom:12px;">
+    <div style="padding:11px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">
+      <div class="card-title" style="margin:0;">⚡ Materiales — Enzincado</div>
+      <button class="btn btn-primary" style="font-size:.7rem;padding:5px 11px;" onclick="cAgregarMat('enzincado')">+ Agregar</button>
+    </div>
+    <div class="table-wrap" style="border:none;border-radius:0;">
+      <table><thead><tr><th>Material</th><th style="width:90px;">Cant.</th><th style="width:80px;">Unidad</th><th style="width:100px;">Costo unit.</th><th style="width:100px;">Total</th><th style="width:40px;"></th></tr></thead>
+      <tbody id="c-mat-enzincado"></tbody></table>
+    </div>
+  </div>
+  <div id="c-mod-enzincado"></div>
+</div>
+
+<!-- C: TELAS -->
+<div class="page" id="cpage-telas">
+  <div style="font-family:'Space Mono',monospace;font-size:.6rem;color:var(--muted);padding:4px 0 8px;letter-spacing:.08em;">PRODUCTO: <span id="c-prod-lbl-telas" style="color:var(--accent);">—</span></div>
+  <div class="card" style="padding:0;overflow:hidden;margin-bottom:12px;">
+    <div style="padding:11px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">
+      <div class="card-title" style="margin:0;">🧵 Materiales — Telas</div>
+      <button class="btn btn-primary" style="font-size:.7rem;padding:5px 11px;" onclick="cAgregarMat('telas')">+ Agregar</button>
+    </div>
+    <div class="table-wrap" style="border:none;border-radius:0;">
+      <table><thead><tr><th>Material</th><th style="width:90px;">Cant.</th><th style="width:80px;">Unidad</th><th style="width:100px;">Costo unit.</th><th style="width:100px;">Total</th><th style="width:40px;"></th></tr></thead>
+      <tbody id="c-mat-telas"></tbody></table>
+    </div>
+  </div>
+  <div id="c-mod-telas"></div>
+</div>
+
+<!-- C: TERMINACIÓN -->
+<div class="page" id="cpage-terminacion">
+  <div style="font-family:'Space Mono',monospace;font-size:.6rem;color:var(--muted);padding:4px 0 8px;letter-spacing:.08em;">PRODUCTO: <span id="c-prod-lbl-terminacion" style="color:var(--accent);">—</span></div>
+  <div class="card" style="padding:0;overflow:hidden;margin-bottom:12px;">
+    <div style="padding:11px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">
+      <div class="card-title" style="margin:0;">✨ Materiales — Terminación</div>
+      <button class="btn btn-primary" style="font-size:.7rem;padding:5px 11px;" onclick="cAgregarMat('terminacion')">+ Agregar</button>
+    </div>
+    <div class="table-wrap" style="border:none;border-radius:0;">
+      <table><thead><tr><th>Material</th><th style="width:90px;">Cant.</th><th style="width:80px;">Unidad</th><th style="width:100px;">Costo unit.</th><th style="width:100px;">Total</th><th style="width:40px;"></th></tr></thead>
+      <tbody id="c-mat-terminacion"></tbody></table>
+    </div>
+  </div>
+  <div id="c-mod-terminacion"></div>
+</div>
+
+<!-- C: RESULTADOS -->
+<div class="page" id="cpage-resultados">
+  <div style="font-family:'Space Mono',monospace;font-size:.6rem;color:var(--muted);padding:4px 0 8px;letter-spacing:.08em;">PRODUCTO: <span id="c-prod-lbl-resultados" style="color:var(--accent);">—</span></div>
+  <div class="card" style="margin-bottom:12px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:14px;">
+      <div class="card-title" style="margin:0;">CIF Total mensual ($)</div>
+      <input type="number" id="c-cif-total" value="3000000" min="0" step="100000"
+        style="width:160px;text-align:right;font-family:'Space Mono',monospace;"
+        onchange="cGuardarCIF()">
+    </div>
+    <button class="btn btn-primary btn-full" onclick="cCalcularTodo()">🧮 Calcular costos</button>
+  </div>
+  <div id="c-resultados-content" style="display:none;">
+    <div class="summary-grid" id="c-res-kpis"></div>
+    <div class="card" style="padding:0;overflow:hidden;margin-top:12px;">
+      <div style="padding:11px 16px;border-bottom:1px solid var(--border);"><div class="card-title" style="margin:0;">Desglose por proceso</div></div>
+      <div class="table-wrap" style="border:none;border-radius:0;">
+        <table><thead><tr><th>Proceso</th><th>Materiales</th><th>MOD</th><th>CIF</th><th>Total</th></tr></thead>
+        <tbody id="c-desglose-tbody"></tbody></table>
+      </div>
+    </div>
+  </div>
+</div>
+
+</main>
+</div><!-- fin seccion-costos -->
 
 <!-- MODAL RESET STOCK -->
 <div class="modal-overlay" id="modal-reset-stock" onclick="if(event.target===this)cerrarModalResetStock()">
@@ -1248,6 +1401,7 @@ const LS_PRODUCTS  = 'inventapp_products';
 const LS_MOVEMENTS = 'inventapp_movements';
 const LS_WORKERS   = 'inventapp_workers';
 const LS_PROVEEDORES = 'inventapp_proveedores';
+const LS_COSTOS      = 'inventapp_costos';
 
 const DEFAULT_PRODUCTS = [
   {id:"PROD-001",name:"Laptop Dell Inspiron", stock:15,min:5, cost:850.00},
@@ -1281,6 +1435,7 @@ function lsGuardar() {
     localStorage.setItem(LS_MOVEMENTS,  JSON.stringify(movements));
     localStorage.setItem(LS_WORKERS,     JSON.stringify(workers));
     localStorage.setItem(LS_PROVEEDORES, JSON.stringify(proveedores));
+    localStorage.setItem(LS_COSTOS,      JSON.stringify(costosData));
   } catch(e) {}
   // Debounced Firestore write
   clearTimeout(_saveMatTimer);
@@ -1291,7 +1446,7 @@ async function fbSaveMat() {
   try {
     await window._fbSetDoc(
       window._fbDoc(window._fbDb, 'inventario', 'materiales'),
-      { products, movements, workers, proveedores, updatedAt: new Date().toISOString() }
+      { products, movements, workers, proveedores, costosData, updatedAt: new Date().toISOString() }
     );
   } catch(e) { console.warn('Firestore save error (mat):', e); }
 }
@@ -1307,6 +1462,15 @@ function lsCargar() {
       workers = parsed.map(x => typeof x === 'string' ? {name:x, area:'Sin área'} : x);
     }
     const pv = localStorage.getItem(LS_PROVEEDORES); if(pv) proveedores = JSON.parse(pv);
+    const cd = localStorage.getItem(LS_COSTOS); if(cd) { const _cd=JSON.parse(cd); costosData={...costosData,..._cd}; }
+    // Sync formato/unidad from products → costosData.matExtra (for products saved before this feature)
+    products.forEach(p => {
+      if(p.formato && p.unidad) {
+        if(!costosData.matExtra[p.id]) costosData.matExtra[p.id]={};
+        if(!costosData.matExtra[p.id].formato) costosData.matExtra[p.id].formato = p.formato;
+        if(!costosData.matExtra[p.id].unidad)  costosData.matExtra[p.id].unidad  = p.unidad;
+      }
+    });
   } catch(e) { console.warn('Error leyendo localStorage:', e); }
 }
 // Helper: get worker name from object or string
@@ -1319,6 +1483,20 @@ let workers   = DEFAULT_WORKERS;
 let currentProd = null;
 let currentType = null;
 let proveedores = []; // [{id, prodId, nombre, rut, precio, unidad, contacto, notas, fecha}]
+
+// ── COSTOS state ──
+let costosData = {
+  procesos:  {},  // {uProdId: {barniz:[{matId,cantidad,unidad}], enzincado:[], telas:[], terminacion:[]}}
+  mod: {
+    barniz:     {sueldo:800000, horasMes:180, horasUnidad:2.5,  merma:4},
+    enzincado:  {sueldo:850000, horasMes:180, horasUnidad:2.0,  merma:3},
+    telas:      {sueldo:750000, horasMes:180, horasUnidad:3.0,  merma:2},
+    terminacion:{sueldo:700000, horasMes:180, horasUnidad:1.5,  merma:2},
+  },
+  cifTotal:  3000000,
+  matExtra:  {}, // {prodId: {formato:10, unidad:'L'}} extra cost metadata per material
+};
+let cProdActual = null; // currently selected uProduct id
 
 function sanitizar(str) {
   if (!str) return "";
@@ -1378,10 +1556,10 @@ function rolPuedeVer(seccion) {
   const u = window._currentUser;
   if(!u) return false;
   const permisos = {
-    admin:      ['materiales','urnas','trabajadores'],
+    admin:      ['materiales','urnas','trabajadores','costos'],
     ventas:     ['materiales','urnas'],
     instalacion:['urnas'],
-    viewer:     ['materiales','urnas','trabajadores'],
+    viewer:     ['materiales','urnas','trabajadores','costos'],
   };
   const permitidas = permisos[u.rol] || permisos['viewer'];
   return permitidas.includes(seccion);
@@ -1393,10 +1571,15 @@ function entrarSeccion(nombre) {
   document.getElementById('hamburger-btn').style.display = 'flex';
   document.getElementById('hdr-alert-wrap').style.display = 'none';
   // Hide all sections first
-  ['seccion-materiales','seccion-urnas','seccion-trabajadores'].forEach(s=>{
+  ['seccion-materiales','seccion-urnas','seccion-trabajadores','seccion-costos'].forEach(s=>{
     const el=document.getElementById(s); if(el) el.style.display='none';
   });
-  if (nombre === 'materiales') {
+  if (nombre === 'costos') {
+    document.getElementById('seccion-costos').style.display = 'block';
+    document.getElementById('hdr-chip').style.display = 'none';
+    setSeccionHeader('Costos','var(--accent)');
+    cNavTo('productos');
+  } else if (nombre === 'materiales') {
     if(!rolPuedeVer('materiales')){ volverHome(); return; }
     document.getElementById('seccion-materiales').style.display = 'block';
     document.getElementById('hdr-chip').style.display = 'flex';
@@ -1423,7 +1606,7 @@ function volverHome() {
   closeMenu(); stopScanner(); uStopScanner();
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.getElementById('page-home').classList.add('active');
-  ['seccion-materiales','seccion-urnas','seccion-trabajadores'].forEach(s=>{
+  ['seccion-materiales','seccion-urnas','seccion-trabajadores','seccion-costos'].forEach(s=>{
     const el=document.getElementById(s); if(el) el.style.display='none';
   });
   document.getElementById('back-btn').style.display = 'none';
@@ -1679,100 +1862,395 @@ function lookupDropdown(id) {
   if (p) { abrirFormMovimiento(p); showToast('✓ '+p.name,'success'); }
 }
 function abrirFormMovimiento(prod) {
-  // Pre-agregar el producto al listado
   document.getElementById('mov-items-list').innerHTML='';
   document.getElementById('btn-in').className='type-btn';
   document.getElementById('btn-out').className='type-btn';
   document.getElementById('worker-field-wrap').style.display='none';
+  document.getElementById('mov-prov-wrap').style.display='none';
   document.getElementById('mov-obs').value='';
   movCurrentType=null;
-  // Agregar la fila con el producto pre-seleccionado
-  const list=document.getElementById('mov-items-list');
-  const opts=products.map(p=>`<option value="${p.id}" ${p.id===prod.id?'selected':''}>${p.name} (Stock: ${p.stock})</option>`).join('');
-  list.insertAdjacentHTML('beforeend',`
-    <div class="mov-item-row" style="background:var(--surface2);border-radius:10px;padding:11px;display:flex;flex-direction:column;gap:8px;position:relative;">
-      <button onclick="this.closest('.mov-item-row').remove()" style="position:absolute;top:8px;right:8px;background:none;border:none;cursor:pointer;color:var(--danger);font-size:1rem;">✕</button>
-      <div><label style="font-size:.7rem;">Producto</label>
-        <select class="mov-item-prod" style="width:100%">
-          <option value="">— Seleccionar —</option>${opts}
-        </select>
-      </div>
-      <div style="display:flex;gap:8px;">
-        <div style="flex:1"><label style="font-size:.7rem;">Cantidad</label><input type="number" class="mov-item-qty" min="1" value="1" style="width:100%"></div>
-        <div class="mov-item-cost-wrap" style="flex:1;"><label style="font-size:.7rem;">Costo Unit. ($)</label><input type="number" class="mov-item-cost" min="0" step="1" placeholder="0" style="width:100%"></div>
-      </div>
-    </div>`);
+  _movAddRow(prod ? prod.id : null);
   document.getElementById('scan-result').style.display='block';
   setTimeout(()=>document.getElementById('scan-result').scrollIntoView({behavior:'smooth',block:'nearest'}),50);
 }
 
 // ── MATERIALES MULTI-ITEM MOVEMENT ──
 let movCurrentType = null;
+
 function setType(type) {
   movCurrentType = type;
   const isIn = type==='Ingreso';
   document.getElementById('btn-in').className  = isIn ? 'type-btn selected-in'  : 'type-btn';
   document.getElementById('btn-out').className = isIn ? 'type-btn' : 'type-btn selected-out';
   document.getElementById('worker-field-wrap').style.display = isIn ? 'none' : 'block';
+  document.getElementById('mov-prov-wrap').style.display = isIn ? 'block' : 'none';
   if (!isIn) populateWorkerSelect();
-  // Re-render items to reflect type change (cost visible for ingreso only)
-  document.querySelectorAll('.mov-item-row').forEach(row=>{
-    row.querySelector('.mov-item-cost-wrap').style.display = isIn ? 'block':'none';
-  });
-  // Ensure at least one row
-  if (!document.getElementById('mov-items-list').children.length) addMovItem();
+  if (isIn) _movPopulateProveedores();
+  // Re-render existing rows with updated mode
+  const rows = [...document.querySelectorAll('.mov-item-row')];
+  if (!rows.length) {
+    addMovItem();
+  } else {
+    rows.forEach(row => _movUpdateRowMode(row, isIn));
+  }
 }
-function addMovItem() {
-  const list = document.getElementById('mov-items-list');
-  const idx = list.children.length;
-  const isIn = movCurrentType==='Ingreso';
-  const opts = products.map(p=>`<option value="${p.id}">${p.stock===0?'⛔ ':p.stock<=p.min?'⚠ ':''} ${p.name} (${p.stock})</option>`).join('');
-  list.insertAdjacentHTML('beforeend',`
-    <div class="mov-item-row" style="background:var(--surface2);border-radius:10px;padding:11px;display:flex;flex-direction:column;gap:8px;position:relative;">
-      <button onclick="this.closest('.mov-item-row').remove()" style="position:absolute;top:8px;right:8px;background:none;border:none;cursor:pointer;color:var(--danger);font-size:1rem;">✕</button>
-      <div><label style="font-size:.7rem;">Producto</label>
-        <select class="mov-item-prod" style="width:100%">
-          <option value="">— Seleccionar —</option>${opts}
+
+function _movPopulateProveedores() {
+  const sel = document.getElementById('mov-proveedor');
+  if(!sel) return;
+  sel.innerHTML = '<option value="">— Sin especificar —</option>';
+  // Get unique proveedor names
+  const seen = new Set();
+  proveedores.forEach(pv => {
+    if(!seen.has(pv.nombre)) {
+      seen.add(pv.nombre);
+      const o = document.createElement('option');
+      o.value = pv.nombre;
+      o.textContent = pv.nombre + (pv.rut ? ' · ' + pv.rut : '');
+      sel.appendChild(o);
+    }
+  });
+}
+
+// Build option list for a product selector in a row
+function _movBuildOpts(selectedId) {
+  return products.map(p => {
+    const uLabel = p.unidad && p.unidad !== 'u' ? p.unidad : 'uds';
+    const stockStr = p.stock + ' ' + uLabel;
+    const warn = p.stock === 0 ? '⛔ ' : p.stock <= p.min ? '⚠ ' : '';
+    return `<option value="${p.id}" ${p.id===selectedId?'selected':''}>${warn}${p.name} · Stock: ${stockStr}</option>`;
+  }).join('');
+}
+
+// Add a new row, optionally pre-selecting a product
+function _movAddRow(preselId) {
+  const list  = document.getElementById('mov-items-list');
+  const isIn  = movCurrentType === 'Ingreso';
+  const rowId = 'mrow-' + Date.now() + '-' + list.children.length;
+  const prod  = preselId ? products.find(p => p.id === preselId) : null;
+  const hasPres = prod && prod.formato > 1 && prod.unidad && prod.unidad !== 'u';
+  const presName = hasPres ? (prod.nombrePres || 'unid.') : '';
+  const baseU    = hasPres ? (prod.unidad === 'L' ? 'ml' : prod.unidad === 'kg' ? 'gr' : prod.unidad) : '';
+  const stockLabel = prod
+    ? prod.stock + (presName ? ' ' + presName : (prod.unidad && prod.unidad !== 'u' ? ' ' + prod.unidad : ' uds'))
+    : '—';
+
+  list.insertAdjacentHTML('beforeend', `
+    <div class="mov-item-row" id="${rowId}" style="background:var(--surface2);border-radius:10px;padding:11px;display:flex;flex-direction:column;gap:8px;position:relative;">
+      <button onclick="document.getElementById('${rowId}').remove();_movRecalcAll()" style="position:absolute;top:8px;right:8px;background:none;border:none;cursor:pointer;color:var(--danger);font-size:.95rem;padding:0 2px;">✕</button>
+
+      <!-- Producto -->
+      <div>
+        <label style="font-size:.7rem;">Producto</label>
+        <select class="mov-item-prod" style="width:100%;padding-right:28px;" onchange="_movOnProdChange(this)">
+          <option value="">— Seleccionar —</option>
+          ${_movBuildOpts(preselId)}
         </select>
       </div>
-      <div style="display:flex;gap:8px;">
-        <div style="flex:1"><label style="font-size:.7rem;">Cantidad</label><input type="number" class="mov-item-qty" min="1" value="1" style="width:100%"></div>
-        <div class="mov-item-cost-wrap" style="flex:1;display:${isIn?'block':'none'}"><label style="font-size:.7rem;">Costo Unit. ($)</label><input type="number" class="mov-item-cost" min="0" step="1" placeholder="0" style="width:100%"></div>
+
+      <!-- Stock actual → resultante -->
+      <div style="display:flex;gap:8px;align-items:center;font-size:.72rem;flex-wrap:wrap;">
+        <span style="color:var(--muted);">Stock:</span>
+        <span class="mov-stock-actual" style="font-family:'Space Mono',monospace;color:var(--accent);font-weight:700;">${stockLabel}</span>
+        <span class="mov-stock-equiv" style="color:var(--muted);font-size:.68rem;" ${hasPres?'':'hidden'}></span>
+        <span class="mov-stock-arrow" style="color:var(--muted);" ${prod?'':'hidden'}>→</span>
+        <span class="mov-stock-result" style="font-family:'Space Mono',monospace;font-weight:700;" ${prod?'':'hidden'}>—</span>
+      </div>
+
+      <!-- Selector de unidad de ingreso (solo si tiene presentación) -->
+      <div class="mov-unit-mode-wrap" style="display:${hasPres?'flex':'none'};gap:6px;align-items:center;">
+        <span style="font-size:.68rem;color:var(--muted);">Registrar en:</span>
+        <button class="mov-unit-mode-btn active-mode" data-mode="pres"
+          onclick="_movSetUnitMode(this,'pres')"
+          style="font-size:.68rem;padding:3px 10px;border-radius:6px;border:1px solid var(--accent);background:var(--accent);color:var(--bg);cursor:pointer;font-family:'Space Mono',monospace;">
+          ${presName || 'unid.'}
+        </button>
+        <button class="mov-unit-mode-btn" data-mode="base"
+          onclick="_movSetUnitMode(this,'base')"
+          style="font-size:.68rem;padding:3px 10px;border-radius:6px;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;font-family:'Space Mono',monospace;">
+          ${baseU}
+        </button>
+        <span class="mov-conv-hint" style="font-size:.65rem;color:var(--accent2);font-family:'Space Mono',monospace;"></span>
+      </div>
+
+      <!-- Cantidad + Costo -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+        <div>
+          <label style="font-size:.7rem;">Cantidad <span class="mov-unidad-lbl" style="font-family:'Space Mono',monospace;color:var(--accent);font-size:.65rem;">${presName||''}</span></label>
+          <input type="number" class="mov-item-qty" min="0.001" step="any" value="1" style="width:100%;"
+            oninput="_movRecalcRow(this.closest('.mov-item-row'))">
+        </div>
+        <div class="mov-item-cost-wrap" style="display:${isIn?'flex':'none'};flex-direction:column;">
+          <label style="font-size:.7rem;">Costo presentación ($) <span class="mov-costo-base-lbl" style="font-family:'Space Mono',monospace;color:var(--accent2);font-size:.62rem;"></span></label>
+          <input type="number" class="mov-item-cost" min="0" step="1" value="${prod?prod.cost||'':''}" placeholder="0" style="width:100%;"
+            oninput="_movRecalcRow(this.closest('.mov-item-row'))">
+        </div>
       </div>
     </div>`);
+
+  const row = document.getElementById(rowId);
+  if (prod) _movRecalcRow(row);
 }
+
+// Toggle between registering in "bolsas" vs "gr"
+function _movSetUnitMode(btn, mode) {
+  const row = btn.closest('.mov-item-row');
+  // Update button styles
+  row.querySelectorAll('.mov-unit-mode-btn').forEach(b => {
+    const active = b.dataset.mode === mode;
+    b.style.background    = active ? 'var(--accent)' : 'transparent';
+    b.style.color         = active ? 'var(--bg)'     : 'var(--muted)';
+    b.style.borderColor   = active ? 'var(--accent)' : 'var(--border)';
+  });
+  // Update qty label
+  const prod = products.find(p => p.id === row.querySelector('.mov-item-prod').value);
+  if(!prod) return;
+  const presName = prod.nombrePres || 'unid.';
+  const baseU    = prod.unidad === 'L' ? 'ml' : prod.unidad === 'kg' ? 'gr' : prod.unidad;
+  const lbl = row.querySelector('.mov-unidad-lbl');
+  if(lbl) lbl.textContent = mode === 'pres' ? presName : baseU;
+  _movRecalcRow(row);
+}
+
+function addMovItem() {
+  _movAddRow(null);
+}
+
+// When product changes in a row, update labels + recalc
+function _movOnProdChange(sel) {
+  const row  = sel.closest('.mov-item-row');
+  const prod = products.find(p => p.id === sel.value);
+  const hasPres  = prod && prod.formato > 1 && prod.unidad && prod.unidad !== 'u';
+  const presName = hasPres ? (prod.nombrePres || 'unid.') : '';
+  const baseU    = hasPres ? (prod.unidad === 'L' ? 'ml' : prod.unidad === 'kg' ? 'gr' : prod.unidad) : '';
+
+  // Unit mode selector: show/hide + update labels
+  const modeWrap = row.querySelector('.mov-unit-mode-wrap');
+  if(modeWrap) {
+    modeWrap.style.display = hasPres ? 'flex' : 'none';
+    const btns = row.querySelectorAll('.mov-unit-mode-btn');
+    if(btns[0]) btns[0].textContent = presName;
+    if(btns[1]) btns[1].textContent = baseU;
+    // Reset to "pres" mode when product changes
+    btns.forEach(b => {
+      const active = b.dataset.mode === 'pres';
+      b.style.background  = active ? 'var(--accent)' : 'transparent';
+      b.style.color       = active ? 'var(--bg)'     : 'var(--muted)';
+      b.style.borderColor = active ? 'var(--accent)' : 'var(--border)';
+    });
+  }
+
+  // Update qty label
+  const lbl = row.querySelector('.mov-unidad-lbl');
+  if(lbl) lbl.textContent = presName || (prod?.unidad !== 'u' ? prod?.unidad : '') || '';
+
+  // Update costo field
+  const costoInput = row.querySelector('.mov-item-cost');
+  if(costoInput && prod) costoInput.value = prod.cost || '';
+
+  _movRecalcRow(row);
+}
+
+// Recalculate stock-resultante, equiv display and costo/unidad for a single row
+function _movRecalcRow(row) {
+  const prodId   = row.querySelector('.mov-item-prod').value;
+  const prod     = products.find(p => p.id === prodId);
+  const qty      = parseFloat(row.querySelector('.mov-item-qty').value) || 0;
+  const isIn     = movCurrentType === 'Ingreso';
+  const resultEl = row.querySelector('.mov-stock-result');
+  const arrowEl  = row.querySelector('.mov-stock-arrow');
+  const actualEl = row.querySelector('.mov-stock-actual');
+  const equivEl  = row.querySelector('.mov-stock-equiv');
+  const costoLbl = row.querySelector('.mov-costo-base-lbl');
+  const convHint = row.querySelector('.mov-conv-hint');
+
+  if(!prod) {
+    if(resultEl) resultEl.hidden = true;
+    if(arrowEl)  arrowEl.hidden  = true;
+    return;
+  }
+
+  const hasPres  = prod.formato > 1 && prod.unidad && prod.unidad !== 'u';
+  const presName = hasPres ? (prod.nombrePres || 'unid.') : '';
+  const baseU    = hasPres
+    ? (prod.unidad === 'L' ? 'ml' : prod.unidad === 'kg' ? 'gr' : prod.unidad)
+    : (prod.unidad && prod.unidad !== 'u' ? prod.unidad : 'uds');
+
+  // Current unit mode: pres or base
+  const activeBtn = row.querySelector('.mov-unit-mode-btn.active-mode') ||
+                    row.querySelector('.mov-unit-mode-btn[style*="var(--accent)"]') ||
+                    (hasPres ? { dataset:{mode:'pres'} } : { dataset:{mode:'base'} });
+  // Better: check which btn has accent background
+  let mode = 'pres';
+  if(hasPres) {
+    const btns = row.querySelectorAll('.mov-unit-mode-btn');
+    btns.forEach(b => { if(b.style.background.includes('var(--accent)')) mode = b.dataset.mode; });
+  } else {
+    mode = 'base';
+  }
+
+  // Convert qty to units-of-presentation for stock math
+  let qtyInUnits = qty;
+  if(hasPres && mode === 'base') {
+    // User typed in base units → convert to presentation units
+    const basePerUnit = prod.unidad === 'L' ? prod.formato * 1000
+                      : prod.unidad === 'kg' ? prod.formato * 1000
+                      : prod.unidad === 'Gl' ? prod.formato * 3785
+                      : prod.formato;
+    qtyInUnits = qty / basePerUnit;
+  }
+
+  // Stock label: "5 bolsas"
+  if(actualEl) {
+    const stockTxt = prod.stock + (presName ? ' ' + presName : ' ' + baseU);
+    actualEl.textContent = stockTxt;
+  }
+
+  // Equiv: "(140 gr)"
+  if(equivEl && hasPres) {
+    const basePerUnit = prod.unidad === 'L' ? prod.formato * 1000
+                      : prod.unidad === 'kg' ? prod.formato * 1000
+                      : prod.unidad === 'Gl' ? prod.formato * 3785
+                      : prod.formato;
+    const totalBase = prod.stock * basePerUnit;
+    equivEl.textContent = '(' + fmtNum(totalBase) + ' ' + baseU + ')';
+    equivEl.hidden = false;
+  } else if(equivEl) {
+    equivEl.hidden = true;
+  }
+
+  // Conversion hint: "1 bolsa = 28 gr"
+  if(convHint && hasPres) {
+    const basePerUnit = prod.unidad === 'L' ? prod.formato * 1000
+                      : prod.unidad === 'kg' ? prod.formato * 1000
+                      : prod.unidad === 'Gl' ? prod.formato * 3785
+                      : prod.formato;
+    convHint.textContent = '1 ' + presName + ' = ' + basePerUnit + ' ' + baseU;
+  }
+
+  // Costo/unidad base live calc (ingreso only)
+  const costoInput = row.querySelector('.mov-item-cost');
+  if(costoLbl && costoInput && hasPres) {
+    const c = parseFloat(costoInput.value) || 0;
+    if(c > 0) {
+      const basePerUnit = prod.unidad === 'L' ? prod.formato * 1000
+                        : prod.unidad === 'kg' ? prod.formato * 1000
+                        : prod.unidad === 'Gl' ? prod.formato * 3785
+                        : prod.formato;
+      const cuBase = c / basePerUnit;
+      costoLbl.textContent = '$' + cuBase.toFixed(cuBase < 1 ? 4 : 2) + '/' + baseU;
+    } else {
+      costoLbl.textContent = '';
+    }
+  }
+
+  if(!qty || !resultEl) return;
+
+  // Stock resultante (in presentation units)
+  const resultante = isIn ? prod.stock + qtyInUnits : prod.stock - qtyInUnits;
+  const color = resultante < 0 ? 'var(--danger)' : resultante <= (prod.min||0) ? 'var(--warn)' : 'var(--accent)';
+
+  let resultTxt = fmtNum(Math.round(resultante * 1000) / 1000) + (presName ? ' ' + presName : ' ' + baseU);
+  if(hasPres) {
+    const basePerUnit = prod.unidad === 'L' ? prod.formato * 1000
+                      : prod.unidad === 'kg' ? prod.formato * 1000
+                      : prod.unidad === 'Gl' ? prod.formato * 3785
+                      : prod.formato;
+    resultTxt += ' (' + fmtNum(Math.round(resultante * basePerUnit)) + ' ' + baseU + ')';
+  }
+  resultEl.textContent = resultTxt;
+  resultEl.style.color = color;
+  resultEl.hidden = false;
+  if(arrowEl) arrowEl.hidden = false;
+}
+
+function _movRecalcAll() {
+  document.querySelectorAll('.mov-item-row').forEach(r => _movRecalcRow(r));
+}
+
+function _movUpdateRowMode(row, isIn) {
+  const wrap = row.querySelector('.mov-item-cost-wrap');
+  if(wrap) wrap.style.display = isIn ? 'flex' : 'none';
+  _movRecalcRow(row);
+}
+
 function registerMovement() {
   if (!movCurrentType) return showToast('Selecciona Ingreso o Salida','error');
-  const isIn = movCurrentType==='Ingreso';
+  const isIn   = movCurrentType==='Ingreso';
   const worker = isIn ? '' : document.getElementById('mov-worker').value;
   if (!isIn && !worker) return showToast('Selecciona a quién se entrega','error');
-  const obs = document.getElementById('mov-obs').value;
-  const rows = [...document.querySelectorAll('.mov-item-row')];
+  const obs     = document.getElementById('mov-obs').value;
+  const provNom = isIn ? (document.getElementById('mov-proveedor')?.value || '') : '';
+  const rows  = [...document.querySelectorAll('.mov-item-row')];
   if (!rows.length) return showToast('Agrega al menos un producto','error');
-  const items = rows.map(row=>({
-    prodId: row.querySelector('.mov-item-prod').value,
-    qty: parseInt(row.querySelector('.mov-item-qty').value)||1,
-    cost: parseFloat(row.querySelector('.mov-item-cost')?.value)||0
-  })).filter(x=>x.prodId!=='');
-  if (!items.length) return showToast('Selecciona al menos un producto','error');
+  const items = rows.map(row => {
+    const prodId  = row.querySelector('.mov-item-prod').value;
+    const rawQty  = parseFloat(row.querySelector('.mov-item-qty').value) || 0;
+    const cost    = parseFloat(row.querySelector('.mov-item-cost')?.value) || 0;
+    const prod    = products.find(p => p.id === prodId);
+    const hasPres = prod && prod.formato > 1 && prod.unidad && prod.unidad !== 'u';
+
+    // Determine current mode
+    let mode = 'pres';
+    if(hasPres) {
+      row.querySelectorAll('.mov-unit-mode-btn').forEach(b => {
+        if(b.style.background.includes('var(--accent)')) mode = b.dataset.mode;
+      });
+    }
+
+    // Convert to presentation units (stored unit)
+    let qtyUnits = rawQty;
+    let qtyBase  = null;
+    if(hasPres) {
+      const basePerUnit = prod.unidad === 'L' ? prod.formato * 1000
+                        : prod.unidad === 'kg' ? prod.formato * 1000
+                        : prod.unidad === 'Gl' ? prod.formato * 3785
+                        : prod.formato;
+      const baseU = prod.unidad === 'L' ? 'ml' : prod.unidad === 'kg' ? 'gr' : prod.unidad;
+      if(mode === 'base') {
+        qtyUnits = rawQty / basePerUnit;
+        qtyBase  = rawQty;
+      } else {
+        qtyBase  = rawQty * basePerUnit;
+      }
+    }
+    return { prodId, qty: qtyUnits, qtyBase, cost };
+  }).filter(x => x.prodId !== '' && x.qty > 0);
+  if (!items.length) return showToast('Completa al menos un producto con cantidad','error');
   // Validate stock for salidas
   for (const item of items) {
-    const p = products.find(x=>x.id===item.prodId);
-    if (!isIn && item.qty > p.stock) return showToast('Stock insuficiente: '+p.name,'error');
+    const p = products.find(x => x.id === item.prodId);
+    if (!isIn && item.qty > p.stock) {
+      const u = p.unidad && p.unidad !== 'u' ? p.unidad : 'uds';
+      return showToast('Stock insuficiente: '+p.name+' ('+p.stock+' '+u+' disponibles)','error');
+    }
   }
-  const today = new Date().toISOString().split('T')[0];
-  // Generate a batchId shared by all items in this registration
+  const today   = new Date().toISOString().split('T')[0];
   const batchId = 'BATCH-' + Date.now();
-  items.forEach(item=>{
-    const p = products.find(x=>x.id===item.prodId);
+  items.forEach(item => {
+    const p     = products.find(x => x.id === item.prodId);
     const movId = 'MOV-'+String(movements.length+1).padStart(3,'0');
-    movements.unshift({id:movId,batchId,date:today,prodId:p.id,prodName:p.name,type:movCurrentType,qty:item.qty,cost:item.cost,worker,obs});
-    if (isIn){p.stock+=item.qty;if(item.cost>0)p.cost=item.cost;}
-    else p.stock=Math.max(0,p.stock-item.qty);
+    const unidad = p.unidad || 'u';
+    const baseU = p.unidad === 'L' ? 'ml' : p.unidad === 'kg' ? 'gr' : p.unidad;
+    const qtyLabel = item.qtyBase !== null
+      ? item.qty.toLocaleString('es-CL',{maximumFractionDigits:3}) + ' ' + (p.nombrePres||unidad) +
+        ' (' + Math.round(item.qtyBase).toLocaleString('es-CL') + ' ' + baseU + ')'
+      : item.qty.toLocaleString('es-CL',{maximumFractionDigits:3}) + ' ' + unidad;
+    movements.unshift({id:movId, batchId, date:today, prodId:p.id, prodName:p.name,
+      type:movCurrentType, qty:item.qty, qtyBase:item.qtyBase, qtyLabel,
+      unidad, cost:item.cost, worker, proveedor:provNom, obs});
+    if (isIn) {
+      p.stock += item.qty;
+      if (item.cost > 0) p.cost = item.cost;
+    } else {
+      p.stock = Math.max(0, p.stock - item.qty);
+    }
   });
-  showToast('✓ '+movCurrentType+' registrado — '+items.length+' producto(s)','success');
+  const uLabel = items.length === 1
+    ? (() => { const p=products.find(x=>x.id===items[0].prodId); return p?.unidad&&p.unidad!=='u'?' ('+items[0].qty+' '+p.unidad+')':''; })()
+    : '';
+  showToast('✓ '+movCurrentType+' registrado — '+items.length+' producto(s)'+uLabel,'success');
   updateHeader(); lsGuardar();
-  // Reset form
   cancelarMovimiento();
 }
 
@@ -1782,6 +2260,7 @@ function cancelarMovimiento(){
   document.getElementById('btn-in').className='type-btn';
   document.getElementById('btn-out').className='type-btn';
   document.getElementById('worker-field-wrap').style.display='none';
+  document.getElementById('mov-prov-wrap').style.display='none';
   document.getElementById('scan-result').style.display='none';
   document.getElementById('manual-id').value='';
   document.getElementById('product-select').value='';
@@ -1894,7 +2373,7 @@ function _invEnableDrag(){
 function renderInventory(filtro) {
   const low=products.filter(p=>p.stock>0&&p.stock<=p.min).length;
   const nos=products.filter(p=>p.stock===0).length;
-  const val=products.reduce((s,p)=>s+p.stock*p.cost,0);
+  const val=products.reduce((s,p)=>s+p.stock*pValorUnitario(p),0);
   const f=filtro!==undefined?filtro:(window._invFiltro||null);
   window._invFiltro=f;
   document.getElementById('inv-summary').innerHTML=`
@@ -1932,10 +2411,22 @@ function renderInventory(filtro) {
       <td><span style="font-family:'Space Mono',monospace;font-size:.72rem;background:var(--surface2);padding:2px 6px;border-radius:4px;color:var(--muted);">${p.id}</span></td>
       <td><b>${p.name}</b></td>
       <td><span style="font-size:.75rem;color:var(--muted);">${cat||'—'}</span></td>
-      <td><div class="stock-bar-wrap"><span style="color:${bc};font-weight:700;">${p.stock}</span><div class="stock-bar"><div class="stock-bar-fill" style="width:${pct}%;background:${bc}"></div></div></div></td>
+      <td><div class="stock-bar-wrap">
+        <span style="color:${bc};font-weight:700;">${p.stock}</span>
+        ${(()=>{
+          const pn = p.nombrePres||(p.unidad&&p.unidad!=='u'?p.unidad:'');
+          const baseU = p.unidad==='L'?'ml':p.unidad==='kg'?'gr':p.unidad;
+          const eqBase = p.formato>1&&p.unidad!=='u' ? p.stock*p.formato*(p.unidad==='L'?1000:p.unidad==='kg'?1000:1) : 0;
+          if(!pn && !eqBase) return '';
+          const eq = eqBase>0 ? ` <span style="font-size:.62rem;color:var(--muted);">(${fmtNum(eqBase)} ${baseU})</span>` : '';
+          const lbl = pn ? ` <span style="font-size:.65rem;color:var(--muted);">${pn}</span>` : '';
+          return lbl+eq;
+        })()}
+        <div class="stock-bar"><div class="stock-bar-fill" style="width:${pct}%;background:${bc}"></div></div>
+      </div></td>
       <td class="td-mono">${p.min}</td>
       <td class="td-mono">$${fmtNum(p.cost)}</td>
-      <td class="td-mono">$${fmtNum(p.stock*p.cost)}</td>
+      <td class="td-mono">$${fmtNum(p.stock*pValorUnitario(p))}</td>
     </tr>`);
   });
   if(_invSort==='custom') _invEnableDrag();
@@ -1949,21 +2440,172 @@ function showAddProduct(){
   f.style.display='block';
   f.scrollIntoView({behavior:'smooth'});
 }
+// ── GENERADOR DE ID DE MATERIAL ──────────────────────
+// Regla:
+//   1 palabra texto         → primeras 4 letras       (BARN, DILU)
+//   varias palabras texto   → inicial de cada una, hasta 4 (BNR, APVC)
+//                             si quedan < 4 letras, completa con la primera palabra
+//   con números/dimensiones → letras (hasta 3) + dígitos sin "x" (VID1010)
+//   colisión                → sufijo A, B, C…          (BARN → BARNA)
+function generarIdMaterial(nombre, lista) {
+  const n = nombre.trim().toUpperCase();
+  const tokens = n.split(/[\s\-_\/]+/).filter(Boolean);
+
+  // Separar: tokens SOLO texto vs tokens con dígitos (dimensiones, medidas)
+  // IMPORTANTE: las letras dentro de tokens numéricos (x, mm, cm) NO son parte del nombre
+  const textTokens = [];
+  const numTokens  = [];
+
+  tokens.forEach(tok => {
+    if (/\d/.test(tok)) {
+      // Extraer solo dígitos, ignorar 'x', unidades y otras letras
+      const digits = tok.replace(/x/gi, '').replace(/[^0-9]/g, '');
+      if (digits) numTokens.push(digits);
+    } else {
+      const letters = tok.replace(/[^A-Z]/g, '');
+      if (letters) textTokens.push(letters);
+    }
+  });
+
+  const nums = numTokens.join('');
+  let textPart = '';
+
+  if (textTokens.length === 0) {
+    textPart = 'MAT';
+  } else if (nums) {
+    // Con números: hasta 3 letras
+    if (textTokens.length === 1) {
+      textPart = textTokens[0].slice(0, 3);
+    } else {
+      const iniciales = textTokens.map(t => t[0]).join('');
+      if (iniciales.length >= 3) {
+        textPart = iniciales.slice(0, 3);
+      } else {
+        // Completa con más letras de la primera palabra
+        textPart = (iniciales + textTokens[0].slice(1)).slice(0, 3);
+      }
+    }
+  } else {
+    // Solo texto
+    if (textTokens.length === 1) {
+      textPart = textTokens[0].slice(0, 4);
+    } else {
+      const iniciales = textTokens.map(t => t[0]).join('');
+      if (iniciales.length >= 3) {
+        // 3+ palabras: usa solo las iniciales (BNR, BNRP…)
+        textPart = iniciales.slice(0, 4);
+      } else if (iniciales.length === 2) {
+        // 2 palabras: 2 iniciales + más letras de la primera palabra hasta 4
+        textPart = (iniciales + textTokens[0].slice(1)).slice(0, 4);
+      } else {
+        textPart = textTokens[0].slice(0, 4);
+      }
+    }
+  }
+
+  const baseId = textPart + nums;
+  const ids = (lista || []).map(p => p.id);
+  if (!ids.includes(baseId)) return baseId;
+
+  const alpha = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+  for (let i = 0; i < alpha.length; i++) {
+    const c = baseId + alpha[i];
+    if (!ids.includes(c)) return c;
+  }
+  return baseId + Date.now().toString().slice(-3);
+}
+
+function npAutoId(nombre) {
+  if (!nombre.trim()) { document.getElementById('np-id').value = ''; return; }
+  const id = generarIdMaterial(nombre, products);
+  document.getElementById('np-id').value = id;
+}
+
 function addProduct(){
-  const id=document.getElementById('np-id').value.trim().toUpperCase();
   const name=document.getElementById('np-name').value.trim();
-  const cat=document.getElementById('np-cat').value.trim();
-  const stock=parseInt(document.getElementById('np-stock').value)||0;
-  const min=parseInt(document.getElementById('np-min').value)||0;
-  const cost=parseFloat(document.getElementById('np-cost').value)||0;
-  if(!id||!name)return showToast('ID y nombre obligatorios','error');
-  if(products.find(p=>p.id===id))return showToast('Ya existe ese ID','error');
-  products.push({id,name,cat,stock,min,cost});
+  if(!name)return showToast('El nombre es obligatorio','error');
+  const idField=document.getElementById('np-id').value.trim().toUpperCase();
+  const id = idField || generarIdMaterial(name, products);
+  if(products.find(p=>p.id===id))return showToast('ID "'+id+'" ya existe — edita el campo ID','error');
+  const cat    = document.getElementById('np-cat').value.trim();
+  const stock  = parseInt(document.getElementById('np-stock').value)||0;
+  const min    = parseInt(document.getElementById('np-min').value)||0;
+  const cost   = parseFloat(document.getElementById('np-cost').value)||0;
+  const formato     = parseFloat(document.getElementById('np-formato').value)||1;
+  const unidad      = document.getElementById('np-unidad').value||'u';
+  const nombrePres  = (document.getElementById('np-nombre-pres')?.value||'').trim().toLowerCase();
+  products.push({id, name, cat, stock, min, cost, formato, unidad, nombrePres});
+  // Sync con costosData.matExtra para el módulo de Costos
+  if(!costosData.matExtra[id]) costosData.matExtra[id]={};
+  costosData.matExtra[id].formato = formato;
+  costosData.matExtra[id].unidad  = unidad;
   document.getElementById('add-product-form').style.display='none';
   ['np-id','np-name','np-cat'].forEach(x=>document.getElementById(x).value='');
+  document.getElementById('np-formato').value='1';
+  document.getElementById('np-unidad').value='u';
+  if(document.getElementById('np-nombre-pres')) document.getElementById('np-nombre-pres').value='';
+  if(document.getElementById('np-nombre-pres-wrap')) document.getElementById('np-nombre-pres-wrap').style.display='none';
+  if(document.getElementById('np-conversion-wrap')) document.getElementById('np-conversion-wrap').style.display='none';
+  if(document.getElementById('np-costo-base')) document.getElementById('np-costo-base').textContent='';
   renderInventory();updateHeader();
   lsGuardar();
-  showToast('✓ Producto agregado: '+name,'success');
+  showToast('✓ '+name+' ('+id+') agregado','success');
+}
+
+// ── Auto-calcular costo/unidad base en el formulario ──
+function npCalcCostoBase() {
+  const cost      = parseFloat(document.getElementById('np-cost').value)||0;
+  const formato   = parseFloat(document.getElementById('np-formato').value)||1;
+  const unidad    = document.getElementById('np-unidad').value||'u';
+  const nomPresEl = document.getElementById('np-nombre-pres');
+  const nomPres   = nomPresEl ? nomPresEl.value.trim().toLowerCase() : '';
+
+  // Show/hide nombre presentación field when formato > 1 and unidad is base (not 'u')
+  const hasPres = formato > 1 && unidad !== 'u';
+  const presWrap = document.getElementById('np-nombre-pres-wrap');
+  if(presWrap) presWrap.style.display = hasPres ? 'block' : 'none';
+
+  // Conversion to base unit
+  let base = formato;
+  let lblBase = unidad;
+  if(unidad === 'L')  { base = formato * 1000; lblBase = 'ml'; }
+  if(unidad === 'kg') { base = formato * 1000; lblBase = 'gr'; }
+
+  const costoBase = (cost > 0 && base > 0) ? cost / base : 0;
+
+  // Build conversion label: "1 bolsa = 28 gr = $1.157 ($41,3 x gr)"
+  const convWrap   = document.getElementById('np-conversion-wrap');
+  const convLabel  = document.getElementById('np-conversion-label');
+  const costoBasEl = document.getElementById('np-costo-base');
+  const simpleEl   = document.getElementById('np-costo-base-simple');
+
+  if(hasPres && cost > 0) {
+    const presName = nomPres || 'unidad';
+    const costoStr = fmtNum(Math.round(cost));
+    const costoBaseStr = costoBase.toFixed(costoBase < 1 ? 4 : 2);
+    if(convLabel) convLabel.textContent =
+      '1 ' + presName + ' = ' + formato + ' ' + lblBase +
+      ' = $' + costoStr + ' ($' + costoBaseStr + ' x ' + lblBase + ')';
+    if(costoBasEl) costoBasEl.textContent =
+      'Stock en presentaciones · Registra movimientos en "' + presName + '" o en ' + lblBase;
+    if(convWrap)  convWrap.style.display  = 'block';
+    if(simpleEl)  simpleEl.style.display  = 'none';
+  } else {
+    if(convWrap)  convWrap.style.display  = 'none';
+    if(simpleEl)  simpleEl.style.display  = 'flex';
+    // Update the simple costo/base display (the static div inside simpleEl)
+    const simpValEl = simpleEl ? simpleEl.querySelector('div:last-child') : null;
+    if(simpValEl) simpValEl.textContent = costoBase > 0
+      ? '$' + costoBase.toFixed(costoBase < 1 ? 4 : 2) + ' / ' + lblBase
+      : '—';
+  }
+
+  // Update stock unit labels
+  const presLabel = hasPres ? (nomPres || 'unid.') : (unidad !== 'u' ? unidad : 'unidades');
+  const lbl  = document.getElementById('np-stock-lbl');
+  const lbl2 = document.getElementById('np-min-lbl');
+  if(lbl)  lbl.textContent  = '(' + presLabel + ')';
+  if(lbl2) lbl2.textContent = '(' + presLabel + ')';
 }
 // ── EDITOR DE PRODUCTOS (mat + urnas) ──
 function abrirEditarProductos(){
@@ -2158,7 +2800,7 @@ function renderMovements(){
         <td class="td-mono">${rep.date}</td>
         <td><b>${rep.prodName}</b><br><span class="td-mono" style="font-size:.68rem;color:var(--muted);">${rep.prodId}</span></td>
         <td><span class="pill ${isIn?'pill-in':'pill-out'}">${rep.type}</span></td>
-        <td style="text-align:center;font-weight:600">${rep.qty}</td>
+        <td style="text-align:center;font-weight:600">${rep.qtyLabel||rep.qty+(rep.unidad&&rep.unidad!=='u'?' '+rep.unidad:'')}</td>
         <td style="font-size:.81rem;color:var(--accent2)">${rep.worker?'👷 '+rep.worker:'—'}</td>
         <td class="td-mono">${isIn?'$'+fmtNum(rep.cost):'—'}</td>
         <td class="td-mono">${isIn?'$'+fmtNum(rep.qty*rep.cost):'—'}</td>
@@ -2298,7 +2940,7 @@ function exportCSV(){
 }
 function exportExcel(){
   const mr=movements.map((m,i)=>({'N°':movements.length-i,'Fecha':m.date,'ID':m.prodId,'Producto':m.prodName,'Tipo':m.type,'Cantidad':m.qty,'Entregado a':m.worker||'','Costo Unit.':m.type==='Ingreso'?m.cost:'','Costo Total':m.type==='Ingreso'?m.qty*m.cost:'','Obs.':m.obs||''}));
-  const ir=products.map(p=>({'ID':p.id,'Nombre':p.name,'Stock':p.stock,'Mínimo':p.min,'Estado':p.stock===0?'Sin Stock':p.stock<=p.min?'Stock Bajo':'OK','Costo':p.cost,'Valor':p.stock*p.cost}));
+  const ir=products.map(p=>({'ID':p.id,'Nombre':p.name,'Stock':p.stock+((p.unidad&&p.unidad!=='u')?' '+p.unidad:''),'Mínimo':p.min,'Estado':p.stock===0?'Sin Stock':p.stock<=p.min?'Stock Bajo':'OK','Costo ($)':p.cost,'Costo/unidad':pValorUnitario(p),'Valor total':p.stock*pValorUnitario(p)}));
   const wb=XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(mr),'Movimientos');
   XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(ir),'Inventario');
@@ -2365,6 +3007,15 @@ function updateHeader(){
   const wrap=document.getElementById('hdr-alert-wrap');
   wrap.style.display=alerts>0?'flex':'none';
   if(alerts>0) document.getElementById('hdr-alerts').textContent=alerts+' alerta'+(alerts>1?'s':'');
+}
+
+// ── Valor unitario de un material (precio por unidad de stock) ──
+// Si el producto tiene formato+unidad, el stock está expresado en esa unidad
+// y el costo es por envase/presentación → costo real = stock × (cost / formato)
+// Para productos sin formato (legacy): costo = stock × cost (sin cambio)
+function pValorUnitario(p) {
+  if(p.formato && p.formato > 1) return (p.cost || 0) / p.formato;
+  return p.cost || 0;
 }
 function fmtFecha(iso) {
   if(!iso) return '—';
@@ -3719,6 +4370,351 @@ let _uRecetaItems  = [];    // [{matId, matName, cantidad, um}]
 
 
 
+
+// ════════════════════════════════════════════════════
+// COSTOS — módulo completo
+// ════════════════════════════════════════════════════
+
+const C_PROCESOS = ['barniz','enzincado','telas','terminacion'];
+const C_PROC_LABEL = {barniz:'🎨 Barniz', enzincado:'⚡ Enzincado', telas:'🧵 Telas', terminacion:'✨ Terminación'};
+const C_UNIDADES  = ['ml','gr','u','L','kg','Gl'];
+
+// ── Nav ───────────────────────────────────────────────
+function cNavTo(name) {
+  document.querySelectorAll('#seccion-costos .page').forEach(p => p.classList.remove('active'));
+  document.getElementById('cpage-'+name).classList.add('active');
+  document.querySelectorAll('#c-nav .tab').forEach(t => t.classList.remove('active'));
+  const btn = document.getElementById('ctab-'+name);
+  if(btn) btn.classList.add('active');
+  setSeccionHeader('Costos','var(--accent)');
+  if(name === 'productos')   cRenderProductos();
+  if(name === 'catalogo')    cRenderCatalogo();
+  if(C_PROCESOS.includes(name)) cRenderProceso(name);
+  if(name === 'resultados')  cInitResultados();
+}
+
+// ── helpers ───────────────────────────────────────────
+function cFormatoToBase(formato, unidad) {
+  if(unidad === 'L')  return formato * 1000;  // L → ml
+  if(unidad === 'kg') return formato * 1000;  // kg → gr
+  if(unidad === 'Gl') return formato * 3785;  // Gl → ml (US galón)
+  return formato;
+}
+function cCostoUnitBase(prod) {
+  // prod = products item; extra = costosData.matExtra[prod.id]
+  const extra = costosData.matExtra[prod.id] || {formato:1, unidad:'u'};
+  const base  = cFormatoToBase(extra.formato || 1, extra.unidad || 'u');
+  return base > 0 ? (prod.cost || 0) / base : 0;
+}
+function cLabelUnidadBase(unidad) {
+  if(unidad === 'L')  return 'ml';
+  if(unidad === 'kg') return 'gr';
+  if(unidad === 'Gl') return 'ml';
+  return unidad;
+}
+
+// ── Tab: PRODUCTOS ────────────────────────────────────
+function cRenderProductos() {
+  const el = document.getElementById('c-prod-lista');
+  if(!el) return;
+  if(!uProducts.length) {
+    el.innerHTML = '<div style="color:var(--muted);font-size:.8rem;">Sin SKUs en Urnas. Agrega primero urnas en el módulo de Urnas.</div>';
+    return;
+  }
+  const CAT_ORDER = ['estandar','especial','restos'];
+  const CAT_LABEL = {estandar:'Urnas Estándar', especial:'Especiales', restos:'Restos y Párvulo'};
+  let html = '';
+  CAT_ORDER.forEach(cat => {
+    const prods = uProducts.filter(p => (p.categoria||'estandar') === cat);
+    if(!prods.length) return;
+    html += `<div style="font-family:'Space Mono',monospace;font-size:.58rem;color:var(--muted);
+      letter-spacing:.08em;padding:6px 0 4px;">${CAT_LABEL[cat]}</div>`;
+    prods.forEach(p => {
+      const sel = p.id === cProdActual;
+      const tiene = costosData.procesos[p.id];
+      const totalMats = tiene ? C_PROCESOS.reduce((s,pr) => s + ((costosData.procesos[p.id]||{})[pr]||[]).length, 0) : 0;
+      html += `<div onclick="cSelProd('${p.id}')" style="background:var(--surface${sel?'':'2'});
+        border:1px solid ${sel?'var(--accent)':'var(--border)'};border-radius:9px;padding:11px 14px;
+        cursor:pointer;display:flex;align-items:center;gap:10px;">
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:.85rem;font-weight:600;">${sanitizar(p.name)}</div>
+          <div style="font-family:'Space Mono',monospace;font-size:.62rem;color:var(--muted);">
+            ${p.id} · ${p.terminacion||'Bruto'}</div>
+        </div>
+        <div style="display:flex;gap:6px;align-items:center;">
+          ${totalMats ? `<span style="background:rgba(0,229,160,.15);color:var(--accent);
+            font-size:.62rem;font-family:'Space Mono',monospace;padding:2px 7px;border-radius:8px;">
+            ${totalMats} mat.</span>` : ''}
+          ${sel ? '<span style="color:var(--accent);font-size:.8rem;">✓</span>' : ''}
+        </div>
+      </div>`;
+    });
+  });
+  el.innerHTML = html;
+}
+
+function cSelProd(prodId) {
+  cProdActual = prodId;
+  if(!costosData.procesos[prodId]) {
+    costosData.procesos[prodId] = {barniz:[], enzincado:[], telas:[], terminacion:[]};
+  }
+  cRenderProductos();
+  showToast('Producto seleccionado: ' + (uProducts.find(p=>p.id===prodId)?.name||prodId), 'success');
+}
+
+// ── Tab: CATÁLOGO ─────────────────────────────────────
+function cRenderCatalogo() {
+  const tbody = document.getElementById('c-cat-tbody');
+  if(!tbody) return;
+  if(!products.length) {
+    tbody.innerHTML = '<tr><td colspan="7" style="padding:12px;color:var(--muted);font-size:.78rem;">Sin materiales registrados en Materiales</td></tr>';
+    return;
+  }
+  const cats = {};
+  products.forEach(p => { const c = p.cat||'Sin categoría'; if(!cats[c])cats[c]=[]; cats[c].push(p); });
+  let rows = '';
+  Object.entries(cats).sort((a,b)=>a[0].localeCompare(b[0],'es')).forEach(([cat,prods]) => {
+    rows += `<tr><td colspan="7" style="background:var(--surface2);padding:6px 12px;
+      font-family:'Space Mono',monospace;font-size:.58rem;color:var(--muted);letter-spacing:.08em;">
+      ${sanitizar(cat).toUpperCase()}</td></tr>`;
+    prods.sort((a,b)=>a.name.localeCompare(b.name,'es')).forEach((p,_) => {
+      const extra = costosData.matExtra[p.id] || {formato:1, unidad:'u'};
+      const base  = cFormatoToBase(extra.formato||1, extra.unidad||'u');
+      const costoBase = base > 0 ? (p.cost||0) / base : 0;
+      const lblBase   = cLabelUnidadBase(extra.unidad||'u');
+      rows += `<tr>
+        <td style="font-family:'Space Mono',monospace;font-size:.72rem;color:var(--muted);">${p.id}</td>
+        <td style="font-size:.83rem;font-weight:600;">${sanitizar(p.name)}</td>
+        <td style="font-size:.72rem;color:var(--muted);">${sanitizar(p.cat||'—')}</td>
+        <td><input type="number" min="0.001" step="any" value="${extra.formato||1}"
+          style="width:80px;text-align:right;font-family:'Space Mono',monospace;font-size:.8rem;"
+          onchange="cSetMatExtra('${p.id}','formato',parseFloat(this.value)||1); cRenderCatalogo()"></td>
+        <td><select style="width:70px;font-size:.78rem;"
+          onchange="cSetMatExtra('${p.id}','unidad',this.value); cRenderCatalogo()">
+          ${C_UNIDADES.map(u=>`<option value="${u}" ${(extra.unidad||'u')===u?'selected':''}>${u}</option>`).join('')}
+        </select></td>
+        <td style="text-align:right;font-family:'Space Mono',monospace;font-size:.82rem;color:var(--accent2);">
+          $${fmtNum(p.cost||0)}</td>
+        <td style="text-align:right;font-family:'Space Mono',monospace;font-size:.78rem;color:var(--accent);font-weight:700;">
+          $${costoBase.toFixed(2)}/${lblBase}</td>
+      </tr>`;
+    });
+  });
+  tbody.innerHTML = rows;
+}
+
+function cSetMatExtra(prodId, field, value) {
+  if(!costosData.matExtra[prodId]) costosData.matExtra[prodId] = {formato:1, unidad:'u'};
+  costosData.matExtra[prodId][field] = value;
+  lsGuardar();
+}
+
+// ── Tab: PROCESO (barniz/enzincado/telas/terminacion) ──
+function cRenderProceso(proceso) {
+  if(!cProdActual) {
+    // Show prompt
+    const tbody = document.getElementById('c-mat-'+proceso);
+    if(tbody) tbody.innerHTML = '<tr><td colspan="6" style="padding:12px;color:var(--muted);font-size:.78rem;">Selecciona primero un producto en la pestaña Productos</td></tr>';
+    const lbl = document.getElementById('c-prod-lbl-'+proceso);
+    if(lbl) lbl.textContent = '—';
+    cRenderMOD(proceso);
+    return;
+  }
+  const prod = uProducts.find(p => p.id === cProdActual);
+  const lbl = document.getElementById('c-prod-lbl-'+proceso);
+  if(lbl) lbl.textContent = prod ? prod.name : cProdActual;
+
+  const mats = (costosData.procesos[cProdActual]||{})[proceso] || [];
+  const tbody = document.getElementById('c-mat-'+proceso);
+  if(!tbody) return;
+
+  if(!mats.length) {
+    tbody.innerHTML = '<tr><td colspan="6" style="padding:10px 14px;color:var(--muted);font-size:.78rem;font-style:italic;">Sin materiales. Pulsa + Agregar.</td></tr>';
+  } else {
+    tbody.innerHTML = mats.map((mat, i) => {
+      const prodMat = products.find(p => p.id === mat.matId);
+      const costoUB = prodMat ? cCostoUnitBase(prodMat) : 0;
+      const costoT  = mat.cantidad * costoUB;
+      return `<tr>
+        <td>
+          <select style="width:100%;font-size:.78rem;" onchange="cSetMatId('${proceso}',${i},this.value)">
+            <option value="">— Selecciona —</option>
+            ${products.map(p => `<option value="${p.id}" ${p.id===mat.matId?'selected':''}>${sanitizar(p.name)}</option>`).join('')}
+          </select>
+        </td>
+        <td><input type="number" min="0" step="any" value="${mat.cantidad}"
+          style="width:80px;text-align:right;font-family:'Space Mono',monospace;font-size:.8rem;"
+          onchange="cSetMatCantidad('${proceso}',${i},parseFloat(this.value)||0)"></td>
+        <td><select style="width:60px;font-size:.78rem;" onchange="cSetMatUnidad('${proceso}',${i},this.value)">
+          ${C_UNIDADES.map(u=>`<option value="${u}" ${mat.unidad===u?'selected':''}>${u}</option>`).join('')}
+        </select></td>
+        <td style="text-align:right;font-family:'Space Mono',monospace;font-size:.78rem;color:var(--muted);">
+          $${costoUB.toFixed(2)}</td>
+        <td style="text-align:right;font-family:'Space Mono',monospace;font-size:.82rem;font-weight:700;color:var(--accent2);">
+          $${fmtNum(costoT)}</td>
+        <td><button onclick="cEliminarMat('${proceso}',${i})" style="background:none;border:none;cursor:pointer;color:var(--danger);font-size:.9rem;padding:0 4px;">🗑</button></td>
+      </tr>`;
+    }).join('');
+  }
+  cRenderMOD(proceso);
+}
+
+function cRenderMOD(proceso) {
+  const el = document.getElementById('c-mod-'+proceso);
+  if(!el) return;
+  const mod = costosData.mod[proceso] || {sueldo:800000, horasMes:180, horasUnidad:2, merma:2};
+  const tasa = mod.horasMes > 0 ? mod.sueldo / mod.horasMes : 0;
+  el.innerHTML = `<div class="card">
+    <div class="card-title" style="margin-bottom:12px;">Mano de Obra — ${C_PROC_LABEL[proceso]}</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
+      <div>
+        <label style="font-size:.68rem;color:var(--muted);">Sueldo mensual ($)</label>
+        <input type="number" min="0" step="10000" value="${mod.sueldo}"
+          style="width:100%;margin-top:4px;text-align:right;font-family:'Space Mono',monospace;"
+          onchange="cSetMOD('${proceso}','sueldo',parseFloat(this.value)||0); cRenderMOD('${proceso}')">
+      </div>
+      <div>
+        <label style="font-size:.68rem;color:var(--muted);">Horas/mes</label>
+        <input type="number" min="1" step="1" value="${mod.horasMes}"
+          style="width:100%;margin-top:4px;text-align:right;font-family:'Space Mono',monospace;"
+          onchange="cSetMOD('${proceso}','horasMes',parseFloat(this.value)||1); cRenderMOD('${proceso}')">
+      </div>
+      <div>
+        <label style="font-size:.68rem;color:var(--muted);">Tasa/hora (auto)</label>
+        <div style="width:100%;margin-top:4px;background:var(--surface2);border:1px solid var(--border);
+          border-radius:7px;padding:7px 10px;font-family:'Space Mono',monospace;font-size:.82rem;
+          color:var(--accent);font-weight:700;">$${fmtNum(Math.round(tasa))}</div>
+      </div>
+      <div>
+        <label style="font-size:.68rem;color:var(--muted);">Horas por unidad</label>
+        <input type="number" min="0" step="0.1" value="${mod.horasUnidad}"
+          style="width:100%;margin-top:4px;text-align:right;font-family:'Space Mono',monospace;"
+          onchange="cSetMOD('${proceso}','horasUnidad',parseFloat(this.value)||0)">
+      </div>
+    </div>
+    <div>
+      <label style="font-size:.68rem;color:var(--muted);">% Merma</label>
+      <input type="number" min="0" max="100" step="0.1" value="${mod.merma}"
+        style="width:120px;margin-top:4px;text-align:right;font-family:'Space Mono',monospace;"
+        onchange="cSetMOD('${proceso}','merma',parseFloat(this.value)||0)">
+    </div>
+  </div>`;
+}
+
+// ── Mutators ───────────────────────────────────────────
+function cAgregarMat(proceso) {
+  if(!cProdActual) return showToast('Selecciona primero un producto','error');
+  if(!costosData.procesos[cProdActual]) costosData.procesos[cProdActual] = {barniz:[],enzincado:[],telas:[],terminacion:[]};
+  const defaultMat = products.length ? products[0].id : '';
+  costosData.procesos[cProdActual][proceso].push({matId:defaultMat, cantidad:100, unidad:'ml'});
+  lsGuardar();
+  cRenderProceso(proceso);
+}
+function cEliminarMat(proceso, idx) {
+  if(!cProdActual || !costosData.procesos[cProdActual]) return;
+  costosData.procesos[cProdActual][proceso].splice(idx, 1);
+  lsGuardar();
+  cRenderProceso(proceso);
+}
+function cSetMatId(proceso, idx, matId) {
+  if(!cProdActual || !costosData.procesos[cProdActual]) return;
+  costosData.procesos[cProdActual][proceso][idx].matId = matId;
+  lsGuardar();
+  cRenderProceso(proceso);
+}
+function cSetMatCantidad(proceso, idx, val) {
+  if(!cProdActual || !costosData.procesos[cProdActual]) return;
+  costosData.procesos[cProdActual][proceso][idx].cantidad = val;
+  lsGuardar();
+  cRenderProceso(proceso);
+}
+function cSetMatUnidad(proceso, idx, val) {
+  if(!cProdActual || !costosData.procesos[cProdActual]) return;
+  costosData.procesos[cProdActual][proceso][idx].unidad = val;
+  lsGuardar();
+  cRenderProceso(proceso);
+}
+function cSetMOD(proceso, field, val) {
+  if(!costosData.mod[proceso]) costosData.mod[proceso] = {};
+  costosData.mod[proceso][field] = val;
+  lsGuardar();
+}
+function cGuardarCIF() {
+  costosData.cifTotal = parseFloat(document.getElementById('c-cif-total')?.value) || 0;
+  lsGuardar();
+}
+
+// ── Tab: RESULTADOS ───────────────────────────────────
+function cInitResultados() {
+  const lbl = document.getElementById('c-prod-lbl-resultados');
+  if(lbl) lbl.textContent = cProdActual ? (uProducts.find(p=>p.id===cProdActual)?.name || cProdActual) : '—';
+  const cifEl = document.getElementById('c-cif-total');
+  if(cifEl) cifEl.value = costosData.cifTotal || 3000000;
+  document.getElementById('c-resultados-content').style.display = 'none';
+}
+
+function cCalcularProceso(proceso) {
+  const mod    = costosData.mod[proceso] || {sueldo:800000, horasMes:180, horasUnidad:2, merma:0};
+  const merma  = (mod.merma || 0) / 100;
+  const tasa   = mod.horasMes > 0 ? mod.sueldo / mod.horasMes : 0;
+  const modVal = (mod.horasUnidad || 0) * tasa;
+
+  const mats = cProdActual ? ((costosData.procesos[cProdActual] || {})[proceso] || []) : [];
+  let costoMats = 0;
+  mats.forEach(mat => {
+    const p = products.find(x => x.id === mat.matId);
+    if(p) costoMats += mat.cantidad * cCostoUnitBase(p);
+  });
+
+  return { materiales: costoMats * (1 + merma), mod: modVal };
+}
+
+function cCalcularTodo() {
+  if(!cProdActual) return showToast('Selecciona primero un producto en la pestaña Productos','error');
+
+  const cif = parseFloat(document.getElementById('c-cif-total')?.value) || costosData.cifTotal || 0;
+  const res = {};
+  C_PROCESOS.forEach(p => { res[p] = cCalcularProceso(p); });
+
+  const modTotal = C_PROCESOS.reduce((s,p) => s + res[p].mod, 0);
+  C_PROCESOS.forEach(p => {
+    res[p].cif   = modTotal > 0 ? (res[p].mod / modTotal) * cif : cif / C_PROCESOS.length;
+    res[p].total = res[p].materiales + res[p].mod + res[p].cif;
+  });
+
+  const costoTotal = C_PROCESOS.reduce((s,p) => s + res[p].total, 0);
+  const matsTot    = C_PROCESOS.reduce((s,p) => s + res[p].materiales, 0);
+
+  // KPI cards
+  document.getElementById('c-res-kpis').innerHTML = `
+    <div class="sum-card accent"><div class="sum-val">$${fmtNum(Math.round(costoTotal))}</div><div class="sum-lbl">Costo unitario</div></div>
+    <div class="sum-card"><div class="sum-val">$${fmtNum(Math.round(matsTot))}</div><div class="sum-lbl">Materiales</div></div>
+    <div class="sum-card"><div class="sum-val">$${fmtNum(Math.round(modTotal))}</div><div class="sum-lbl">MOD total</div></div>
+    <div class="sum-card"><div class="sum-val">$${fmtNum(Math.round(cif))}</div><div class="sum-lbl">CIF asignado</div></div>`;
+
+  // Desglose
+  const totMat = C_PROCESOS.reduce((s,p)=>s+res[p].materiales,0);
+  document.getElementById('c-desglose-tbody').innerHTML = C_PROCESOS.map(p => `
+    <tr>
+      <td>${C_PROC_LABEL[p]}</td>
+      <td style="text-align:right;font-family:'Space Mono',monospace;">$${fmtNum(Math.round(res[p].materiales))}</td>
+      <td style="text-align:right;font-family:'Space Mono',monospace;">$${fmtNum(Math.round(res[p].mod))}</td>
+      <td style="text-align:right;font-family:'Space Mono',monospace;">$${fmtNum(Math.round(res[p].cif))}</td>
+      <td style="text-align:right;font-family:'Space Mono',monospace;font-weight:700;color:var(--accent2);">$${fmtNum(Math.round(res[p].total))}</td>
+    </tr>`).join('') + `
+    <tr style="background:var(--surface2);font-weight:700;">
+      <td>TOTAL</td>
+      <td style="text-align:right;font-family:'Space Mono',monospace;">$${fmtNum(Math.round(totMat))}</td>
+      <td style="text-align:right;font-family:'Space Mono',monospace;">$${fmtNum(Math.round(modTotal))}</td>
+      <td style="text-align:right;font-family:'Space Mono',monospace;">$${fmtNum(Math.round(cif))}</td>
+      <td style="text-align:right;font-family:'Space Mono',monospace;color:var(--accent);font-size:1rem;">$${fmtNum(Math.round(costoTotal))}</td>
+    </tr>`;
+
+  document.getElementById('c-resultados-content').style.display = 'block';
+  showToast('✓ Costos calculados', 'success');
+}
+
+
 // ════════════════════════════════════════════════════
 // PROVEEDORES — módulo completo
 // ════════════════════════════════════════════════════
@@ -4436,7 +5432,7 @@ function renderResumenMat(){
   const total    = products.length;
   const pctSalud = total ? Math.round(ok/total*100) : 0;
   const saludColor = pctSalud>=80?'var(--accent)':pctSalud>=50?'var(--warn)':'var(--danger)';
-  const valorStock = products.reduce((s,p)=>s+p.stock*p.cost,0);
+  const valorStock = products.reduce((s,p)=>s+p.stock*pValorUnitario(p),0);
 
   // ── CPD global ──
   const sal30qty = sal30.reduce((s,m)=>s+m.qty,0);
@@ -4706,7 +5702,7 @@ function renderResumenMat(){
               <div style="background:var(--bg);border-radius:7px;padding:8px 10px;"><div style="font-size:.6rem;color:var(--muted);">Días autonomía</div><div style="font-family:'Space Mono',monospace;font-size:.85rem;font-weight:700;color:${pDiasColor};">${pDias!==null?pDias+'d':'∞'}</div></div>
               <div style="background:var(--bg);border-radius:7px;padding:8px 10px;"><div style="font-size:.6rem;color:var(--muted);">Salidas mes</div><div style="font-family:'Space Mono',monospace;font-size:.85rem;font-weight:700;">${pSalMes} uds</div></div>
               <div style="background:var(--bg);border-radius:7px;padding:8px 10px;"><div style="font-size:.6rem;color:var(--muted);">Punto reorden</div><div style="font-family:'Space Mono',monospace;font-size:.85rem;font-weight:700;color:var(--warn);">${pReorden!==null?pReorden+' uds':'—'}</div></div>
-              <div style="background:var(--bg);border-radius:7px;padding:8px 10px;"><div style="font-size:.6rem;color:var(--muted);">Valor bodega</div><div style="font-family:'Space Mono',monospace;font-size:.85rem;font-weight:700;color:var(--accent2);">$${fmtNum(p.stock*p.cost)}</div></div>
+              <div style="background:var(--bg);border-radius:7px;padding:8px 10px;"><div style="font-size:.6rem;color:var(--muted);">Valor bodega</div><div style="font-family:'Space Mono',monospace;font-size:.85rem;font-weight:700;color:var(--accent2);">$${fmtNum(p.stock*pValorUnitario(p))}</div></div>
               <div style="background:var(--bg);border-radius:7px;padding:8px 10px;"><div style="font-size:.6rem;color:var(--muted);">Rotación 30d</div><div style="font-family:'Space Mono',monospace;font-size:.85rem;font-weight:700;">${pRot}x</div></div>
             </div>
           </div>
@@ -4920,6 +5916,7 @@ window._fbSubscribe = function() {
         localStorage.setItem(LS_WORKERS, JSON.stringify(workers));
       }
       if(data.proveedores) { proveedores = data.proveedores; localStorage.setItem(LS_PROVEEDORES, JSON.stringify(proveedores)); }
+        if(data.costosData) { costosData={...costosData,...data.costosData}; localStorage.setItem(LS_COSTOS, JSON.stringify(costosData)); }
       updateHeader();
       const active = document.querySelector('#seccion-materiales .page.active');
       if(active) {
