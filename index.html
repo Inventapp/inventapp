@@ -466,6 +466,7 @@ tr:hover td{background:rgba(255,255,255,.02);}
     <div id="menu-sec-mat" style="display:none;padding:8px 4px 4px;display:flex;flex-direction:column;gap:5px;">
       <div style="font-family:'Space Mono',monospace;font-size:.58rem;color:var(--muted);padding:2px 4px 4px;letter-spacing:.06em;">GESTIÓN</div>
       <button class="btn btn-secondary" style="width:100%;justify-content:flex-start;font-size:.75rem;gap:7px;" onclick="menuMatEditarInventario()">📋 Editar inventario</button>
+      <button class="btn btn-secondary" style="width:100%;justify-content:flex-start;font-size:.75rem;gap:7px;" onclick="menuMatAjustarStock()">📦 Ajustar stock</button>
       <button class="btn btn-secondary" style="width:100%;justify-content:flex-start;font-size:.75rem;gap:7px;" onclick="menuMatEditarMovimientos()">🔄 Editar movimientos</button>
     </div>
   </div>
@@ -2850,6 +2851,7 @@ function renderMovements(){
   groups.forEach(batch => {
     const rep   = batch[0];
     const isIn  = rep.type === 'Ingreso';
+      const isAdj = rep.type === 'Ajuste';
     const isSolo = batch.length === 1;
     const totalQty   = batch.reduce((s,m)=>s+m.qty,0);
     const totalCosto = batch.reduce((s,m)=>s+(isIn?m.qty*m.cost:0),0);
@@ -2861,7 +2863,7 @@ function renderMovements(){
         <td class="td-mono">${rowNum--}</td>
         <td class="td-mono">${rep.date}</td>
         <td><b>${rep.prodName}</b><br><span class="td-mono" style="font-size:.68rem;color:var(--muted);">${rep.prodId}</span></td>
-        <td><span class="pill ${isIn?'pill-in':'pill-out'}">${rep.type}</span></td>
+        <td><span class="pill ${isAdj?'pill-ajuste':isIn?'pill-in':'pill-out'}">${rep.type}</span></td>
         <td style="text-align:center;font-weight:600">${rep.qtyLabel||rep.qty+(rep.unidad&&rep.unidad!=='u'?' '+rep.unidad:'')}</td>
         <td style="font-size:.81rem;color:var(--accent2)">${rep.worker?'👷 '+rep.worker:'—'}</td>
         <td class="td-mono">${isIn?'$'+fmtNum(rep.cost):'—'}</td>
@@ -2882,7 +2884,7 @@ function renderMovements(){
             <br>
             <span style="font-size:.68rem;color:var(--muted);">${previewShort}</span>
           </td>
-          <td><span class="pill ${isIn?'pill-in':'pill-out'}">${rep.type}</span></td>
+          <td><span class="pill ${isAdj?'pill-ajuste':isIn?'pill-in':'pill-out'}">${rep.type}</span></td>
           <td style="text-align:center;font-weight:600;color:var(--accent);">${totalQty} <span style="font-size:.65rem;color:var(--muted);">uds</span></td>
           <td style="font-size:.81rem;color:var(--accent2)">${rep.worker?'👷 '+rep.worker:'—'}</td>
           <td class="td-mono">${isIn?'$'+fmtNum(totalCosto):'—'}</td>
@@ -6247,56 +6249,180 @@ function matBorrarTodosMovimientos() {
   showToast('Todos los movimientos borrados', 'error');
 }
 
+function menuMatAjustarStock() {
+  closeMenu();
+  entrarSeccion('materiales');
+  setTimeout(() => matAjustarStock(), 120);
+}
 function matAjustarStock() {
   document.getElementById('modal-ajuste-mat').style.display = 'flex';
+  const searchEl = document.getElementById('ajuste-search');
+  if(searchEl) searchEl.value = '';
   matRenderAjuste();
 }
 function cerrarAjusteMat() {
   document.getElementById('modal-ajuste-mat').style.display = 'none';
 }
 function matRenderAjuste() {
-  const c = document.getElementById('ajuste-mat-lista');
-  c.innerHTML = products.map((p,i) => `
-    <div style="display:flex;align-items:center;gap:8px;padding:9px 0;border-bottom:1px solid var(--border);">
-      <div style="flex:1;min-width:0;">
-        <div style="font-weight:600;font-size:.82rem;">${p.name}</div>
-        <div style="font-family:'Space Mono',monospace;font-size:.65rem;color:var(--muted);">Stock actual: <b style="color:var(--accent);">${p.stock}</b></div>
+  const c  = document.getElementById('ajuste-mat-lista');
+  const q  = (document.getElementById('ajuste-search')?.value || '').toLowerCase().trim();
+  const lista = q
+    ? products.filter(p => p.name.toLowerCase().includes(q) || p.id.toLowerCase().includes(q) || (p.cat||'').toLowerCase().includes(q))
+    : products;
+
+  if(!lista.length) {
+    c.innerHTML = '<div style="color:var(--muted);font-size:.8rem;padding:10px 0;">Sin productos' + (q ? ' con ese nombre' : '') + '</div>';
+    return;
+  }
+
+  c.innerHTML = lista.map(p => {
+    const idx     = products.indexOf(p);
+    const hasPres = p.formato > 1 && p.unidad && p.unidad !== 'u';
+    const baseU   = p.unidad === 'L' ? 'ml' : p.unidad === 'kg' ? 'gr' : p.unidad === 'Gl' ? 'ml' : p.unidad;
+    const presName = hasPres ? (p.nombrePres || 'unid.') : (p.unidad && p.unidad !== 'u' ? p.unidad : 'uds');
+    const stockDisp = hasPres
+      ? Number(p.stock.toFixed(3)).toLocaleString('es-CL', {maximumFractionDigits:3}) + ' ' + presName
+      : p.stock + ' ' + presName;
+
+    // Base equiv label
+    const basePerUnit = p.unidad === 'L' ? p.formato * 1000
+                      : p.unidad === 'kg' ? p.formato * 1000
+                      : p.unidad === 'Gl' ? p.formato * 3785
+                      : p.formato;
+    const equivLabel = hasPres
+      ? ' <span style="font-size:.62rem;color:var(--muted);">(' + Math.round(p.stock * basePerUnit).toLocaleString('es-CL') + ' ' + baseU + ')</span>'
+      : '';
+
+    return `<div style="background:var(--surface2);border-radius:10px;padding:11px 13px;">
+      <!-- Header: nombre + stock actual -->
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:10px;">
+        <div style="min-width:0;">
+          <div style="font-weight:600;font-size:.83rem;">${sanitizar(p.name)}</div>
+          <div style="font-family:'Space Mono',monospace;font-size:.62rem;color:var(--muted);">${p.id}${p.cat?' · '+sanitizar(p.cat):''}</div>
+        </div>
+        <div style="text-align:right;flex-shrink:0;">
+          <div style="font-size:.7rem;color:var(--muted);">Stock actual</div>
+          <div style="font-family:'Space Mono',monospace;font-size:.88rem;font-weight:700;color:var(--accent);">${stockDisp}${equivLabel}</div>
+        </div>
       </div>
-      <div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end;flex-shrink:0;">
-        <input id="adj-qty-${i}" type="number" placeholder="Nuevo stock" style="width:90px;padding:5px 8px;border-radius:7px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:.8rem;text-align:center;">
-        <input id="adj-obs-${i}" type="text" placeholder="Razón (merma, ajuste...)" style="width:130px;padding:4px 8px;border-radius:7px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:.68rem;">
+
+      <!-- Nuevo stock + unidad + razón -->
+      <div style="display:grid;grid-template-columns:1fr auto 1fr;gap:6px;align-items:end;">
+        <div>
+          <label style="font-size:.68rem;color:var(--muted);">Nuevo stock</label>
+          <input type="number" id="adj-qty-${idx}" min="0" step="any" placeholder="—"
+            style="width:100%;text-align:center;font-family:'Space Mono',monospace;font-size:.88rem;font-weight:700;"
+            oninput="adjRecalc(${idx})">
+        </div>
+        <div>
+          <label style="font-size:.68rem;color:var(--muted);">Unidad</label>
+          <select id="adj-unit-${idx}" style="font-size:.72rem;font-family:'Space Mono',monospace;color:var(--accent);"
+            onchange="adjRecalc(${idx})">
+            <option value="pres">${presName}</option>
+            ${hasPres ? `<option value="base">${baseU}</option>` : ''}
+          </select>
+        </div>
+        <div>
+          <label style="font-size:.68rem;color:var(--muted);">Razón del ajuste</label>
+          <input type="text" id="adj-obs-${idx}" placeholder="ej: merma, conteo, rotura"
+            style="width:100%;font-size:.72rem;">
+        </div>
       </div>
-    </div>`).join('');
+
+      <!-- Equivalencia y diferencia -->
+      <div id="adj-preview-${idx}" style="margin-top:6px;font-size:.68rem;font-family:'Space Mono',monospace;color:var(--accent2);min-height:14px;"></div>
+    </div>`;
+  }).join('');
 }
+
+function adjRecalc(idx) {
+  const p        = products[idx];
+  const rawVal   = parseFloat(document.getElementById('adj-qty-'+idx)?.value);
+  const unitMode = document.getElementById('adj-unit-'+idx)?.value || 'pres';
+  const previewEl= document.getElementById('adj-preview-'+idx);
+  if(!previewEl) return;
+  if(isNaN(rawVal) || rawVal < 0) { previewEl.textContent = ''; return; }
+
+  const hasPres    = p.formato > 1 && p.unidad && p.unidad !== 'u';
+  const basePerUnit= p.unidad === 'L' ? p.formato * 1000
+                   : p.unidad === 'kg' ? p.formato * 1000
+                   : p.unidad === 'Gl' ? p.formato * 3785
+                   : p.formato;
+  const baseU   = p.unidad === 'L' ? 'ml' : p.unidad === 'kg' ? 'gr' : p.unidad === 'Gl' ? 'ml' : p.unidad;
+  const presName = p.nombrePres || (p.unidad !== 'u' ? p.unidad : 'uds');
+
+  // Convert input to presentation units
+  const nuevoEnUnits = (hasPres && unitMode === 'base') ? rawVal / basePerUnit : rawVal;
+  const diff         = nuevoEnUnits - p.stock;
+  if(diff === 0) { previewEl.textContent = '= sin cambio'; previewEl.style.color = 'var(--muted)'; return; }
+
+  const signo  = diff > 0 ? '+' : '';
+  const diffDisp = signo + diff.toLocaleString('es-CL', {maximumFractionDigits:3});
+  let txt = 'Diferencia: ' + diffDisp + ' ' + presName;
+  if(hasPres) txt += ' (' + signo + Math.round(diff * basePerUnit).toLocaleString('es-CL') + ' ' + baseU + ')';
+
+  previewEl.textContent = txt;
+  previewEl.style.color = diff > 0 ? 'var(--accent)' : 'var(--danger)';
+}
+
 function matConfirmarAjuste() {
-  const hoy = new Date().toISOString().split('T')[0];
-  let cambios = 0;
-  products.forEach((p, i) => {
-    const input = document.getElementById('adj-qty-'+i);
-    const obsInput = document.getElementById('adj-obs-'+i);
+  const hoy    = new Date().toISOString().split('T')[0];
+  const user   = window._currentUser?.nombre || window._currentUser?.email || '';
+  let cambios  = 0;
+  const batchId = 'BATCH-' + Date.now();
+
+  products.forEach((p, idx) => {
+    const input   = document.getElementById('adj-qty-'+idx);
     if(!input || input.value === '') return;
-    const nuevoStock = parseInt(input.value);
-    if(isNaN(nuevoStock) || nuevoStock < 0) return;
-    const diff = nuevoStock - p.stock;
-    if(diff === 0) return;
-    const obs = obsInput?.value.trim() || 'Ajuste manual';
-    // Registrar movimiento tipo Ajuste
-    const movId = 'MOV-'+String(movements.length+1).padStart(4,'0');
+    const rawVal  = parseFloat(input.value);
+    if(isNaN(rawVal) || rawVal < 0) return;
+
+    const unitMode   = document.getElementById('adj-unit-'+idx)?.value || 'pres';
+    const obsInput   = document.getElementById('adj-obs-'+idx);
+    const hasPres    = p.formato > 1 && p.unidad && p.unidad !== 'u';
+    const basePerUnit= p.unidad === 'L' ? p.formato * 1000
+                     : p.unidad === 'kg' ? p.formato * 1000
+                     : p.unidad === 'Gl' ? p.formato * 3785
+                     : p.formato;
+    const baseU   = p.unidad === 'L' ? 'ml' : p.unidad === 'kg' ? 'gr' : p.unidad === 'Gl' ? 'ml' : p.unidad;
+    const presName = p.nombrePres || (p.unidad && p.unidad !== 'u' ? p.unidad : 'uds');
+
+    // Nuevo stock en unidades de presentación
+    const nuevoEnUnits = (hasPres && unitMode === 'base') ? rawVal / basePerUnit : rawVal;
+    const diff = nuevoEnUnits - p.stock;
+    if(Math.abs(diff) < 0.0001) return;   // no change
+
+    const obs = (obsInput?.value.trim() || 'Ajuste manual');
+
+    // Build qtyLabel: "2 latas (56 gr)" or "+1,5 latas"
+    const signo = diff > 0 ? '+' : '';
+    const diffDisp = diff.toLocaleString('es-CL', {maximumFractionDigits:3});
+    let qtyLabel = signo + diffDisp + ' ' + presName;
+    if(hasPres) qtyLabel += ' (' + signo + Math.round(diff * basePerUnit).toLocaleString('es-CL') + ' ' + baseU + ')';
+
+    // Register movement
+    const movId = 'MOV-' + String(movements.length + 1).padStart(4, '0');
     movements.unshift({
-      id: movId, date: hoy, prodId: p.id, prodName: p.name,
-      type: 'Ajuste', qty: diff, cost: p.cost,
-      worker: window._currentUser?.nombre || '',
-      obs: obs + (diff > 0 ? ' (+'+diff+')' : ' ('+diff+')')
+      id: movId, batchId, date: hoy,
+      prodId: p.id, prodName: p.name,
+      type: 'Ajuste',
+      qty: diff,
+      qtyBase: hasPres ? diff * basePerUnit : null,
+      qtyLabel,
+      unidad: presName,
+      cost: 0,
+      worker: user,
+      obs,
     });
-    p.stock = nuevoStock;
+
+    p.stock = Math.max(0, nuevoEnUnits);
     cambios++;
   });
-  if(!cambios) return showToast('No se ingresaron valores', 'error');
+
+  if(!cambios) return showToast('Sin cambios que guardar', 'error');
   lsGuardar(); renderInventory(); renderMovements();
-  const panel = document.getElementById('panel-edit-mov-mat');
-  if(panel) renderPanelEditarMovMat(panel);
   cerrarAjusteMat();
-  showToast('✓ '+cambios+' producto'+( cambios!==1?'s':'')+' ajustado'+( cambios!==1?'s':''), 'success');
+  showToast('✓ ' + cambios + ' producto' + (cambios !== 1 ? 's' : '') + ' ajustado' + (cambios !== 1 ? 's' : ''), 'success');
 }
 
 // ── URNAS: Editar Inventario ─────────────────────────
@@ -6621,15 +6747,22 @@ function menuUrnEditarOPs() {
 
 <!-- MODAL AJUSTE STOCK MATERIALES -->
 <div class="modal-overlay" id="modal-ajuste-mat" onclick="if(event.target===this)cerrarAjusteMat()" style="display:none;">
-  <div class="modal-box" style="max-width:500px;width:96%;max-height:90vh;display:flex;flex-direction:column;">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;flex-shrink:0;">
-      <div class="modal-title" style="margin:0;padding:0;border:none;">📦 Ajuste manual de stock</div>
+  <div class="modal-box" style="max-width:520px;width:96%;max-height:92vh;display:flex;flex-direction:column;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;flex-shrink:0;">
+      <div class="modal-title" style="margin:0;padding:0;border:none;">📦 Ajuste de stock</div>
       <button onclick="cerrarAjusteMat()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:1.2rem;">✕</button>
     </div>
-    <p style="font-size:.75rem;color:var(--muted);margin-bottom:14px;flex-shrink:0;">Ingresa el <b>nuevo stock total</b> del producto. El sistema calculará la diferencia y la registrará como movimiento tipo <b style="color:var(--accent2);">Ajuste</b>. Deja en blanco si no cambia.</p>
-    <div id="ajuste-mat-lista" style="overflow-y:auto;flex:1;"></div>
-    <div class="action-row" style="flex-shrink:0;margin-top:14px;">
-      <button class="btn btn-primary" onclick="matConfirmarAjuste()">✓ Confirmar ajuste</button>
+    <p style="font-size:.73rem;color:var(--muted);margin-bottom:10px;flex-shrink:0;">
+      Ingresa el <b>nuevo stock total</b>. Solo los productos con valor modificado se registrarán como
+      <b style="color:var(--accent2);">movimiento de ajuste</b> en el historial.
+    </p>
+    <!-- Buscador -->
+    <div style="flex-shrink:0;margin-bottom:8px;">
+      <input type="text" id="ajuste-search" placeholder="🔍 Buscar producto…" style="width:100%;" oninput="matRenderAjuste()">
+    </div>
+    <div id="ajuste-mat-lista" style="overflow-y:auto;flex:1;display:flex;flex-direction:column;gap:8px;"></div>
+    <div class="action-row" style="flex-shrink:0;margin-top:12px;">
+      <button class="btn btn-primary" style="flex:1;justify-content:center;" onclick="matConfirmarAjuste()">✓ Confirmar ajuste</button>
       <button class="btn btn-secondary" onclick="cerrarAjusteMat()">Cancelar</button>
     </div>
   </div>
