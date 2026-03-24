@@ -723,8 +723,15 @@ tr:hover td{background:rgba(255,255,255,.02);}
     </div>
     <div class="form-row">
       <div>
-        <label>Stock inicial <span id="np-stock-lbl" style="font-family:'Space Mono',monospace;font-size:.65rem;color:var(--accent);margin-left:4px;"></span></label>
-        <input type="number" id="np-stock" value="0" min="0">
+        <label>Stock inicial</label>
+        <div style="display:flex;gap:6px;margin-top:4px;">
+          <input type="number" id="np-stock" value="0" min="0" style="flex:1;" oninput="npUpdateStockEquiv()">
+          <select id="np-stock-unit" onchange="npUpdateStockEquiv()" style="width:auto;min-width:80px;font-family:'Space Mono',monospace;font-size:.78rem;color:var(--accent);">
+            <option value="pres">unid.</option>
+            <option value="base">base</option>
+          </select>
+        </div>
+        <div id="np-stock-equiv" style="font-size:.65rem;color:var(--muted);margin-top:3px;font-family:'Space Mono',monospace;min-height:14px;"></div>
       </div>
       <div>
         <label>Stock mínimo <span style="font-family:'Space Mono',monospace;font-size:.65rem;color:var(--muted);" id="np-min-lbl"></span></label>
@@ -2412,15 +2419,16 @@ function renderInventory(filtro) {
       <td><b>${p.name}</b></td>
       <td><span style="font-size:.75rem;color:var(--muted);">${cat||'—'}</span></td>
       <td><div class="stock-bar-wrap">
-        <span style="color:${bc};font-weight:700;">${p.stock}</span>
         ${(()=>{
+          const hasPres = p.formato>1 && p.unidad && p.unidad!=='u';
           const pn = p.nombrePres||(p.unidad&&p.unidad!=='u'?p.unidad:'');
-          const baseU = p.unidad==='L'?'ml':p.unidad==='kg'?'gr':p.unidad;
-          const eqBase = p.formato>1&&p.unidad!=='u' ? p.stock*p.formato*(p.unidad==='L'?1000:p.unidad==='kg'?1000:1) : 0;
-          if(!pn && !eqBase) return '';
-          const eq = eqBase>0 ? ` <span style="font-size:.62rem;color:var(--muted);">(${fmtNum(eqBase)} ${baseU})</span>` : '';
-          const lbl = pn ? ` <span style="font-size:.65rem;color:var(--muted);">${pn}</span>` : '';
-          return lbl+eq;
+          if(!hasPres) return `<span style="color:${bc};font-weight:700;">${p.stock}</span>`;
+          // Show as decimal presentation units: 700ml stock, 700ml/unit = 1 lata; 350ml = 0.5 lata
+          const basePerUnit = p.unidad==='L'?p.formato*1000:p.unidad==='kg'?p.formato*1000:p.unidad==='Gl'?p.formato*3785:p.formato;
+          // stock is stored in presentation units already, just format nicely
+          const stockDisp = Number(p.stock.toFixed(3)).toLocaleString('es-CL',{maximumFractionDigits:3});
+          const unitLabel = pn ? ` <span style="font-size:.65rem;color:var(--muted);font-family:'Space Mono',monospace;">${pn}</span>` : '';
+          return `<span style="color:${bc};font-weight:700;">${stockDisp}</span>${unitLabel}`;
         })()}
         <div class="stock-bar"><div class="stock-bar-fill" style="width:${pct}%;background:${bc}"></div></div>
       </div></td>
@@ -2528,7 +2536,22 @@ function addProduct(){
   const id = idField || generarIdMaterial(name, products);
   if(products.find(p=>p.id===id))return showToast('ID "'+id+'" ya existe — edita el campo ID','error');
   const cat    = document.getElementById('np-cat').value.trim();
-  const stock  = parseInt(document.getElementById('np-stock').value)||0;
+  const stockRaw    = parseFloat(document.getElementById('np-stock').value)||0;
+  const stockUnit   = document.getElementById('np-stock-unit')?.value || 'pres';
+  const formatoVal  = parseFloat(document.getElementById('np-formato').value)||1;
+  const unidadVal   = document.getElementById('np-unidad').value||'u';
+  const hasPres     = formatoVal > 1 && unidadVal !== 'u';
+  let stock;
+  if(hasPres && stockUnit === 'base') {
+    // Convert base units → presentation units
+    let basePerUnit = formatoVal;
+    if(unidadVal === 'L')  basePerUnit = formatoVal * 1000;
+    if(unidadVal === 'kg') basePerUnit = formatoVal * 1000;
+    if(unidadVal === 'Gl') basePerUnit = formatoVal * 3785;
+    stock = basePerUnit > 0 ? stockRaw / basePerUnit : stockRaw;
+  } else {
+    stock = stockRaw;
+  }
   const min    = parseInt(document.getElementById('np-min').value)||0;
   const cost   = parseFloat(document.getElementById('np-cost').value)||0;
   const formato     = parseFloat(document.getElementById('np-formato').value)||1;
@@ -2544,6 +2567,8 @@ function addProduct(){
   document.getElementById('np-formato').value='1';
   document.getElementById('np-unidad').value='u';
   if(document.getElementById('np-nombre-pres')) document.getElementById('np-nombre-pres').value='';
+  if(document.getElementById('np-stock-unit')) document.getElementById('np-stock-unit').value='pres';
+  if(document.getElementById('np-stock-equiv')) document.getElementById('np-stock-equiv').textContent='';
   if(document.getElementById('np-nombre-pres-wrap')) document.getElementById('np-nombre-pres-wrap').style.display='none';
   if(document.getElementById('np-conversion-wrap')) document.getElementById('np-conversion-wrap').style.display='none';
   if(document.getElementById('np-costo-base')) document.getElementById('np-costo-base').textContent='';
@@ -2600,12 +2625,49 @@ function npCalcCostoBase() {
       : '—';
   }
 
-  // Update stock unit labels
+  // Update stock unit selector and labels
   const presLabel = hasPres ? (nomPres || 'unid.') : (unidad !== 'u' ? unidad : 'unidades');
-  const lbl  = document.getElementById('np-stock-lbl');
   const lbl2 = document.getElementById('np-min-lbl');
-  if(lbl)  lbl.textContent  = '(' + presLabel + ')';
   if(lbl2) lbl2.textContent = '(' + presLabel + ')';
+
+  // Populate stock unit selector
+  const stockUnitSel = document.getElementById('np-stock-unit');
+  if(stockUnitSel) {
+    if(hasPres) {
+      stockUnitSel.style.display = '';
+      stockUnitSel.options[0].text = nomPres || 'unid.';
+      stockUnitSel.options[1].text = lblBase;
+    } else {
+      stockUnitSel.style.display = 'none';
+    }
+  }
+  npUpdateStockEquiv();
+}
+
+function npUpdateStockEquiv() {
+  const formato  = parseFloat(document.getElementById('np-formato').value)||1;
+  const unidad   = document.getElementById('np-unidad').value||'u';
+  const nomPres  = (document.getElementById('np-nombre-pres')?.value||'').trim().toLowerCase();
+  const hasPres  = formato > 1 && unidad !== 'u';
+  const stockVal = parseFloat(document.getElementById('np-stock')?.value)||0;
+  const stockUnit= document.getElementById('np-stock-unit')?.value || 'pres';
+  const equivEl  = document.getElementById('np-stock-equiv');
+  if(!equivEl || !hasPres || stockVal <= 0) { if(equivEl) equivEl.textContent=''; return; }
+
+  let base = formato;
+  let lblBase = unidad;
+  if(unidad === 'L')  { base = formato * 1000; lblBase = 'ml'; }
+  if(unidad === 'kg') { base = formato * 1000; lblBase = 'gr'; }
+  if(unidad === 'Gl') { base = formato * 3785; lblBase = 'ml'; }
+  const pn = nomPres || 'unid.';
+
+  if(stockUnit === 'base') {
+    const inUnits = stockVal / base;
+    equivEl.textContent = '= ' + inUnits.toLocaleString('es-CL',{maximumFractionDigits:3}) + ' ' + pn + ' (' + stockVal + ' ' + lblBase + ')';
+  } else {
+    const inBase = stockVal * base;
+    equivEl.textContent = '= ' + inBase.toLocaleString('es-CL',{maximumFractionDigits:0}) + ' ' + lblBase;
+  }
 }
 // ── EDITOR DE PRODUCTOS (mat + urnas) ──
 function abrirEditarProductos(){
