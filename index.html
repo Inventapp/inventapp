@@ -735,8 +735,15 @@ tr:hover td{background:rgba(255,255,255,.02);}
         <div id="np-stock-equiv" style="font-size:.65rem;color:var(--muted);margin-top:3px;font-family:'Space Mono',monospace;min-height:14px;"></div>
       </div>
       <div>
-        <label>Stock mínimo <span style="font-family:'Space Mono',monospace;font-size:.65rem;color:var(--muted);" id="np-min-lbl"></span></label>
-        <input type="number" id="np-min" value="5" min="0">
+        <label>Stock mínimo</label>
+        <div style="display:flex;gap:6px;margin-top:4px;">
+          <input type="number" id="np-min" value="1" min="0" style="flex:1;" oninput="npUpdateMinEquiv()">
+          <select id="np-min-unit" onchange="npUpdateMinEquiv()" style="width:auto;min-width:80px;font-family:'Space Mono',monospace;font-size:.78rem;color:var(--muted);">
+            <option value="pres">unid.</option>
+            <option value="base">base</option>
+          </select>
+        </div>
+        <div id="np-min-equiv" style="font-size:.65rem;color:var(--muted);margin-top:3px;font-family:'Space Mono',monospace;min-height:14px;"></div>
       </div>
     </div>
     <datalist id="cat-datalist"></datalist>
@@ -978,7 +985,7 @@ tr:hover td{background:rgba(255,255,255,.02);}
     </div>
     <div style="margin-top:11px;">
       <label>Categoría</label>
-      <select id="u-np-categoria" style="width:100%">
+      <select id="u-np-categoria" style="width:100%" onchange="uNpUpdateTerminaciones()">
         <option value="estandar">Urnas estándar</option>
         <option value="especial">Urnas especiales</option>
         <option value="restos">Restos y Párvulo</option>
@@ -986,12 +993,13 @@ tr:hover td{background:rgba(255,255,255,.02);}
     </div>
     <div style="margin-top:11px;">
       <label>Terminación</label>
-      <select id="u-np-terminacion" style="width:100%">
-        <option value="Bruto">Bruto</option>
+      <select id="u-np-terminacion" style="width:100%" onchange="">
         <option value="Barniz-Oscura">Barniz-Oscura</option>
+        <option value="Paño">Paño</option>
         <option value="Barniz-Clara">Barniz-Clara</option>
         <option value="Cera-Oscura">Cera-Oscura</option>
         <option value="Cera-Clara">Cera-Clara</option>
+        <option value="Bruto">Bruto</option>
       </select>
     </div>
     <div class="form-row" style="margin-top:11px;">
@@ -2553,7 +2561,18 @@ function addProduct(){
   } else {
     stock = stockRaw;
   }
-  const min    = parseInt(document.getElementById('np-min').value)||0;
+  const minRaw    = parseFloat(document.getElementById('np-min').value)||0;
+  const minUnit   = document.getElementById('np-min-unit')?.value || 'pres';
+  let min;
+  if(hasPres && minUnit === 'base') {
+    let basePerUnitMin = formatoVal;
+    if(unidadVal === 'L')  basePerUnitMin = formatoVal * 1000;
+    if(unidadVal === 'kg') basePerUnitMin = formatoVal * 1000;
+    if(unidadVal === 'Gl') basePerUnitMin = formatoVal * 3785;
+    min = basePerUnitMin > 0 ? minRaw / basePerUnitMin : minRaw;
+  } else {
+    min = minRaw;
+  }
   const cost   = parseFloat(document.getElementById('np-cost').value)||0;
   const formato     = parseFloat(document.getElementById('np-formato').value)||1;
   const unidad      = document.getElementById('np-unidad').value||'u';
@@ -2570,6 +2589,8 @@ function addProduct(){
   if(document.getElementById('np-nombre-pres')) document.getElementById('np-nombre-pres').value='';
   if(document.getElementById('np-stock-unit')) document.getElementById('np-stock-unit').value='pres';
   if(document.getElementById('np-stock-equiv')) document.getElementById('np-stock-equiv').textContent='';
+  if(document.getElementById('np-min-unit')) document.getElementById('np-min-unit').value='pres';
+  if(document.getElementById('np-min-equiv')) document.getElementById('np-min-equiv').textContent='';
   if(document.getElementById('np-nombre-pres-wrap')) document.getElementById('np-nombre-pres-wrap').style.display='none';
   if(document.getElementById('np-conversion-wrap')) document.getElementById('np-conversion-wrap').style.display='none';
   if(document.getElementById('np-costo-base')) document.getElementById('np-costo-base').textContent='';
@@ -2642,31 +2663,60 @@ function npCalcCostoBase() {
       stockUnitSel.style.display = 'none';
     }
   }
+  // Populate min unit selector (same options)
+  const minUnitSel = document.getElementById('np-min-unit');
+  if(minUnitSel) {
+    if(hasPres) {
+      minUnitSel.style.display = '';
+      minUnitSel.options[0].text = nomPres || 'unid.';
+      minUnitSel.options[1].text = lblBase;
+    } else {
+      minUnitSel.style.display = 'none';
+    }
+  }
   npUpdateStockEquiv();
+  npUpdateMinEquiv();
 }
 
-function npUpdateStockEquiv() {
+// Shared helper: get base info from form
+function _npGetPresInfo() {
   const formato  = parseFloat(document.getElementById('np-formato').value)||1;
   const unidad   = document.getElementById('np-unidad').value||'u';
   const nomPres  = (document.getElementById('np-nombre-pres')?.value||'').trim().toLowerCase();
   const hasPres  = formato > 1 && unidad !== 'u';
-  const stockVal = parseFloat(document.getElementById('np-stock')?.value)||0;
-  const stockUnit= document.getElementById('np-stock-unit')?.value || 'pres';
-  const equivEl  = document.getElementById('np-stock-equiv');
-  if(!equivEl || !hasPres || stockVal <= 0) { if(equivEl) equivEl.textContent=''; return; }
-
-  let base = formato;
-  let lblBase = unidad;
+  let base = formato, lblBase = unidad;
   if(unidad === 'L')  { base = formato * 1000; lblBase = 'ml'; }
   if(unidad === 'kg') { base = formato * 1000; lblBase = 'gr'; }
   if(unidad === 'Gl') { base = formato * 3785; lblBase = 'ml'; }
-  const pn = nomPres || 'unid.';
+  return { hasPres, base, lblBase, pn: nomPres || 'unid.' };
+}
 
+function npUpdateStockEquiv() {
+  const { hasPres, base, lblBase, pn } = _npGetPresInfo();
+  const stockVal  = parseFloat(document.getElementById('np-stock')?.value)||0;
+  const stockUnit = document.getElementById('np-stock-unit')?.value || 'pres';
+  const equivEl   = document.getElementById('np-stock-equiv');
+  if(!equivEl || !hasPres || stockVal <= 0) { if(equivEl) equivEl.textContent=''; return; }
   if(stockUnit === 'base') {
     const inUnits = stockVal / base;
     equivEl.textContent = '= ' + inUnits.toLocaleString('es-CL',{maximumFractionDigits:3}) + ' ' + pn + ' (' + stockVal + ' ' + lblBase + ')';
   } else {
     const inBase = stockVal * base;
+    equivEl.textContent = '= ' + inBase.toLocaleString('es-CL',{maximumFractionDigits:0}) + ' ' + lblBase;
+  }
+}
+
+function npUpdateMinEquiv() {
+  const { hasPres, base, lblBase, pn } = _npGetPresInfo();
+  const minVal  = parseFloat(document.getElementById('np-min')?.value)||0;
+  const minUnit = document.getElementById('np-min-unit')?.value || 'pres';
+  const equivEl = document.getElementById('np-min-equiv');
+  if(!equivEl || !hasPres || minVal <= 0) { if(equivEl) equivEl.textContent=''; return; }
+  if(minUnit === 'base') {
+    const inUnits = minVal / base;
+    equivEl.textContent = '= ' + inUnits.toLocaleString('es-CL',{maximumFractionDigits:3}) + ' ' + pn + ' (' + minVal + ' ' + lblBase + ')';
+  } else {
+    const inBase = minVal * base;
     equivEl.textContent = '= ' + inBase.toLocaleString('es-CL',{maximumFractionDigits:0}) + ' ' + lblBase;
   }
 }
@@ -2737,7 +2787,7 @@ function _renderEditorProductosUrnas(){
       '<div id="ep-panel-urn" class="card" style="padding:0;overflow:hidden;margin-top:10px;border-color:var(--accent);"></div>');
     panel=document.getElementById('ep-panel-urn');
   }
-  const TERMS=['Bruto','Barniz-Oscura','Barniz-Clara','Cera-Oscura','Cera-Clara'];
+  const TERMS=['Barniz-Oscura','Paño','Barniz-Clara','Cera-Oscura','Cera-Clara','Bruto'];
   panel.innerHTML=`
     <div style="padding:12px 17px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">
       <div class="card-title" style="margin:0;">✏️ Editar productos — Urnas</div>
@@ -3074,11 +3124,10 @@ function updateHeader(){
 }
 
 // ── Valor unitario de un material (precio por unidad de stock) ──
-// Si el producto tiene formato+unidad, el stock está expresado en esa unidad
-// y el costo es por envase/presentación → costo real = stock × (cost / formato)
-// Para productos sin formato (legacy): costo = stock × cost (sin cambio)
+// Stock se guarda en unidades de presentación (tambores, bolsas, etc.)
+// → valor = stock × costo por presentación (cost)
+// Para todos los productos, costo ya es el precio de la presentación completa.
 function pValorUnitario(p) {
-  if(p.formato && p.formato > 1) return (p.cost || 0) / p.formato;
   return p.cost || 0;
 }
 function fmtFecha(iso) {
@@ -3600,7 +3649,13 @@ function uRenderInventory() {
           <td style="text-align:right;"><span id="${grpId}-arrow" style="color:var(--accent);font-size:.75rem;">▼</span></td>
         </tr>`);
 
-      const innerRows = skus.map(p => {
+      // Sort: non-Bruto first, Bruto last
+      const skusSorted = [...skus].sort((a,b) => {
+        const aB = (a.terminacion||'').toLowerCase() === 'bruto' ? 1 : 0;
+        const bB = (b.terminacion||'').toLowerCase() === 'bruto' ? 1 : 0;
+        return aB - bB;
+      });
+      const innerRows = skusSorted.map(p => {
         const s   = uStockDe(p.id);
         const bc2 = s===0?'var(--danger)':s<=(p.min||0)?'var(--warn)':'var(--accent)';
         const pct2 = (p.min||0)>0?Math.min(100,(s/(p.min||1))*100):(s>0?100:0);
@@ -3639,7 +3694,7 @@ function uToggleSeccion(secId) {
   body.style.display = open ? 'none' : 'block';
   if(arrow) arrow.textContent = open ? '▼' : '▲';
 }
-function uTermColor(t) { return t==='Bruto'?'#888':t&&t.startsWith('Barniz')?'#8B5CF6':'#D97706'; }
+function uTermColor(t) { return t==='Bruto'?'#888':t&&t.startsWith('Barniz')?'#8B5CF6':t==='Paño'?'#0EA5E9':'#D97706'; }
 function uToggleTerminaciones(grpId) {
   const row   = document.getElementById(grpId+'-subrow');
   const arrow = document.getElementById(grpId+'-arrow');
@@ -3647,7 +3702,7 @@ function uToggleTerminaciones(grpId) {
   if(row) row.style.display = open ? 'none' : 'table-row';
   if(arrow) arrow.textContent = open ? '▲' : '▼';
 }
-function uTermBg(t)    { return t==='Bruto'?'rgba(136,136,136,.12)':t&&t.startsWith('Barniz')?'rgba(139,92,246,.12)':'rgba(217,119,6,.12)'; }
+function uTermBg(t)    { return t==='Bruto'?'rgba(136,136,136,.12)':t&&t.startsWith('Barniz')?'rgba(139,92,246,.12)':t==='Paño'?'rgba(14,165,233,.12)':'rgba(217,119,6,.12)'; }
 
 // ── UNIDADES (serialized list) ─────────────────────────
 function uRenderUnidades() {
@@ -3691,6 +3746,22 @@ function uShowAddProduct() {
   const f = document.getElementById('u-add-product-form');
   f.style.display = 'block'; f.scrollIntoView({behavior:'smooth'});
 }
+// Update terminacion options based on selected category
+function uNpUpdateTerminaciones() {
+  const cat = document.getElementById('u-np-categoria')?.value || 'estandar';
+  const sel = document.getElementById('u-np-terminacion');
+  if(!sel) return;
+  const TERMS_STD    = ['Barniz-Oscura','Paño','Barniz-Clara','Cera-Oscura','Cera-Clara','Bruto'];
+  const TERMS_RESTOS = ['Barniz-Oscura','Paño','Bruto'];
+  const terms = cat === 'restos' ? TERMS_RESTOS : TERMS_STD;
+  const cur   = sel.value;
+  sel.innerHTML = terms.map(t =>
+    `<option value="${t}" ${t === cur ? 'selected' : ''}>${t}</option>`
+  ).join('');
+  // If current value not in new list, default to first
+  if(!terms.includes(sel.value)) sel.value = terms[0];
+}
+
 function uAddProduct() {
   const id  = document.getElementById('u-np-id').value.trim().toUpperCase();
   const name = document.getElementById('u-np-name').value.trim();
@@ -3888,7 +3959,9 @@ function uRenderResumen() {
       </div>` : '';
 
     // Terminadas rows (non-bruto)
-    const termSkus = skus.filter(p=>(p.terminacion||'').toLowerCase()!=='bruto');
+    const termSkus = skus
+      .filter(p=>(p.terminacion||'').toLowerCase()!=='bruto')
+      .sort((a,b) => (a.terminacion||'').localeCompare(b.terminacion||'','es'));
     const termRows = termSkus.map(p => {
       const s = uStockDe(p.id);
       const bc = s===0?'var(--danger)':s<=(p.min||0)?'var(--warn)':'var(--accent)';
@@ -6443,7 +6516,7 @@ function _renderEditorInventarioUrnas() {
       '<div id="ep-panel-urn" class="card" style="padding:0;overflow:hidden;margin-top:10px;border-color:var(--accent);"></div>');
     panel = document.getElementById('ep-panel-urn');
   }
-  const TERMS = ['Bruto','Barniz-Oscura','Barniz-Clara','Cera-Oscura','Cera-Clara'];
+  const TERMS = ['Barniz-Oscura','Paño','Barniz-Clara','Cera-Oscura','Cera-Clara','Bruto'];
   panel.innerHTML = `
     <div style="padding:12px 17px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">
       <div class="card-title" style="margin:0;">📋 Editar inventario — Urnas</div>
@@ -6609,11 +6682,12 @@ function menuUrnEditarOPs() {
       <div>
         <label style="font-size:.72rem;color:var(--muted);">Terminación</label>
         <select id="eu-edit-terminacion" style="width:100%;margin-top:4px;">
-          <option value="Bruto">Bruto</option>
           <option value="Barniz-Oscura">Barniz-Oscura</option>
+          <option value="Paño">Paño</option>
           <option value="Barniz-Clara">Barniz-Clara</option>
           <option value="Cera-Oscura">Cera-Oscura</option>
           <option value="Cera-Clara">Cera-Clara</option>
+          <option value="Bruto">Bruto</option>
         </select>
       </div>
     </div>
