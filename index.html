@@ -993,9 +993,8 @@ tr:hover td{background:rgba(255,255,255,.02);}
     </div>
     <div style="margin-top:11px;">
       <label>Terminación</label>
-      <select id="u-np-terminacion" style="width:100%" onchange="">
+      <select id="u-np-terminacion" style="width:100%">
         <option value="Barniz-Oscura">Barniz-Oscura</option>
-        <option value="Paño">Paño</option>
         <option value="Barniz-Clara">Barniz-Clara</option>
         <option value="Cera-Oscura">Cera-Oscura</option>
         <option value="Cera-Clara">Cera-Clara</option>
@@ -2787,7 +2786,7 @@ function _renderEditorProductosUrnas(){
       '<div id="ep-panel-urn" class="card" style="padding:0;overflow:hidden;margin-top:10px;border-color:var(--accent);"></div>');
     panel=document.getElementById('ep-panel-urn');
   }
-  const TERMS=['Barniz-Oscura','Paño','Barniz-Clara','Cera-Oscura','Cera-Clara','Bruto'];
+  const TERMS=['Barniz-Oscura','Barniz-Clara','Cera-Oscura','Cera-Clara','Bruto'];
   panel.innerHTML=`
     <div style="padding:12px 17px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">
       <div class="card-title" style="margin:0;">✏️ Editar productos — Urnas</div>
@@ -3751,7 +3750,7 @@ function uNpUpdateTerminaciones() {
   const cat = document.getElementById('u-np-categoria')?.value || 'estandar';
   const sel = document.getElementById('u-np-terminacion');
   if(!sel) return;
-  const TERMS_STD    = ['Barniz-Oscura','Paño','Barniz-Clara','Cera-Oscura','Cera-Clara','Bruto'];
+  const TERMS_STD    = ['Barniz-Oscura','Barniz-Clara','Cera-Oscura','Cera-Clara','Bruto'];
   const TERMS_RESTOS = ['Barniz-Oscura','Paño','Bruto'];
   const terms = cat === 'restos' ? TERMS_RESTOS : TERMS_STD;
   const cur   = sel.value;
@@ -5169,7 +5168,16 @@ function euAbrirEditar(serial) {
   _euSerial = serial;
   document.getElementById('eu-edit-id').textContent = serial;
   document.getElementById('eu-edit-estado').value = u.estado || 'En Stock';
-  document.getElementById('eu-edit-terminacion').value = u.terminacion || 'Bruto';
+  // Populate terminacion options based on product category
+  const sku  = uProducts.find(p => p.id === u.skuId);
+  const cat  = sku?.categoria || 'estandar';
+  const TERMS_EU = cat === 'restos'
+    ? ['Barniz-Oscura','Paño','Bruto']
+    : ['Barniz-Oscura','Barniz-Clara','Cera-Oscura','Cera-Clara','Bruto'];
+  const termSel = document.getElementById('eu-edit-terminacion');
+  termSel.innerHTML = TERMS_EU.map(t =>
+    `<option value="${t}" ${t===(u.terminacion||'Bruto')?'selected':''}>${t}</option>`
+  ).join('');
   document.getElementById('eu-edit-contrato').value = (() => {
     const mov = uMovements.find(m => m.serial === serial && m.type === 'Salida');
     return mov ? (mov.contrato||'') : '';
@@ -6516,7 +6524,7 @@ function _renderEditorInventarioUrnas() {
       '<div id="ep-panel-urn" class="card" style="padding:0;overflow:hidden;margin-top:10px;border-color:var(--accent);"></div>');
     panel = document.getElementById('ep-panel-urn');
   }
-  const TERMS = ['Barniz-Oscura','Paño','Barniz-Clara','Cera-Oscura','Cera-Clara','Bruto'];
+  // TERMS is category-aware — computed per product inside the map
   panel.innerHTML = `
     <div style="padding:12px 17px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">
       <div class="card-title" style="margin:0;">📋 Editar inventario — Urnas</div>
@@ -6525,6 +6533,9 @@ function _renderEditorInventarioUrnas() {
     <div style="padding:8px 14px 4px;font-size:.7rem;color:var(--muted);">Edita campos y pulsa Guardar. Eliminar SKU no borra unidades serializadas.</div>
     ${uProducts.map((p,i) => {
       const term = p.terminacion || 'Bruto';
+      const TERMS_P = (p.categoria||'estandar')==='restos'
+        ? ['Barniz-Oscura','Paño','Bruto']
+        : ['Barniz-Oscura','Barniz-Clara','Cera-Oscura','Cera-Clara','Bruto'];
       return `<div style="padding:10px 14px;border-bottom:1px solid var(--border);">
         <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;justify-content:space-between;">
           <div style="display:flex;align-items:center;gap:6px;">
@@ -6538,7 +6549,7 @@ function _renderEditorInventarioUrnas() {
             <input id="epu-name-${i}" type="text" value="${p.name.replace(/"/g,'&quot;')}" style="width:100%;padding:6px 9px;border-radius:7px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:.83rem;"></div>
           <div><label style="font-size:.65rem;color:var(--muted);">Terminación</label>
             <select id="epu-term-${i}" style="width:100%;padding:6px 9px;border-radius:7px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:.83rem;">
-              ${TERMS.map(t=>`<option value="${t}" ${term===t?'selected':''}>${t}</option>`).join('')}
+              ${TERMS_P.map(t=>`<option value="${t}" ${term===t?'selected':''}>${t}</option>`).join('')}
             </select></div>
           <div><label style="font-size:.65rem;color:var(--muted);">Stock mínimo</label>
             <input id="epu-min-${i}" type="number" value="${p.min||0}" min="0" style="width:100%;padding:6px 9px;border-radius:7px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:.83rem;"></div>
@@ -6683,7 +6694,6 @@ function menuUrnEditarOPs() {
         <label style="font-size:.72rem;color:var(--muted);">Terminación</label>
         <select id="eu-edit-terminacion" style="width:100%;margin-top:4px;">
           <option value="Barniz-Oscura">Barniz-Oscura</option>
-          <option value="Paño">Paño</option>
           <option value="Barniz-Clara">Barniz-Clara</option>
           <option value="Cera-Oscura">Cera-Oscura</option>
           <option value="Cera-Clara">Cera-Clara</option>
