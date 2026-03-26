@@ -446,6 +446,7 @@ tr:hover td{background:rgba(255,255,255,.02);}
     <a id="mnav-urnas" onclick="entrarSeccionMenu('urnas')" style="border-radius:7px;margin-bottom:2px;">🪦 Urnas</a>
     <a id="mnav-trabajadores" onclick="entrarSeccionMenu('trabajadores')" style="border-radius:7px;margin-bottom:2px;">👷 Trabajadores</a>
     <a id="mnav-costos" onclick="entrarSeccionMenu('costos')" style="border-radius:7px;margin-bottom:2px;">💰 Costos</a>
+    <a id="mnav-bezanilla" onclick="entrarSeccionMenu('bezanilla')" style="border-radius:7px;margin-bottom:2px;">🛒 Bezanilla</a>
 
     <a onclick="irQRsMenu()" style="border-radius:7px;">🔲 Mis QRs</a>
   </div>
@@ -527,10 +528,10 @@ tr:hover td{background:rgba(255,255,255,.02);}
       <div class="hb-label">Urnas</div>
       <div class="hb-sub">Inventario y producción</div>
     </div>
-    <div class="home-btn" style="opacity:.5;cursor:not-allowed;">
-      <div class="hb-icon">🛍</div>
-      <div class="hb-label">Vendedores</div>
-      <div class="hb-sub" style="color:var(--accent);">Próximamente</div>
+    <div id="hbtn-bezanilla" class="home-btn active-section" onclick="entrarSeccion('bezanilla')">
+      <div class="hb-icon">🛒</div>
+      <div class="hb-label">Bezanilla</div>
+      <div class="hb-sub">Compras y proveedores</div>
     </div>
     <div id="hbtn-costos" class="home-btn active-section" onclick="entrarSeccion('costos')">
       <div class="hb-icon">💰</div>
@@ -1386,6 +1387,35 @@ tr:hover td{background:rgba(255,255,255,.02);}
 </main>
 </div><!-- fin seccion-costos -->
 
+<!-- SECCION BEZANILLA -->
+<div id="seccion-bezanilla" style="display:none">
+<nav>
+  <button class="tab active" id="bztab-productos" onclick="bzNavTo('productos')">🛒 Productos</button>
+</nav>
+<main>
+
+<!-- BZ: PRODUCTOS -->
+<div class="page active" id="bzpage-productos">
+
+  <!-- Barra: buscar + filtro categoría + agregar -->
+  <div style="display:flex;gap:8px;align-items:center;margin-bottom:12px;flex-wrap:wrap;">
+    <input type="text" id="bz-search" placeholder="🔍 Buscar producto o proveedor…"
+      style="flex:1;min-width:0;" oninput="bzRenderProductos()">
+    <select id="bz-cat-filter" style="width:auto;font-size:.78rem;" onchange="bzRenderProductos()">
+      <option value="">Todas las categorías</option>
+    </select>
+    <button class="btn btn-primary" style="white-space:nowrap;" onclick="bzAbrirModal()">+ Producto</button>
+  </div>
+
+  <!-- Lista de productos agrupados por categoría -->
+  <div id="bz-lista"></div>
+
+</div>
+
+</main>
+</div><!-- fin seccion-bezanilla -->
+
+
 <!-- MODAL RESET STOCK -->
 <div class="modal-overlay" id="modal-reset-stock" onclick="if(event.target===this)cerrarModalResetStock()">
   <div class="modal-box" style="max-width:480px;width:94%;max-height:85vh;display:flex;flex-direction:column;">
@@ -1417,6 +1447,7 @@ const LS_MOVEMENTS = 'inventapp_movements';
 const LS_WORKERS   = 'inventapp_workers';
 const LS_PROVEEDORES = 'inventapp_proveedores';
 const LS_COSTOS      = 'inventapp_costos';
+const LS_BEZANILLA   = 'inventapp_bezanilla';
 
 const DEFAULT_PRODUCTS = [
   {id:"PROD-001",name:"Laptop Dell Inspiron", stock:15,min:5, cost:850.00},
@@ -1451,6 +1482,7 @@ function lsGuardar() {
     localStorage.setItem(LS_WORKERS,     JSON.stringify(workers));
     localStorage.setItem(LS_PROVEEDORES, JSON.stringify(proveedores));
     localStorage.setItem(LS_COSTOS,      JSON.stringify(costosData));
+    localStorage.setItem(LS_BEZANILLA,   JSON.stringify(bzProductos));
   } catch(e) {}
   // Debounced Firestore write
   clearTimeout(_saveMatTimer);
@@ -1461,7 +1493,7 @@ async function fbSaveMat() {
   try {
     await window._fbSetDoc(
       window._fbDoc(window._fbDb, 'inventario', 'materiales'),
-      { products, movements, workers, proveedores, costosData, updatedAt: new Date().toISOString() }
+      { products, movements, workers, proveedores, costosData, bzProductos, updatedAt: new Date().toISOString() }
     );
   } catch(e) { console.warn('Firestore save error (mat):', e); }
 }
@@ -1478,6 +1510,7 @@ function lsCargar() {
     }
     const pv = localStorage.getItem(LS_PROVEEDORES); if(pv) proveedores = JSON.parse(pv);
     const cd = localStorage.getItem(LS_COSTOS); if(cd) { const _cd=JSON.parse(cd); costosData={...costosData,..._cd}; }
+    const bz = localStorage.getItem(LS_BEZANILLA); if(bz) bzProductos = JSON.parse(bz);
     // Sync formato/unidad from products → costosData.matExtra (for products saved before this feature)
     products.forEach(p => {
       if(p.formato && p.unidad) {
@@ -1512,6 +1545,9 @@ let costosData = {
   matExtra:  {}, // {prodId: {formato:10, unidad:'L'}} extra cost metadata per material
 };
 let cProdActual = null; // currently selected uProduct id
+
+// ── BEZANILLA state ──
+let bzProductos = []; // [{id, nombre, cat, proveedor, precio, unidad, stock, min, notas, fecha}]
 
 function sanitizar(str) {
   if (!str) return "";
@@ -1571,10 +1607,10 @@ function rolPuedeVer(seccion) {
   const u = window._currentUser;
   if(!u) return false;
   const permisos = {
-    admin:      ['materiales','urnas','trabajadores','costos'],
-    ventas:     ['materiales','urnas'],
+    admin:      ['materiales','urnas','trabajadores','costos','bezanilla'],
+    ventas:     ['materiales','urnas','bezanilla'],
     instalacion:['urnas'],
-    viewer:     ['materiales','urnas','trabajadores','costos'],
+    viewer:     ['materiales','urnas','trabajadores','costos','bezanilla'],
   };
   const permitidas = permisos[u.rol] || permisos['viewer'];
   return permitidas.includes(seccion);
@@ -1586,10 +1622,15 @@ function entrarSeccion(nombre) {
   document.getElementById('hamburger-btn').style.display = 'flex';
   document.getElementById('hdr-alert-wrap').style.display = 'none';
   // Hide all sections first
-  ['seccion-materiales','seccion-urnas','seccion-trabajadores','seccion-costos'].forEach(s=>{
+  ['seccion-materiales','seccion-urnas','seccion-trabajadores','seccion-costos','seccion-bezanilla'].forEach(s=>{
     const el=document.getElementById(s); if(el) el.style.display='none';
   });
-  if (nombre === 'costos') {
+  if (nombre === 'bezanilla') {
+    document.getElementById('seccion-bezanilla').style.display = 'block';
+    document.getElementById('hdr-chip').style.display = 'none';
+    setSeccionHeader('Bezanilla','var(--accent)');
+    bzNavTo('productos');
+  } else if (nombre === 'costos') {
     document.getElementById('seccion-costos').style.display = 'block';
     document.getElementById('hdr-chip').style.display = 'none';
     setSeccionHeader('Costos','var(--accent)');
@@ -1621,7 +1662,7 @@ function volverHome() {
   closeMenu(); stopScanner(); uStopScanner();
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.getElementById('page-home').classList.add('active');
-  ['seccion-materiales','seccion-urnas','seccion-trabajadores','seccion-costos'].forEach(s=>{
+  ['seccion-materiales','seccion-urnas','seccion-trabajadores','seccion-costos','seccion-bezanilla'].forEach(s=>{
     const el=document.getElementById(s); if(el) el.style.display='none';
   });
   document.getElementById('back-btn').style.display = 'none';
@@ -4850,6 +4891,215 @@ function cCalcularTodo() {
 }
 
 
+
+// ════════════════════════════════════════════════════
+// BEZANILLA — Productos de compra (oficina, limpieza, etc.)
+// ════════════════════════════════════════════════════
+
+let _bzEditId = null;
+
+// ── Nav ──────────────────────────────────────────────
+function bzNavTo(name) {
+  document.querySelectorAll('#seccion-bezanilla .page').forEach(p => p.classList.remove('active'));
+  document.getElementById('bzpage-' + name).classList.add('active');
+  document.querySelectorAll('#seccion-bezanilla nav .tab').forEach(t => t.classList.remove('active'));
+  const btn = document.getElementById('bztab-' + name);
+  if(btn) btn.classList.add('active');
+  setSeccionHeader('Bezanilla', 'var(--accent)');
+  if(name === 'productos') bzRenderProductos();
+}
+
+// ── Render lista ─────────────────────────────────────
+function bzRenderProductos() {
+  const lista   = document.getElementById('bz-lista');
+  const q       = (document.getElementById('bz-search')?.value || '').toLowerCase().trim();
+  const catFilt = document.getElementById('bz-cat-filter')?.value || '';
+  if(!lista) return;
+
+  // Populate category filter
+  const allCats = [...new Set(bzProductos.map(p => p.cat).filter(Boolean))].sort((a,b) => a.localeCompare(b,'es'));
+  const selFilt = document.getElementById('bz-cat-filter');
+  if(selFilt) {
+    const cur = selFilt.value;
+    selFilt.innerHTML = '<option value="">Todas las categorías</option>' +
+      allCats.map(c => `<option value="${c}" ${c===cur?'selected':''}>${c}</option>`).join('');
+    selFilt.value = cur;
+  }
+
+  if(!bzProductos.length) {
+    lista.innerHTML = '<div class="empty"><div class="empty-icon">🛒</div>Sin productos. Agrega el primero con + Producto.</div>';
+    return;
+  }
+
+  // Filter
+  const filtrados = bzProductos.filter(p => {
+    if(catFilt && p.cat !== catFilt) return false;
+    if(!q) return true;
+    return (p.nombre||'').toLowerCase().includes(q) ||
+           (p.cat||'').toLowerCase().includes(q) ||
+           (p.proveedor||'').toLowerCase().includes(q);
+  });
+
+  if(!filtrados.length) {
+    lista.innerHTML = '<div class="empty"><div class="empty-icon">🔍</div>Sin resultados</div>';
+    return;
+  }
+
+  // Group by category
+  const byCat = {};
+  filtrados.forEach(p => {
+    const c = p.cat || 'Sin categoría';
+    if(!byCat[c]) byCat[c] = [];
+    byCat[c].push(p);
+  });
+
+  let html = '';
+  Object.entries(byCat).sort((a,b) => a[0].localeCompare(b[0],'es')).forEach(([cat, prods]) => {
+    html += `<div style="font-family:'Space Mono',monospace;font-size:.6rem;color:var(--muted);
+      letter-spacing:.08em;padding:10px 4px 4px;">${sanitizar(cat).toUpperCase()}</div>`;
+
+    prods.sort((a,b) => (a.nombre||'').localeCompare(b.nombre||'','es')).forEach(p => {
+      const stockColor = p.stock === 0 ? 'var(--danger)' : p.stock <= (p.min||0) ? 'var(--warn)' : 'var(--accent)';
+      const pct = (p.min||0) > 0 ? Math.min(100, (p.stock / p.min) * 100) : (p.stock > 0 ? 100 : 0);
+      const valorTotal = (p.precio||0) * (p.stock||0);
+
+      html += `<div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;
+        padding:11px 14px;margin-bottom:8px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+
+        <!-- Nombre + proveedor -->
+        <div style="flex:1;min-width:180px;">
+          <div style="font-weight:600;font-size:.85rem;">${sanitizar(p.nombre)}</div>
+          <div style="font-size:.7rem;color:var(--muted);margin-top:2px;">
+            ${p.proveedor ? '🏭 ' + sanitizar(p.proveedor) : ''}
+            ${p.unidad ? ' · ' + sanitizar(p.unidad) : ''}
+            ${p.notas ? '<span style="color:var(--muted);font-style:italic;"> · ' + sanitizar(p.notas) + '</span>' : ''}
+          </div>
+        </div>
+
+        <!-- Stock -->
+        <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
+          <div style="min-width:40px;text-align:right;">
+            <span style="font-family:'Space Mono',monospace;font-weight:700;color:${stockColor};">${p.stock||0}</span>
+            ${p.unidad ? '<span style="font-size:.62rem;color:var(--muted);"> ' + sanitizar(p.unidad) + '</span>' : ''}
+          </div>
+          <div class="stock-bar" style="width:50px;">
+            <div class="stock-bar-fill" style="width:${pct}%;background:${stockColor};"></div>
+          </div>
+          <span style="font-size:.65rem;color:var(--muted);">mín ${p.min||0}</span>
+        </div>
+
+        <!-- Precio + valor -->
+        <div style="text-align:right;flex-shrink:0;">
+          <div style="font-family:'Space Mono',monospace;font-size:.82rem;color:var(--accent2);">
+            ${p.precio ? '$' + fmtNum(p.precio) : '—'}
+          </div>
+          ${valorTotal > 0 ? '<div style="font-size:.65rem;color:var(--muted);">Total: $' + fmtNum(valorTotal) + '</div>' : ''}
+        </div>
+
+        <!-- Acciones -->
+        <div style="display:flex;gap:4px;flex-shrink:0;">
+          <button class="btn btn-secondary" style="font-size:.65rem;padding:4px 9px;"
+            onclick="bzEditar('${p.id}')">✏</button>
+          <button class="btn btn-secondary" style="font-size:.65rem;padding:4px 9px;color:var(--danger);"
+            onclick="bzEliminar('${p.id}')">🗑</button>
+        </div>
+      </div>`;
+    });
+  });
+
+  lista.innerHTML = html;
+}
+
+// ── Modal: abrir nuevo ───────────────────────────────
+function bzAbrirModal(prodId) {
+  _bzEditId = null;
+  document.getElementById('bz-modal-title').textContent = 'Agregar producto';
+  document.getElementById('bz-form-nombre').value   = '';
+  document.getElementById('bz-form-cat').value      = '';
+  document.getElementById('bz-form-proveedor').value= '';
+  document.getElementById('bz-form-precio').value   = '';
+  document.getElementById('bz-form-unidad').value   = '';
+  document.getElementById('bz-form-stock').value    = '';
+  document.getElementById('bz-form-min').value      = '';
+  document.getElementById('bz-form-notas').value    = '';
+  // Populate category datalist
+  const dl = document.getElementById('bz-cat-datalist');
+  if(dl) dl.innerHTML = [...new Set(bzProductos.map(p=>p.cat).filter(Boolean))]
+    .sort().map(c=>`<option value="${c}">`).join('');
+  document.getElementById('modal-bz-producto').style.display = 'flex';
+  setTimeout(() => document.getElementById('bz-form-nombre').focus(), 80);
+}
+
+// ── Modal: editar ────────────────────────────────────
+function bzEditar(id) {
+  const p = bzProductos.find(x => x.id === id);
+  if(!p) return;
+  _bzEditId = id;
+  document.getElementById('bz-modal-title').textContent = 'Editar producto';
+  document.getElementById('bz-form-nombre').value    = p.nombre   || '';
+  document.getElementById('bz-form-cat').value       = p.cat      || '';
+  document.getElementById('bz-form-proveedor').value = p.proveedor|| '';
+  document.getElementById('bz-form-precio').value    = p.precio   || '';
+  document.getElementById('bz-form-unidad').value    = p.unidad   || '';
+  document.getElementById('bz-form-stock').value     = p.stock    ?? '';
+  document.getElementById('bz-form-min').value       = p.min      ?? '';
+  document.getElementById('bz-form-notas').value     = p.notas    || '';
+  const dl = document.getElementById('bz-cat-datalist');
+  if(dl) dl.innerHTML = [...new Set(bzProductos.map(x=>x.cat).filter(Boolean))]
+    .sort().map(c=>`<option value="${c}">`).join('');
+  document.getElementById('modal-bz-producto').style.display = 'flex';
+}
+
+// ── Cerrar modal ─────────────────────────────────────
+function bzCerrarModal() {
+  document.getElementById('modal-bz-producto').style.display = 'none';
+  _bzEditId = null;
+}
+
+// ── Guardar ──────────────────────────────────────────
+function bzGuardar() {
+  const nombre = document.getElementById('bz-form-nombre').value.trim();
+  if(!nombre) return showToast('El nombre es obligatorio', 'error');
+
+  const data = {
+    nombre,
+    cat:       document.getElementById('bz-form-cat').value.trim(),
+    proveedor: document.getElementById('bz-form-proveedor').value.trim(),
+    precio:    parseFloat(document.getElementById('bz-form-precio').value) || 0,
+    unidad:    document.getElementById('bz-form-unidad').value.trim(),
+    stock:     parseFloat(document.getElementById('bz-form-stock').value) || 0,
+    min:       parseFloat(document.getElementById('bz-form-min').value) || 0,
+    notas:     document.getElementById('bz-form-notas').value.trim(),
+    fecha:     new Date().toISOString().split('T')[0],
+  };
+
+  if(_bzEditId) {
+    const idx = bzProductos.findIndex(x => x.id === _bzEditId);
+    if(idx >= 0) bzProductos[idx] = { ...bzProductos[idx], ...data };
+    showToast('✓ Producto actualizado', 'success');
+  } else {
+    data.id = 'BZ-' + Date.now();
+    bzProductos.push(data);
+    showToast('✓ ' + nombre + ' agregado', 'success');
+  }
+
+  lsGuardar();
+  bzCerrarModal();
+  bzRenderProductos();
+}
+
+// ── Eliminar ─────────────────────────────────────────
+function bzEliminar(id) {
+  const _p = bzProductos.find(x => x.id === id);
+  const nombre = _p ? _p.nombre : id;
+  if(!confirm('¿Eliminar "' + nombre + '"?')) return;
+  bzProductos = bzProductos.filter(x => x.id !== id);
+  lsGuardar();
+  bzRenderProductos();
+  showToast('"' + nombre + '" eliminado', 'error');
+}
+
+
 // ════════════════════════════════════════════════════
 // PROVEEDORES — módulo completo
 // ════════════════════════════════════════════════════
@@ -6061,6 +6311,7 @@ window._fbSubscribe = function() {
       }
       if(data.proveedores) { proveedores = data.proveedores; localStorage.setItem(LS_PROVEEDORES, JSON.stringify(proveedores)); }
         if(data.costosData) { costosData={...costosData,...data.costosData}; localStorage.setItem(LS_COSTOS, JSON.stringify(costosData)); }
+        if(data.bzProductos) { bzProductos = data.bzProductos; localStorage.setItem(LS_BEZANILLA, JSON.stringify(bzProductos)); }
       updateHeader();
       const active = document.querySelector('#seccion-materiales .page.active');
       if(active) {
@@ -6653,6 +6904,67 @@ function menuUrnEditarOPs() {
     <div style="display:flex;gap:8px;">
       <button class="btn btn-primary" style="flex:1;" onclick="provGuardar()">✓ Guardar</button>
       <button class="btn btn-secondary" style="flex:1;" onclick="provCerrarModal()">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL BEZANILLA PRODUCTO -->
+<div class="modal-overlay" id="modal-bz-producto" onclick="if(event.target===this)bzCerrarModal()" style="display:none;">
+  <div class="modal-box" style="max-width:480px;width:94%;">
+    <div class="modal-title" id="bz-modal-title">Agregar producto</div>
+
+    <!-- Nombre + categoría -->
+    <div class="form-row" style="margin-bottom:10px;">
+      <div>
+        <label style="font-size:.72rem;color:var(--muted);">Nombre del producto</label>
+        <input type="text" id="bz-form-nombre" placeholder="ej: Resma A4, Detergente" style="width:100%;margin-top:4px;">
+      </div>
+      <div>
+        <label style="font-size:.72rem;color:var(--muted);">Categoría</label>
+        <input type="text" id="bz-form-cat" placeholder="ej: Oficina, Limpieza" style="width:100%;margin-top:4px;" list="bz-cat-datalist">
+        <datalist id="bz-cat-datalist"></datalist>
+      </div>
+    </div>
+
+    <!-- Proveedor + precio -->
+    <div class="form-row" style="margin-bottom:10px;">
+      <div>
+        <label style="font-size:.72rem;color:var(--muted);">Proveedor</label>
+        <input type="text" id="bz-form-proveedor" placeholder="ej: Sodimac, Proveedor X" style="width:100%;margin-top:4px;">
+      </div>
+      <div>
+        <label style="font-size:.72rem;color:var(--muted);">Precio ($)</label>
+        <input type="number" id="bz-form-precio" placeholder="0" min="0" style="width:100%;margin-top:4px;">
+      </div>
+    </div>
+
+    <!-- Unidad + stock actual -->
+    <div class="form-row" style="margin-bottom:10px;">
+      <div>
+        <label style="font-size:.72rem;color:var(--muted);">Unidad / presentación</label>
+        <input type="text" id="bz-form-unidad" placeholder="ej: caja, resma, litro, unidad" style="width:100%;margin-top:4px;">
+      </div>
+      <div>
+        <label style="font-size:.72rem;color:var(--muted);">Stock actual</label>
+        <input type="number" id="bz-form-stock" placeholder="0" min="0" style="width:100%;margin-top:4px;">
+      </div>
+    </div>
+
+    <!-- Stock mínimo + notas -->
+    <div class="form-row" style="margin-bottom:14px;">
+      <div>
+        <label style="font-size:.72rem;color:var(--muted);">Stock mínimo</label>
+        <input type="number" id="bz-form-min" placeholder="1" min="0" style="width:100%;margin-top:4px;">
+      </div>
+      <div>
+        <label style="font-size:.72rem;color:var(--muted);">Notas (opcional)</label>
+        <input type="text" id="bz-form-notas" placeholder="ej: pedir con 1 semana anticipación" style="width:100%;margin-top:4px;">
+      </div>
+    </div>
+
+    <div style="display:flex;gap:8px;">
+      <button class="btn btn-primary" style="flex:1;" onclick="bzGuardar()">✓ Guardar</button>
+      <button class="btn btn-secondary" style="flex:1;" onclick="bzCerrarModal()">Cancelar</button>
     </div>
   </div>
 </div>
