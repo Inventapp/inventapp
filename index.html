@@ -250,9 +250,9 @@ tr:hover td{background:rgba(255,255,255,.02);}
 .pill{display:inline-block;padding:2px 9px;border-radius:20px;font-family:'Space Mono',monospace;font-size:.66rem;font-weight:700;}
 .pill-in{background:rgba(0,229,160,.15);color:var(--accent);}
 .pill-out{background:rgba(255,71,87,.15);color:var(--danger);}
-.stock-bar-wrap{display:flex;align-items:center;gap:7px;}
-.stock-bar{height:4px;border-radius:2px;background:var(--border);flex:1;min-width:45px;}
-.stock-bar-fill{height:100%;border-radius:2px;transition:width .3s;}
+.stock-bar-wrap{display:flex;align-items:center;gap:6px;}
+.stock-bar{height:5px;border-radius:3px;background:var(--border);width:60px;flex-shrink:0;}
+.stock-bar-fill{height:100%;border-radius:3px;transition:width .3s;}
 
 /* QR */
 .qr-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(145px,1fr));gap:10px;}
@@ -2427,17 +2427,16 @@ function renderInventory(filtro) {
       <td><b>${p.name}</b></td>
       <td><span style="font-size:.75rem;color:var(--muted);">${cat||'—'}</span></td>
       <td><div class="stock-bar-wrap">
-        ${(()=>{
-          const hasPres = p.formato>1 && p.unidad && p.unidad!=='u';
-          const pn = p.nombrePres||(p.unidad&&p.unidad!=='u'?p.unidad:'');
-          if(!hasPres) return `<span style="color:${bc};font-weight:700;">${p.stock}</span>`;
-          // Show as decimal presentation units: 700ml stock, 700ml/unit = 1 lata; 350ml = 0.5 lata
-          const basePerUnit = p.unidad==='L'?p.formato*1000:p.unidad==='kg'?p.formato*1000:p.unidad==='Gl'?p.formato*3785:p.formato;
-          // stock is stored in presentation units already, just format nicely
-          const stockDisp = Number(p.stock.toFixed(3)).toLocaleString('es-CL',{maximumFractionDigits:3});
-          const unitLabel = pn ? ` <span style="font-size:.65rem;color:var(--muted);font-family:'Space Mono',monospace;">${pn}</span>` : '';
-          return `<span style="color:${bc};font-weight:700;">${stockDisp}</span>${unitLabel}`;
-        })()}
+        <div style="min-width:56px;display:flex;align-items:baseline;gap:3px;flex-shrink:0;">
+          ${(()=>{
+            const hasPres = p.formato>1 && p.unidad && p.unidad!=='u';
+            const pn = p.nombrePres||(p.unidad&&p.unidad!=='u'?p.unidad:'');
+            if(!hasPres) return `<span style="color:${bc};font-weight:700;">${p.stock}</span>`;
+            const stockDisp = Number(p.stock.toFixed(3)).toLocaleString('es-CL',{maximumFractionDigits:3});
+            const unitLabel = pn ? `<span style="font-size:.62rem;color:var(--muted);font-family:'Space Mono',monospace;">${pn}</span>` : '';
+            return `<span style="color:${bc};font-weight:700;">${stockDisp}</span>${unitLabel}`;
+          })()}
+        </div>
         <div class="stock-bar"><div class="stock-bar-fill" style="width:${pct}%;background:${bc}"></div></div>
       </div></td>
       <td class="td-mono">${p.min}</td>
