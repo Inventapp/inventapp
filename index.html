@@ -1425,9 +1425,8 @@ tr:hover td{background:rgba(255,255,255,.02);}
 <!-- SECCION VEHÍCULOS -->
 <div id="seccion-vehiculos" style="display:none">
 <nav id="veh-nav" style="overflow-x:auto;display:flex;gap:4px;padding:0 8px;flex-wrap:nowrap;">
-  <button class="tab active" id="vehtab-flota"    onclick="vNavTo('flota')">🚗 Flota</button>
-  <button class="tab"        id="vehtab-odometro" onclick="vNavTo('odometro')">🛣 Odómetro</button>
-  <button class="tab"        id="vehtab-resumen"   onclick="vNavTo('resumen')">📊 Resumen</button>
+  <button class="tab active" id="vehtab-flota"   onclick="vNavTo('flota')">🚗 Flota</button>
+  <button class="tab"        id="vehtab-resumen"  onclick="vNavTo('resumen')">📊 Resumen</button>
 </nav>
 <main>
 
@@ -4969,11 +4968,11 @@ const VEH_TIPO_ICON = {
   'Auto':'🚗','Camioneta':'🛻','Furgón':'🚐','Camión':'🚛','Moto':'🏍','Maquinaria':'⚙️'
 };
 const VEH_EVENTO_ICON = {
-  'combustible':'⛽','aceite':'🛢','mantencion':'🔧','reparacion':'🔨','documento':'📋','otro':'📝'
+  'combustible':'⛽','aceite':'🛢','mantencion':'🔧','reparacion':'🔨','documento':'📋','incidente':'🚨'
 };
 const VEH_EVENTO_LABEL = {
   'combustible':'Combustible','aceite':'Cambio aceite','mantencion':'Mantención',
-  'reparacion':'Reparación','documento':'Documento','otro':'Otro'
+  'reparacion':'Reparación','documento':'Documento','incidente':'Multa/Incidente'
 };
 
 // ── HELPERS ──────────────────────────────────────────
@@ -5028,9 +5027,9 @@ function vNavTo(name) {
   const btn = document.getElementById('vehtab-' + name);
   if(btn) btn.classList.add('active');
   setSeccionHeader('Vehículos', 'var(--accent)');
-  if(name === 'flota')     vRenderFlota();
-  if(name === 'odometro')  vRenderOdometro();
-  if(name === 'resumen')   vRenderResumen();
+  if(name === 'flota')    vRenderFlota();
+  if(name === 'resumen')  vRenderResumen();
+  if(name === 'ficha')    vRenderFicha();
 }
 
 // ── FLOTA: LISTADO ────────────────────────────────────
@@ -5112,90 +5111,135 @@ function vRenderFicha() {
   const v = vehFlota.find(x => x.patente === _vehActual);
   if(!v) return;
   const el = document.getElementById('veh-ficha-content');
-  const icon = VEH_TIPO_ICON[v.tipo] || '🚗';
-  const diasRev  = vDiasHasta(v.revTecnica);
-  const diasPerm = vDiasHasta(v.permiso);
-  const kmAceit  = vKmAceiteRestante(v);
-  const rend     = vRendimientoPromedio(v);
-  const estadoC  = vEstadoColor(v.estado);
-  const eventos  = [...(v.eventos||[])].sort((a,b) => b.fecha.localeCompare(a.fecha));
-  const costoTotal = eventos.reduce((s,e) => s+(e.costo||0)+(e.costoTotal||0), 0);
-  const costoCombu = eventos.filter(e=>e.tipo==='combustible').reduce((s,e)=>s+(e.costoTotal||e.costo||0),0);
-  const costoMant  = eventos.filter(e=>['mantencion','reparacion','aceite'].includes(e.tipo)).reduce((s,e)=>s+(e.costo||0),0);
+  const icon      = VEH_TIPO_ICON[v.tipo] || '🚗';
+  const diasRev   = vDiasHasta(v.revTecnica);
+  const diasPerm  = vDiasHasta(v.permiso);
+  const kmAceit   = vKmAceiteRestante(v);
+  const rend      = vRendimientoPromedio(v);
+  const estadoC   = vEstadoColor(v.estado);
+  const estado    = v.estado || 'Disponible';
+  const eventos   = [...(v.eventos||[])].sort((a,b) => b.fecha.localeCompare(a.fecha));
+  const costoTotal= eventos.reduce((s,e) => s+(e.costo||0)+(e.costoTotal||0), 0);
+  const costoCombu= eventos.filter(e=>e.tipo==='combustible').reduce((s,e)=>s+(e.costoTotal||e.costo||0),0);
+  const costoMant = eventos.filter(e=>['mantencion','reparacion','aceite'].includes(e.tipo)).reduce((s,e)=>s+(e.costo||0),0);
 
-  // KPI cards
-  const kpis = [
-    {val: fmtNum(v.km||0)+' km', lbl:'Odómetro actual', c:'var(--accent)'},
-    {val: rend ? rend.toFixed(1)+' km/L' : '—', lbl:'Rendimiento promedio', c:'var(--accent2)'},
-    {val: kmAceit!==null ? (kmAceit<=0?'VENCIDO':fmtNum(kmAceit)+' km') : '—', lbl:'Para cambio aceite', c:kmAceit!==null&&kmAceit<=0?'var(--danger)':kmAceit!==null&&kmAceit<=2000?'var(--warn)':'var(--accent)'},
-    {val: '$'+fmtNum(costoTotal), lbl:'Costo total flota', c:'var(--accent2)'},
-  ];
+  // Odómetro: últimos 5 registros
+  const kmRecs = [...(v.kmDiario||[])].sort((a,b)=>b.fecha.localeCompare(a.fecha)).slice(0,5);
+  const _kmExpId = 'vkm-expand-'+v.patente.replace(/[^a-z0-9]/gi,'');
 
   el.innerHTML = `
-    <!-- Header -->
-    <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:14px;">
-      <div style="display:flex;align-items:flex-start;gap:14px;margin-bottom:12px;">
-        <div style="font-size:2.5rem;line-height:1;">${icon}</div>
-        <div style="flex:1;">
-          <div style="font-family:'Space Mono',monospace;font-size:1.1rem;font-weight:700;">${sanitizar(v.patente)}</div>
-          <div style="font-size:.9rem;font-weight:600;margin-top:2px;">${sanitizar(v.marca)} ${sanitizar(v.modelo)} ${v.anio?'('+v.anio+')':''}</div>
-          <div style="font-size:.75rem;color:var(--muted);margin-top:2px;">${v.tipo}${v.color?' · '+sanitizar(v.color):''}${v.conductor?' · 👤 '+sanitizar(v.conductor):''}</div>
+    <!-- ① HEADER + ESTADO + EDITAR -->
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin-bottom:12px;">
+      <div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:10px;">
+        <div style="font-size:2.2rem;line-height:1;flex-shrink:0;">${icon}</div>
+        <div style="flex:1;min-width:0;">
+          <div style="font-family:'Space Mono',monospace;font-size:1rem;font-weight:700;">${sanitizar(v.patente)}</div>
+          <div style="font-size:.88rem;font-weight:600;margin-top:2px;">${sanitizar(v.marca)} ${sanitizar(v.modelo)} ${v.anio?'('+v.anio+')':''}</div>
+          <div style="font-size:.72rem;color:var(--muted);margin-top:2px;">${v.tipo}${v.color?' · '+sanitizar(v.color):''}${v.conductor?' · 👤 '+sanitizar(v.conductor):''}</div>
         </div>
-        <div style="display:flex;flex-direction:column;gap:6px;flex-shrink:0;">
-          <span style="font-size:.68rem;font-family:'Space Mono',monospace;padding:3px 10px;border-radius:8px;background:${estadoC==='var(--accent)'?'rgba(0,229,160,.1)':'rgba(239,68,68,.12)'};color:${estadoC};">${v.estado||'Disponible'}</span>
-          <button onclick="vAbrirModalVehiculo('${v.patente}')" style="font-size:.65rem;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:4px 10px;cursor:pointer;color:var(--muted);">✏ Editar</button>
-        </div>
+        <button onclick="vAbrirModalVehiculo('${v.patente}')" style="font-size:.65rem;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:5px 10px;cursor:pointer;color:var(--muted);flex-shrink:0;">✏ Editar</button>
       </div>
-      <!-- Documentos -->
-      <div style="display:flex;gap:8px;flex-wrap:wrap;">
-        ${vDocChip('Rev. técnica', v.revTecnica, diasRev)}
-        ${vDocChip('Permiso circ.', v.permiso, diasPerm)}
+      <!-- Estado rápido -->
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+        <span style="font-size:.65rem;color:var(--muted);">Estado:</span>
+        ${['Disponible','En reparación','Inactivo'].map(s => {
+          const active = estado === s;
+          const sc = s==='Disponible'?'var(--accent)':s==='En reparación'?'var(--danger)':'var(--muted)';
+          return `<button onclick="vCambiarEstado('${v.patente}','${s}')"
+            style="font-size:.62rem;font-family:'Space Mono',monospace;padding:3px 10px;border-radius:8px;cursor:pointer;
+            border:1px solid ${active?sc:'var(--border)'};
+            background:${active?(s==='Disponible'?'rgba(0,229,160,.12)':s==='En reparación'?'rgba(239,68,68,.12)':'rgba(74,85,104,.2)'):'transparent'};
+            color:${active?sc:'var(--muted)'};">${s}</button>`;
+        }).join('')}
       </div>
     </div>
 
-    <!-- KPIs -->
-    <div class="summary-grid" style="margin-bottom:14px;">
-      ${kpis.map(k=>`<div class="sum-card"><div class="sum-val" style="color:${k.c};font-size:1.1rem;">${k.val}</div><div class="sum-lbl">${k.lbl}</div></div>`).join('')}
-    </div>
-
-    <!-- Botones acción -->
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px;">
+    <!-- ② BOTONES ACCIÓN (arriba para acceso inmediato) -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;">
       <button class="btn btn-primary" onclick="vAbrirModalEvento()">+ Registrar evento</button>
       <button class="btn btn-secondary" onclick="vAbrirRegistroKm()">🛣 Registrar km</button>
     </div>
 
-    <!-- Costos rápidos -->
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px;">
-      <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px;">
-        <div style="font-size:.65rem;color:var(--muted);font-family:'Space Mono',monospace;letter-spacing:.06em;margin-bottom:4px;">COMBUSTIBLE</div>
+    <!-- ③ KPIs -->
+    <div class="summary-grid" style="margin-bottom:12px;">
+      <div class="sum-card accent"><div class="sum-val" style="font-size:1rem;">${fmtNum(v.km||0)}</div><div class="sum-lbl">Km actuales</div></div>
+      <div class="sum-card"><div class="sum-val" style="font-size:1rem;color:var(--accent2);">${rend?rend.toFixed(1)+' km/L':'—'}</div><div class="sum-lbl">Rendimiento</div></div>
+      <div class="sum-card"><div class="sum-val" style="font-size:1rem;color:${kmAceit!==null&&kmAceit<=0?'var(--danger)':kmAceit!==null&&kmAceit<=2000?'var(--warn)':'var(--accent)'};">${kmAceit!==null?(kmAceit<=0?'VENCIDO':fmtNum(kmAceit)+' km'):'—'}</div><div class="sum-lbl">Próx. aceite</div></div>
+      <div class="sum-card"><div class="sum-val" style="font-size:1rem;color:var(--accent2);">$${fmtNum(costoTotal)}</div><div class="sum-lbl">Costo vehículo</div></div>
+    </div>
+
+    <!-- ④ DOCUMENTOS -->
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px;">
+      ${vDocChip('Rev. técnica', v.revTecnica, diasRev)}
+      ${vDocChip('Permiso circ.', v.permiso, diasPerm)}
+    </div>
+
+    <!-- ⑤ COSTOS DESGLOSADOS -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;">
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:11px 13px;">
+        <div style="font-size:.58rem;color:var(--muted);font-family:'Space Mono',monospace;letter-spacing:.06em;margin-bottom:3px;">⛽ COMBUSTIBLE</div>
         <div style="font-family:'Space Mono',monospace;font-size:.9rem;font-weight:700;color:var(--accent2);">$${fmtNum(costoCombu)}</div>
       </div>
-      <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px;">
-        <div style="font-size:.65rem;color:var(--muted);font-family:'Space Mono',monospace;letter-spacing:.06em;margin-bottom:4px;">MANTENCIONES</div>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:11px 13px;">
+        <div style="font-size:.58rem;color:var(--muted);font-family:'Space Mono',monospace;letter-spacing:.06em;margin-bottom:3px;">🔧 MANTENCIONES</div>
         <div style="font-family:'Space Mono',monospace;font-size:.9rem;font-weight:700;color:var(--warn);">$${fmtNum(costoMant)}</div>
       </div>
     </div>
 
-    <!-- Últimos km registrados -->
-    ${(()=>{
-      const kmRecs = [...(v.kmDiario||[])].sort((a,b)=>b.fecha.localeCompare(a.fecha)).slice(0,5);
-      if(!kmRecs.length) return '';
-      return `<div style="font-family:'Space Mono',monospace;font-size:.6rem;color:var(--muted);letter-spacing:.08em;margin-bottom:8px;">ÚLTIMOS KM REGISTRADOS</div>
-      <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:10px 12px;margin-bottom:16px;">
-        ${kmRecs.map(r=>`<div style="display:flex;align-items:center;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--border);font-size:.75rem;">
+    <!-- ⑥ ODÓMETRO: últimos km + expandible -->
+    ${kmRecs.length ? `
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;margin-bottom:12px;">
+      <div style="padding:10px 13px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">
+        <div style="font-size:.6rem;color:var(--muted);font-family:'Space Mono',monospace;letter-spacing:.08em;">🛣 ODÓMETRO</div>
+        <span style="font-family:'Space Mono',monospace;font-size:.72rem;font-weight:700;color:var(--accent);">${fmtNum(v.km||0)} km</span>
+      </div>
+      <div style="padding:0 13px;">
+        ${kmRecs.map((r,i)=>`<div style="display:flex;align-items:center;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--border);font-size:.75rem;${i===kmRecs.length-1?'border:none':''}">
           <span style="color:var(--muted);font-family:'Space Mono',monospace;">${fmtFecha(r.fecha)}</span>
-          <span style="font-family:'Space Mono',monospace;font-weight:700;color:var(--accent);">${fmtNum(r.km)} km</span>
-          <span style="font-family:'Space Mono',monospace;font-size:.7rem;color:${r.diff>0?'var(--accent2)':'var(--muted)'};">${r.diff>0?'+'+fmtNum(r.diff)+' km':'—'}</span>
+          <span style="font-family:'Space Mono',monospace;font-weight:600;">${fmtNum(r.km)} km</span>
+          <span style="font-family:'Space Mono',monospace;font-size:.7rem;color:${r.diff>0?'var(--accent2)':'var(--muted)'};">${r.diff>0?'+'+fmtNum(r.diff):'—'}</span>
         </div>`).join('')}
-        <button onclick="vNavTo('odometro')" style="background:none;border:none;cursor:pointer;color:var(--accent);font-size:.72rem;font-family:'Space Mono',monospace;padding-top:8px;width:100%;text-align:center;">Ver historial completo →</button>
-      </div>`;
-    })()}
+      </div>
+      ${(v.kmDiario||[]).length > 5 ? `<button onclick="vToggleKmCompleto('${v.patente}')"
+        style="width:100%;background:none;border:none;border-top:1px solid var(--border);padding:8px;cursor:pointer;color:var(--accent);font-size:.72rem;font-family:'Space Mono',monospace;">
+        Ver historial completo (${(v.kmDiario||[]).length} registros) ▼
+      </button>
+      <div id="${_kmExpId}" style="display:none;padding:0 13px 8px;"></div>` : ''}
+    </div>` : ''}
 
-    <!-- Historial de eventos -->
-    <div style="font-family:'Space Mono',monospace;font-size:.6rem;color:var(--muted);letter-spacing:.08em;margin-bottom:8px;">HISTORIAL (${eventos.length} eventos)</div>
-    ${!eventos.length ? '<div style="color:var(--muted);font-size:.8rem;padding:10px 0;">Sin eventos registrados aún.</div>' :
-      events_html(eventos, v)}
+    <!-- ⑦ HISTORIAL DE EVENTOS -->
+    <div style="font-family:'Space Mono',monospace;font-size:.6rem;color:var(--muted);letter-spacing:.08em;margin-bottom:8px;">HISTORIAL · ${eventos.length} eventos</div>
+    ${!eventos.length
+      ? '<div style="color:var(--muted);font-size:.8rem;padding:10px 0;text-align:center;">Sin eventos registrados. Usa \' + Registrar evento\' para empezar.</div>'
+      : events_html(eventos, v)}
   `;
+}
+
+function vCambiarEstado(patente, nuevoEstado) {
+  const v = vehFlota.find(x => x.patente === patente);
+  if(!v) return;
+  v.estado = nuevoEstado;
+  lsGuardar();
+  vRenderFicha();
+  showToast('Estado: ' + nuevoEstado, 'success');
+}
+
+function vToggleKmCompleto(patente) {
+  const v = vehFlota.find(x => x.patente === patente);
+  if(!v) return;
+  const id = 'vkm-expand-' + patente.replace(/[^a-z0-9]/gi,'');
+  const el = document.getElementById(id);
+  if(!el) return;
+  const open = el.style.display !== 'none';
+  if(open) { el.style.display = 'none'; return; }
+  const all = [...(v.kmDiario||[])].sort((a,b) => b.fecha.localeCompare(a.fecha)).slice(5);
+  el.style.display = 'block';
+  el.innerHTML = all.map((r,i) => `<div style="display:flex;align-items:center;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--border);font-size:.75rem;">
+    <span style="color:var(--muted);font-family:'Space Mono',monospace;">${fmtFecha(r.fecha)}</span>
+    <span style="font-family:'Space Mono',monospace;font-weight:600;">${fmtNum(r.km)} km</span>
+    <span style="font-family:'Space Mono',monospace;font-size:.7rem;color:${r.diff>0?'var(--accent2)':'var(--muted)'};">${r.diff>0?'+'+fmtNum(r.diff):'—'}</span>
+    <button onclick="vEliminarKm('${patente}','${r.id}')" style="background:none;border:none;cursor:pointer;color:var(--danger);font-size:.72rem;">🗑</button>
+  </div>`).join('');
 }
 
 function vDocChip(label, fecha, dias) {
@@ -5281,24 +5325,40 @@ function vRenderResumen() {
         </div>`).join('')
     }
 
-    <!-- Rendimiento por vehículo -->
-    <div style="font-family:'Space Mono',monospace;font-size:.6rem;color:var(--muted);letter-spacing:.08em;margin:16px 0 8px;">RENDIMIENTO COMBUSTIBLE</div>
-    ${vehFlota.map(v => {
-      const rend = vRendimientoPromedio(v);
-      const cargas = (v.eventos||[]).filter(e=>e.tipo==='combustible');
-      const costoC = cargas.reduce((s,e)=>s+(e.costoTotal||e.costo||0),0);
-      return `<div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:11px 14px;margin-bottom:6px;display:flex;align-items:center;gap:12px;">
-        <div style="font-size:1.3rem;">${VEH_TIPO_ICON[v.tipo]||'🚗'}</div>
-        <div style="flex:1;">
-          <div style="font-family:'Space Mono',monospace;font-size:.82rem;font-weight:700;">${sanitizar(v.patente)}</div>
-          <div style="font-size:.72rem;color:var(--muted);">${sanitizar(v.marca)} ${sanitizar(v.modelo)} · ${cargas.length} cargas</div>
-        </div>
-        <div style="text-align:right;">
-          <div style="font-family:'Space Mono',monospace;font-size:.9rem;font-weight:700;color:${rend?rend>=8?'var(--accent)':rend>=6?'var(--warn)':'var(--danger)':'var(--muted)'};">${rend?rend.toFixed(1)+' km/L':'—'}</div>
-          <div style="font-size:.65rem;color:var(--muted);">$${fmtNum(costoC)} total</div>
-        </div>
-      </div>`;
-    }).join('')}
+    <!-- Rendimiento por vehículo — últimos 90 días -->
+    <div style="font-family:'Space Mono',monospace;font-size:.6rem;color:var(--muted);letter-spacing:.08em;margin:16px 0 8px;">⛽ RENDIMIENTO · ÚLTIMOS 90 DÍAS</div>
+    ${(()=>{
+      const hace90 = new Date(Date.now()-90*86400000).toISOString().split('T')[0];
+      return vehFlota.map(v => {
+        const todas  = (v.eventos||[]).filter(e=>e.tipo==='combustible');
+        const rec90  = todas.filter(e=>e.fecha>=hace90);
+        // Rendimiento últimos 90d (cargas llenas)
+        const rendRec = (() => {
+          const llenas = [...rec90].filter(e=>e.lleno==='si'&&e.km>0&&e.litros>0).sort((a,b)=>a.km-b.km);
+          if(llenas.length<2) return null;
+          let km=0,lt=0;
+          for(let i=1;i<llenas.length;i++){km+=llenas[i].km-llenas[i-1].km;lt+=llenas[i].litros;}
+          return lt>0?km/lt:null;
+        })();
+        const rendHist = vRendimientoPromedio(v);
+        const costoRec = rec90.reduce((s,e)=>s+(e.costoTotal||e.costo||0),0);
+        const costoTot = todas.reduce((s,e)=>s+(e.costoTotal||e.costo||0),0);
+        const rc = rendRec?rendRec>=8?'var(--accent)':rendRec>=6?'var(--warn)':'var(--danger)':'var(--muted)';
+        return `<div onclick="vAbrirFicha('${v.patente}')" style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:11px 14px;margin-bottom:6px;cursor:pointer;display:flex;align-items:center;gap:12px;">
+          <div style="font-size:1.3rem;">${VEH_TIPO_ICON[v.tipo]||'🚗'}</div>
+          <div style="flex:1;min-width:0;">
+            <div style="font-family:'Space Mono',monospace;font-size:.82rem;font-weight:700;">${sanitizar(v.patente)}</div>
+            <div style="font-size:.72rem;color:var(--muted);">${sanitizar(v.marca)} ${sanitizar(v.modelo)}</div>
+            <div style="font-size:.65rem;color:var(--muted);margin-top:2px;">${rec90.length} cargas 90d · $${fmtNum(costoRec)}</div>
+          </div>
+          <div style="text-align:right;flex-shrink:0;">
+            <div style="font-family:'Space Mono',monospace;font-size:.92rem;font-weight:700;color:${rc};">${rendRec?rendRec.toFixed(1)+' km/L':'—'}</div>
+            ${rendHist&&rendRec&&Math.abs(rendHist-rendRec)>0.3?`<div style="font-size:.62rem;color:var(--muted);">hist: ${rendHist.toFixed(1)}</div>`:''}
+            <div style="font-size:.62rem;color:var(--muted);">$${fmtNum(costoTot)} total</div>
+          </div>
+        </div>`;
+      }).join('');
+    })()}
   `;
 }
 
@@ -5403,7 +5463,7 @@ function vSelTipo(tipo) {
   // Show/hide fields
   const combustible = tipo==='combustible';
   const aceite      = tipo==='aceite';
-  const conDesc     = ['mantencion','reparacion','otro'].includes(tipo);
+  const conDesc     = ['mantencion','reparacion','incidente'].includes(tipo);
   const documento   = tipo==='documento';
   document.getElementById('vev-combustible-fields').style.display = combustible?'block':'none';
   document.getElementById('vev-aceite-fields').style.display      = aceite?'block':'none';
@@ -7841,28 +7901,34 @@ function menuUrnEditarOPs() {
       <label style="font-size:.72rem;color:var(--muted);">Tipo de registro</label>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:6px;" id="veh-tipo-btns">
         <button onclick="vSelTipo('combustible')" class="veh-tipo-btn" data-tipo="combustible"
-          style="padding:8px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);cursor:pointer;font-size:.75rem;display:flex;align-items:center;gap:6px;">
-          ⛽ Combustible
+          style="padding:8px 10px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);cursor:pointer;text-align:left;display:flex;flex-direction:column;gap:2px;">
+          <span style="font-size:.78rem;">⛽ Combustible</span>
+          <span style="font-size:.62rem;color:var(--muted);">litros, precio, km</span>
         </button>
         <button onclick="vSelTipo('aceite')" class="veh-tipo-btn" data-tipo="aceite"
-          style="padding:8px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);cursor:pointer;font-size:.75rem;display:flex;align-items:center;gap:6px;">
-          🛢 Cambio aceite
+          style="padding:8px 10px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);cursor:pointer;text-align:left;display:flex;flex-direction:column;gap:2px;">
+          <span style="font-size:.78rem;">🛢 Cambio aceite</span>
+          <span style="font-size:.62rem;color:var(--muted);">tipo, próximo km</span>
         </button>
         <button onclick="vSelTipo('mantencion')" class="veh-tipo-btn" data-tipo="mantencion"
-          style="padding:8px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);cursor:pointer;font-size:.75rem;display:flex;align-items:center;gap:6px;">
-          🔧 Mantención
+          style="padding:8px 10px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);cursor:pointer;text-align:left;display:flex;flex-direction:column;gap:2px;">
+          <span style="font-size:.78rem;">🔧 Mantención</span>
+          <span style="font-size:.62rem;color:var(--muted);">filtros, frenos, etc.</span>
         </button>
         <button onclick="vSelTipo('reparacion')" class="veh-tipo-btn" data-tipo="reparacion"
-          style="padding:8px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);cursor:pointer;font-size:.75rem;display:flex;align-items:center;gap:6px;">
-          🔨 Reparación
+          style="padding:8px 10px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);cursor:pointer;text-align:left;display:flex;flex-direction:column;gap:2px;">
+          <span style="font-size:.78rem;">🔨 Reparación</span>
+          <span style="font-size:.62rem;color:var(--muted);">taller, estado vehículo</span>
         </button>
         <button onclick="vSelTipo('documento')" class="veh-tipo-btn" data-tipo="documento"
-          style="padding:8px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);cursor:pointer;font-size:.75rem;display:flex;align-items:center;gap:6px;">
-          📋 Documento
+          style="padding:8px 10px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);cursor:pointer;text-align:left;display:flex;flex-direction:column;gap:2px;">
+          <span style="font-size:.78rem;">📋 Documento</span>
+          <span style="font-size:.62rem;color:var(--muted);">rev. técnica, permiso</span>
         </button>
-        <button onclick="vSelTipo('otro')" class="veh-tipo-btn" data-tipo="otro"
-          style="padding:8px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);cursor:pointer;font-size:.75rem;display:flex;align-items:center;gap:6px;">
-          📝 Otro
+        <button onclick="vSelTipo('incidente')" class="veh-tipo-btn" data-tipo="incidente"
+          style="padding:8px 10px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);cursor:pointer;text-align:left;display:flex;flex-direction:column;gap:2px;">
+          <span style="font-size:.78rem;">🚨 Multa / Incidente</span>
+          <span style="font-size:.62rem;color:var(--muted);">monto, descripción</span>
         </button>
       </div>
     </div>
