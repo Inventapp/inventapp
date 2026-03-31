@@ -447,6 +447,7 @@ tr:hover td{background:rgba(255,255,255,.02);}
     <a id="mnav-trabajadores" onclick="entrarSeccionMenu('trabajadores')" style="border-radius:7px;margin-bottom:2px;">👷 Trabajadores</a>
     <a id="mnav-costos" onclick="entrarSeccionMenu('costos')" style="border-radius:7px;margin-bottom:2px;">💰 Costos</a>
     <a id="mnav-bezanilla" onclick="entrarSeccionMenu('bezanilla')" style="border-radius:7px;margin-bottom:2px;">🛒 Bezanilla</a>
+    <a id="mnav-vehiculos" onclick="entrarSeccionMenu('vehiculos')" style="border-radius:7px;margin-bottom:2px;">🚗 Vehículos</a>
 
     <a onclick="irQRsMenu()" style="border-radius:7px;">🔲 Mis QRs</a>
   </div>
@@ -537,6 +538,11 @@ tr:hover td{background:rgba(255,255,255,.02);}
       <div class="hb-icon">💰</div>
       <div class="hb-label">Costos</div>
       <div class="hb-sub">Cálculo de costos</div>
+    </div>
+    <div id="hbtn-vehiculos" class="home-btn active-section" onclick="entrarSeccion('vehiculos')">
+      <div class="hb-icon">🚗</div>
+      <div class="hb-label">Vehículos</div>
+      <div class="hb-sub">Flota y mantenciones</div>
     </div>
     <div id="hbtn-trabajadores" class="home-btn active-section" onclick="entrarSeccion('trabajadores')">
       <div class="hb-icon">👷</div>
@@ -1416,6 +1422,55 @@ tr:hover td{background:rgba(255,255,255,.02);}
 </div><!-- fin seccion-bezanilla -->
 
 
+<!-- SECCION VEHÍCULOS -->
+<div id="seccion-vehiculos" style="display:none">
+<nav id="veh-nav" style="overflow-x:auto;display:flex;gap:4px;padding:0 8px;flex-wrap:nowrap;">
+  <button class="tab active" id="vehtab-flota"    onclick="vNavTo('flota')">🚗 Flota</button>
+  <button class="tab"        id="vehtab-odometro" onclick="vNavTo('odometro')">🛣 Odómetro</button>
+  <button class="tab"        id="vehtab-resumen"   onclick="vNavTo('resumen')">📊 Resumen</button>
+</nav>
+<main>
+
+<!-- VEH: FLOTA (lista de vehículos) -->
+<div class="page active" id="vpage-flota">
+  <div style="display:flex;gap:8px;align-items:center;margin-bottom:14px;flex-wrap:wrap;">
+    <input type="text" id="veh-search" placeholder="🔍 Buscar vehículo, patente…" style="flex:1;min-width:0;" oninput="vRenderFlota()">
+    <button class="btn btn-primary" style="white-space:nowrap;" onclick="vAbrirModalVehiculo()">+ Vehículo</button>
+  </div>
+  <div id="veh-flota-lista"></div>
+</div>
+
+<!-- VEH: FICHA DE VEHÍCULO -->
+<div class="page" id="vpage-ficha">
+  <div style="margin-bottom:12px;">
+    <button onclick="vNavTo('flota')" style="background:none;border:none;cursor:pointer;color:var(--accent);font-family:'Space Mono',monospace;font-size:.78rem;display:flex;align-items:center;gap:5px;">← Flota</button>
+  </div>
+  <div id="veh-ficha-content"></div>
+</div>
+
+<!-- VEH: ODÓMETRO DIARIO -->
+<div class="page" id="vpage-odometro">
+  <div style="display:flex;gap:8px;align-items:center;margin-bottom:12px;flex-wrap:wrap;">
+    <div id="veh-odo-patente-lbl" style="font-family:'Space Mono',monospace;font-size:.82rem;color:var(--muted);">Selecciona un vehículo</div>
+    <div style="flex:1;"></div>
+    <select id="veh-odo-select" style="font-size:.78rem;max-width:180px;" onchange="vOdoSelVehiculo(this.value)">
+      <option value="">— Selecciona vehículo —</option>
+    </select>
+  </div>
+  <div id="veh-odo-content">
+    <div class="empty"><div class="empty-icon">🛣</div>Selecciona un vehículo para ver su historial de kilometraje</div>
+  </div>
+</div>
+
+<!-- VEH: RESUMEN Y ALERTAS -->
+<div class="page" id="vpage-resumen">
+  <div id="veh-resumen-content"></div>
+</div>
+
+</main>
+</div><!-- fin seccion-vehiculos -->
+
+
 <!-- MODAL RESET STOCK -->
 <div class="modal-overlay" id="modal-reset-stock" onclick="if(event.target===this)cerrarModalResetStock()">
   <div class="modal-box" style="max-width:480px;width:94%;max-height:85vh;display:flex;flex-direction:column;">
@@ -1448,6 +1503,7 @@ const LS_WORKERS   = 'inventapp_workers';
 const LS_PROVEEDORES = 'inventapp_proveedores';
 const LS_COSTOS      = 'inventapp_costos';
 const LS_BEZANILLA   = 'inventapp_bezanilla';
+const LS_VEHICULOS   = 'inventapp_vehiculos';
 
 const DEFAULT_PRODUCTS = [
   {id:"PROD-001",name:"Laptop Dell Inspiron", stock:15,min:5, cost:850.00},
@@ -1483,6 +1539,7 @@ function lsGuardar() {
     localStorage.setItem(LS_PROVEEDORES, JSON.stringify(proveedores));
     localStorage.setItem(LS_COSTOS,      JSON.stringify(costosData));
     localStorage.setItem(LS_BEZANILLA,   JSON.stringify(bzProductos));
+    localStorage.setItem(LS_VEHICULOS,   JSON.stringify(vehFlota));
   } catch(e) {}
   // Debounced Firestore write
   clearTimeout(_saveMatTimer);
@@ -1493,7 +1550,7 @@ async function fbSaveMat() {
   try {
     await window._fbSetDoc(
       window._fbDoc(window._fbDb, 'inventario', 'materiales'),
-      { products, movements, workers, proveedores, costosData, bzProductos, updatedAt: new Date().toISOString() }
+      { products, movements, workers, proveedores, costosData, bzProductos, vehFlota, updatedAt: new Date().toISOString() }
     );
   } catch(e) { console.warn('Firestore save error (mat):', e); }
 }
@@ -1511,6 +1568,7 @@ function lsCargar() {
     const pv = localStorage.getItem(LS_PROVEEDORES); if(pv) proveedores = JSON.parse(pv);
     const cd = localStorage.getItem(LS_COSTOS); if(cd) { const _cd=JSON.parse(cd); costosData={...costosData,..._cd}; }
     const bz = localStorage.getItem(LS_BEZANILLA); if(bz) bzProductos = JSON.parse(bz);
+    const vf = localStorage.getItem(LS_VEHICULOS); if(vf) vehFlota = JSON.parse(vf);
     // Sync formato/unidad from products → costosData.matExtra (for products saved before this feature)
     products.forEach(p => {
       if(p.formato && p.unidad) {
@@ -1548,6 +1606,11 @@ let cProdActual = null; // currently selected uProduct id
 
 // ── BEZANILLA state ──
 let bzProductos = []; // [{id, nombre, cat, proveedor, precio, unidad, stock, min, notas, fecha}]
+
+// ── VEHÍCULOS state ──
+let vehFlota   = []; // [{id, patente, tipo, marca, modelo, anio, color, km, conductor, revTecnica, permiso, kmAceite, estado, eventos:[]}]
+let _vehActual = null; // patente del vehículo en ficha activa
+let _vevTipo   = null; // tipo de evento seleccionado en modal
 
 function sanitizar(str) {
   if (!str) return "";
@@ -1607,10 +1670,10 @@ function rolPuedeVer(seccion) {
   const u = window._currentUser;
   if(!u) return false;
   const permisos = {
-    admin:      ['materiales','urnas','trabajadores','costos','bezanilla'],
-    ventas:     ['materiales','urnas','bezanilla'],
+    admin:      ['materiales','urnas','trabajadores','costos','bezanilla','vehiculos'],
+    ventas:     ['materiales','urnas','bezanilla','vehiculos'],
     instalacion:['urnas'],
-    viewer:     ['materiales','urnas','trabajadores','costos','bezanilla'],
+    viewer:     ['materiales','urnas','trabajadores','costos','bezanilla','vehiculos'],
   };
   const permitidas = permisos[u.rol] || permisos['viewer'];
   return permitidas.includes(seccion);
@@ -1622,10 +1685,15 @@ function entrarSeccion(nombre) {
   document.getElementById('hamburger-btn').style.display = 'flex';
   document.getElementById('hdr-alert-wrap').style.display = 'none';
   // Hide all sections first
-  ['seccion-materiales','seccion-urnas','seccion-trabajadores','seccion-costos','seccion-bezanilla'].forEach(s=>{
+  ['seccion-materiales','seccion-urnas','seccion-trabajadores','seccion-costos','seccion-bezanilla','seccion-vehiculos'].forEach(s=>{
     const el=document.getElementById(s); if(el) el.style.display='none';
   });
-  if (nombre === 'bezanilla') {
+  if (nombre === 'vehiculos') {
+    document.getElementById('seccion-vehiculos').style.display = 'block';
+    document.getElementById('hdr-chip').style.display = 'none';
+    setSeccionHeader('Vehículos','var(--accent)');
+    vNavTo('flota');
+  } else if (nombre === 'bezanilla') {
     document.getElementById('seccion-bezanilla').style.display = 'block';
     document.getElementById('hdr-chip').style.display = 'none';
     setSeccionHeader('Bezanilla','var(--accent)');
@@ -1662,7 +1730,7 @@ function volverHome() {
   closeMenu(); stopScanner(); uStopScanner();
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.getElementById('page-home').classList.add('active');
-  ['seccion-materiales','seccion-urnas','seccion-trabajadores','seccion-costos','seccion-bezanilla'].forEach(s=>{
+  ['seccion-materiales','seccion-urnas','seccion-trabajadores','seccion-costos','seccion-bezanilla','seccion-vehiculos'].forEach(s=>{
     const el=document.getElementById(s); if(el) el.style.display='none';
   });
   document.getElementById('back-btn').style.display = 'none';
@@ -4892,6 +4960,725 @@ function cCalcularTodo() {
 
 
 
+
+// ════════════════════════════════════════════════════
+// VEHÍCULOS — módulo completo
+// ════════════════════════════════════════════════════
+
+const VEH_TIPO_ICON = {
+  'Auto':'🚗','Camioneta':'🛻','Furgón':'🚐','Camión':'🚛','Moto':'🏍','Maquinaria':'⚙️'
+};
+const VEH_EVENTO_ICON = {
+  'combustible':'⛽','aceite':'🛢','mantencion':'🔧','reparacion':'🔨','documento':'📋','otro':'📝'
+};
+const VEH_EVENTO_LABEL = {
+  'combustible':'Combustible','aceite':'Cambio aceite','mantencion':'Mantención',
+  'reparacion':'Reparación','documento':'Documento','otro':'Otro'
+};
+
+// ── HELPERS ──────────────────────────────────────────
+function vDiasHasta(fechaStr) {
+  if(!fechaStr) return null;
+  const hoy  = new Date(); hoy.setHours(0,0,0,0);
+  const fecha = new Date(fechaStr + 'T00:00:00');
+  return Math.round((fecha - hoy) / 86400000);
+}
+function vAlertColor(dias) {
+  if(dias === null) return 'var(--muted)';
+  if(dias < 0)   return 'var(--danger)';
+  if(dias <= 30) return 'var(--warn)';
+  return 'var(--accent)';
+}
+function vAlertLabel(dias, label) {
+  if(dias === null) return '';
+  if(dias < 0)   return `${label}: VENCIDO hace ${Math.abs(dias)}d`;
+  if(dias === 0) return `${label}: VENCE HOY`;
+  if(dias <= 30) return `${label}: vence en ${dias}d`;
+  return `${label}: ${dias}d`;
+}
+function vKmAceiteRestante(v) {
+  if(!v.kmAceite || !v.km) return null;
+  return v.kmAceite - v.km;
+}
+function vRendimientoPromedio(v) {
+  const cargas = (v.eventos||[]).filter(e => e.tipo==='combustible' && e.litros>0 && e.km>0 && e.lleno==='si');
+  if(cargas.length < 2) return null;
+  const sorted = [...cargas].sort((a,b) => a.km - b.km);
+  let totalKm = 0, totalLitros = 0;
+  for(let i=1; i<sorted.length; i++) {
+    totalKm     += sorted[i].km - sorted[i-1].km;
+    totalLitros += sorted[i].litros;
+  }
+  return totalLitros > 0 ? totalKm / totalLitros : null;
+}
+function vEstadoColor(estado) {
+  if(estado === 'En reparación') return 'var(--danger)';
+  if(estado === 'Inactivo')      return 'var(--muted)';
+  return 'var(--accent)';
+}
+function vGetWorkerNames() {
+  return [...new Set([...workers.map(w => workerName(w)), ...vehFlota.flatMap(v => v.conductor?[v.conductor]:[])])].filter(Boolean).sort();
+}
+
+// ── NAV ──────────────────────────────────────────────
+function vNavTo(name) {
+  document.querySelectorAll('#seccion-vehiculos .page').forEach(p => p.classList.remove('active'));
+  document.getElementById('vpage-' + name).classList.add('active');
+  document.querySelectorAll('#veh-nav .tab').forEach(t => t.classList.remove('active'));
+  const btn = document.getElementById('vehtab-' + name);
+  if(btn) btn.classList.add('active');
+  setSeccionHeader('Vehículos', 'var(--accent)');
+  if(name === 'flota')     vRenderFlota();
+  if(name === 'odometro')  vRenderOdometro();
+  if(name === 'resumen')   vRenderResumen();
+}
+
+// ── FLOTA: LISTADO ────────────────────────────────────
+function vRenderFlota() {
+  const lista = document.getElementById('veh-flota-lista');
+  const q     = (document.getElementById('veh-search')?.value||'').toLowerCase().trim();
+  if(!lista) return;
+  if(!vehFlota.length) {
+    lista.innerHTML = '<div class="empty"><div class="empty-icon">🚗</div>Sin vehículos. Agrega el primero con + Vehículo.</div>';
+    return;
+  }
+  const filtrados = vehFlota.filter(v =>
+    !q ||
+    (v.patente||'').toLowerCase().includes(q) ||
+    (v.marca||'').toLowerCase().includes(q) ||
+    (v.modelo||'').toLowerCase().includes(q) ||
+    (v.conductor||'').toLowerCase().includes(q)
+  );
+  if(!filtrados.length) {
+    lista.innerHTML = '<div class="empty"><div class="empty-icon">🔍</div>Sin resultados</div>';
+    return;
+  }
+  lista.innerHTML = filtrados.map(v => {
+    const icon  = VEH_TIPO_ICON[v.tipo] || '🚗';
+    const diasRev  = vDiasHasta(v.revTecnica);
+    const diasPerm = vDiasHasta(v.permiso);
+    const kmAceit  = vKmAceiteRestante(v);
+    const rend     = vRendimientoPromedio(v);
+    const estadoC  = vEstadoColor(v.estado);
+    const alertas  = [];
+    if(diasRev  !== null && diasRev  <= 60) alertas.push({txt: vAlertLabel(diasRev, 'Rev. técnica'), c: vAlertColor(diasRev)});
+    if(diasPerm !== null && diasPerm <= 60) alertas.push({txt: vAlertLabel(diasPerm, 'Permiso circ.'), c: vAlertColor(diasPerm)});
+    if(kmAceit  !== null && kmAceit  <= 2000) alertas.push({txt: (kmAceit<=0?'Aceite VENCIDO':'Aceite en '+fmtNum(kmAceit)+' km'), c: kmAceit<=0?'var(--danger)':'var(--warn)'});
+    const costoTotal = (v.eventos||[]).reduce((s,e) => s+(e.costo||0)+(e.costoTotal||0),0);
+    const ultKm = v.km || 0;
+    return `<div onclick="vAbrirFicha('${v.patente}')" style="background:var(--surface);border:1px solid ${v.estado==='En reparación'?'var(--danger)':v.estado==='Inactivo'?'var(--border)':'var(--border)'};border-radius:12px;padding:14px 16px;margin-bottom:10px;cursor:pointer;transition:border-color .2s;" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='${v.estado==='En reparación'?'var(--danger)':'var(--border)'}'">
+      <div style="display:flex;align-items:flex-start;gap:12px;">
+        <div style="font-size:2rem;flex-shrink:0;line-height:1;">${icon}</div>
+        <div style="flex:1;min-width:0;">
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px;">
+            <span style="font-family:'Space Mono',monospace;font-size:.88rem;font-weight:700;color:var(--text);">${sanitizar(v.patente)}</span>
+            <span style="font-size:.82rem;font-weight:600;">${sanitizar(v.marca)} ${sanitizar(v.modelo)}</span>
+            ${v.anio?`<span style="font-size:.7rem;color:var(--muted);">${v.anio}</span>`:''}
+            <span style="font-size:.65rem;font-family:'Space Mono',monospace;padding:2px 8px;border-radius:8px;background:${estadoC === 'var(--accent)'?'rgba(0,229,160,.1)':estadoC==='var(--danger)'?'rgba(239,68,68,.12)':'rgba(74,85,104,.2)'};color:${estadoC};">${v.estado||'Disponible'}</span>
+          </div>
+          <div style="display:flex;gap:12px;flex-wrap:wrap;font-size:.75rem;color:var(--muted);">
+            ${v.conductor?`<span>👤 ${sanitizar(v.conductor)}</span>`:''}
+            <span>🛣 ${fmtNum(ultKm)} km</span>
+            ${rend?`<span>⛽ ${rend.toFixed(1)} km/L</span>`:''}
+            ${costoTotal>0?`<span>💰 $${fmtNum(costoTotal)} total</span>`:''}
+          </div>
+          ${alertas.length?`<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;">${alertas.map(a=>`<span style="font-size:.62rem;font-family:'Space Mono',monospace;padding:2px 7px;border-radius:6px;background:rgba(0,0,0,.2);color:${a.c};">⚠ ${a.txt}</span>`).join('')}</div>`:''}
+        </div>
+        <div style="font-size:.7rem;color:var(--accent);flex-shrink:0;">▶</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ── FICHA DE VEHÍCULO ─────────────────────────────────
+function vAbrirFicha(patente) {
+  _vehActual = patente;
+  vNavTo('ficha');
+  // Remove ficha tab if exists, keep flota + resumen
+  let fichaTab = document.getElementById('vehtab-ficha');
+  if(!fichaTab) {
+    fichaTab = document.createElement('button');
+    fichaTab.className = 'tab';
+    fichaTab.id = 'vehtab-ficha';
+    fichaTab.onclick = () => vNavTo('ficha');
+    document.getElementById('veh-nav').insertBefore(fichaTab, document.getElementById('vehtab-resumen'));
+  }
+  const v = vehFlota.find(x => x.patente === patente);
+  if(v) fichaTab.textContent = (VEH_TIPO_ICON[v.tipo]||'🚗') + ' ' + v.patente;
+  vRenderFicha();
+}
+
+function vRenderFicha() {
+  const v = vehFlota.find(x => x.patente === _vehActual);
+  if(!v) return;
+  const el = document.getElementById('veh-ficha-content');
+  const icon = VEH_TIPO_ICON[v.tipo] || '🚗';
+  const diasRev  = vDiasHasta(v.revTecnica);
+  const diasPerm = vDiasHasta(v.permiso);
+  const kmAceit  = vKmAceiteRestante(v);
+  const rend     = vRendimientoPromedio(v);
+  const estadoC  = vEstadoColor(v.estado);
+  const eventos  = [...(v.eventos||[])].sort((a,b) => b.fecha.localeCompare(a.fecha));
+  const costoTotal = eventos.reduce((s,e) => s+(e.costo||0)+(e.costoTotal||0), 0);
+  const costoCombu = eventos.filter(e=>e.tipo==='combustible').reduce((s,e)=>s+(e.costoTotal||e.costo||0),0);
+  const costoMant  = eventos.filter(e=>['mantencion','reparacion','aceite'].includes(e.tipo)).reduce((s,e)=>s+(e.costo||0),0);
+
+  // KPI cards
+  const kpis = [
+    {val: fmtNum(v.km||0)+' km', lbl:'Odómetro actual', c:'var(--accent)'},
+    {val: rend ? rend.toFixed(1)+' km/L' : '—', lbl:'Rendimiento promedio', c:'var(--accent2)'},
+    {val: kmAceit!==null ? (kmAceit<=0?'VENCIDO':fmtNum(kmAceit)+' km') : '—', lbl:'Para cambio aceite', c:kmAceit!==null&&kmAceit<=0?'var(--danger)':kmAceit!==null&&kmAceit<=2000?'var(--warn)':'var(--accent)'},
+    {val: '$'+fmtNum(costoTotal), lbl:'Costo total flota', c:'var(--accent2)'},
+  ];
+
+  el.innerHTML = `
+    <!-- Header -->
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:14px;">
+      <div style="display:flex;align-items:flex-start;gap:14px;margin-bottom:12px;">
+        <div style="font-size:2.5rem;line-height:1;">${icon}</div>
+        <div style="flex:1;">
+          <div style="font-family:'Space Mono',monospace;font-size:1.1rem;font-weight:700;">${sanitizar(v.patente)}</div>
+          <div style="font-size:.9rem;font-weight:600;margin-top:2px;">${sanitizar(v.marca)} ${sanitizar(v.modelo)} ${v.anio?'('+v.anio+')':''}</div>
+          <div style="font-size:.75rem;color:var(--muted);margin-top:2px;">${v.tipo}${v.color?' · '+sanitizar(v.color):''}${v.conductor?' · 👤 '+sanitizar(v.conductor):''}</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:6px;flex-shrink:0;">
+          <span style="font-size:.68rem;font-family:'Space Mono',monospace;padding:3px 10px;border-radius:8px;background:${estadoC==='var(--accent)'?'rgba(0,229,160,.1)':'rgba(239,68,68,.12)'};color:${estadoC};">${v.estado||'Disponible'}</span>
+          <button onclick="vAbrirModalVehiculo('${v.patente}')" style="font-size:.65rem;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:4px 10px;cursor:pointer;color:var(--muted);">✏ Editar</button>
+        </div>
+      </div>
+      <!-- Documentos -->
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        ${vDocChip('Rev. técnica', v.revTecnica, diasRev)}
+        ${vDocChip('Permiso circ.', v.permiso, diasPerm)}
+      </div>
+    </div>
+
+    <!-- KPIs -->
+    <div class="summary-grid" style="margin-bottom:14px;">
+      ${kpis.map(k=>`<div class="sum-card"><div class="sum-val" style="color:${k.c};font-size:1.1rem;">${k.val}</div><div class="sum-lbl">${k.lbl}</div></div>`).join('')}
+    </div>
+
+    <!-- Botones acción -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px;">
+      <button class="btn btn-primary" onclick="vAbrirModalEvento()">+ Registrar evento</button>
+      <button class="btn btn-secondary" onclick="vAbrirRegistroKm()">🛣 Registrar km</button>
+    </div>
+
+    <!-- Costos rápidos -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px;">
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px;">
+        <div style="font-size:.65rem;color:var(--muted);font-family:'Space Mono',monospace;letter-spacing:.06em;margin-bottom:4px;">COMBUSTIBLE</div>
+        <div style="font-family:'Space Mono',monospace;font-size:.9rem;font-weight:700;color:var(--accent2);">$${fmtNum(costoCombu)}</div>
+      </div>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px;">
+        <div style="font-size:.65rem;color:var(--muted);font-family:'Space Mono',monospace;letter-spacing:.06em;margin-bottom:4px;">MANTENCIONES</div>
+        <div style="font-family:'Space Mono',monospace;font-size:.9rem;font-weight:700;color:var(--warn);">$${fmtNum(costoMant)}</div>
+      </div>
+    </div>
+
+    <!-- Últimos km registrados -->
+    ${(()=>{
+      const kmRecs = [...(v.kmDiario||[])].sort((a,b)=>b.fecha.localeCompare(a.fecha)).slice(0,5);
+      if(!kmRecs.length) return '';
+      return `<div style="font-family:'Space Mono',monospace;font-size:.6rem;color:var(--muted);letter-spacing:.08em;margin-bottom:8px;">ÚLTIMOS KM REGISTRADOS</div>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:10px 12px;margin-bottom:16px;">
+        ${kmRecs.map(r=>`<div style="display:flex;align-items:center;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--border);font-size:.75rem;">
+          <span style="color:var(--muted);font-family:'Space Mono',monospace;">${fmtFecha(r.fecha)}</span>
+          <span style="font-family:'Space Mono',monospace;font-weight:700;color:var(--accent);">${fmtNum(r.km)} km</span>
+          <span style="font-family:'Space Mono',monospace;font-size:.7rem;color:${r.diff>0?'var(--accent2)':'var(--muted)'};">${r.diff>0?'+'+fmtNum(r.diff)+' km':'—'}</span>
+        </div>`).join('')}
+        <button onclick="vNavTo('odometro')" style="background:none;border:none;cursor:pointer;color:var(--accent);font-size:.72rem;font-family:'Space Mono',monospace;padding-top:8px;width:100%;text-align:center;">Ver historial completo →</button>
+      </div>`;
+    })()}
+
+    <!-- Historial de eventos -->
+    <div style="font-family:'Space Mono',monospace;font-size:.6rem;color:var(--muted);letter-spacing:.08em;margin-bottom:8px;">HISTORIAL (${eventos.length} eventos)</div>
+    ${!eventos.length ? '<div style="color:var(--muted);font-size:.8rem;padding:10px 0;">Sin eventos registrados aún.</div>' :
+      events_html(eventos, v)}
+  `;
+}
+
+function vDocChip(label, fecha, dias) {
+  if(!fecha) return `<span style="font-size:.68rem;background:var(--surface2);padding:3px 9px;border-radius:6px;color:var(--muted);">${label}: no registrado</span>`;
+  const c = vAlertColor(dias);
+  const txt = dias<0?'VENCIDO':dias===0?'HOY':'vence '+fmtFecha(fecha);
+  return `<span style="font-size:.68rem;font-family:'Space Mono',monospace;background:${c==='var(--danger)'?'rgba(239,68,68,.1)':c==='var(--warn)'?'rgba(245,158,11,.1)':'rgba(0,229,160,.08)'};padding:3px 9px;border-radius:6px;color:${c};">${label}: ${txt}</span>`;
+}
+
+function events_html(eventos, v) {
+  return eventos.map((e,i) => {
+    const icon = VEH_EVENTO_ICON[e.tipo]||'📝';
+    const label = VEH_EVENTO_LABEL[e.tipo]||'Otro';
+    const costo = e.costoTotal||e.costo||0;
+    let detalle = '';
+    if(e.tipo==='combustible') detalle = `${e.litros||'?'} L · $${fmtNum(e.preciolitro||0)}/L${e.rendimiento?' · '+e.rendimiento.toFixed(1)+' km/L':''}`;
+    else if(e.tipo==='aceite') detalle = e.tipoAceite||'';
+    else detalle = e.descripcion||e.taller||'';
+    return `<div style="background:var(--surface2);border-radius:10px;padding:10px 12px;margin-bottom:6px;display:flex;gap:10px;align-items:flex-start;">
+      <div style="font-size:1.1rem;flex-shrink:0;line-height:1.3;">${icon}</div>
+      <div style="flex:1;min-width:0;">
+        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+          <span style="font-weight:600;font-size:.82rem;">${label}</span>
+          ${e.km?`<span style="font-family:'Space Mono',monospace;font-size:.68rem;color:var(--muted);">${fmtNum(e.km)} km</span>`:''}
+          ${e.conductor?`<span style="font-size:.68rem;color:var(--muted);">· 👤 ${sanitizar(e.conductor)}</span>`:''}
+        </div>
+        <div style="font-size:.73rem;color:var(--muted);margin-top:2px;">${fmtFecha(e.fecha)} ${detalle?'· '+sanitizar(detalle):''}</div>
+        ${e.notas?`<div style="font-size:.7rem;color:var(--muted);font-style:italic;margin-top:2px;">${sanitizar(e.notas)}</div>`:''}
+      </div>
+      <div style="text-align:right;flex-shrink:0;">
+        ${costo?`<div style="font-family:'Space Mono',monospace;font-size:.78rem;color:var(--accent2);">$${fmtNum(costo)}</div>`:''}
+        <button onclick="vEliminarEvento('${v.patente}',${i})" style="background:none;border:none;cursor:pointer;color:var(--danger);font-size:.75rem;margin-top:4px;">🗑</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ── RESUMEN Y ALERTAS ──────────────────────────────────
+function vRenderResumen() {
+  const el = document.getElementById('veh-resumen-content');
+  if(!el) return;
+  if(!vehFlota.length) {
+    el.innerHTML = '<div class="empty"><div class="empty-icon">🚗</div>Sin vehículos registrados.</div>';
+    return;
+  }
+  const hoy = new Date(); hoy.setHours(0,0,0,0);
+  const alertas = [];
+  vehFlota.forEach(v => {
+    const diasRev  = vDiasHasta(v.revTecnica);
+    const diasPerm = vDiasHasta(v.permiso);
+    const kmAceit  = vKmAceiteRestante(v);
+    if(v.estado === 'En reparación') alertas.push({nivel:'danger', ico:'🔨', txt:`${v.patente} — En reparación`, sub:v.marca+' '+v.modelo});
+    if(diasRev  !== null && diasRev  <= 60) alertas.push({nivel:diasRev<0?'danger':'warn', ico:'📋', txt:`${v.patente} — Rev. técnica: ${diasRev<0?'VENCIDA hace '+Math.abs(diasRev)+'d':'vence en '+diasRev+'d'}`, sub:v.marca+' '+v.modelo});
+    if(diasPerm !== null && diasPerm <= 60) alertas.push({nivel:diasPerm<0?'danger':'warn', ico:'📄', txt:`${v.patente} — Permiso circ.: ${diasPerm<0?'VENCIDO':'vence en '+diasPerm+'d'}`, sub:v.marca+' '+v.modelo});
+    if(kmAceit  !== null && kmAceit  <= 2000) alertas.push({nivel:kmAceit<=0?'danger':'warn', ico:'🛢', txt:`${v.patente} — Cambio aceite: ${kmAceit<=0?'VENCIDO':'en '+fmtNum(kmAceit)+' km'}`, sub:v.marca+' '+v.modelo});
+  });
+  const totalCosto = vehFlota.reduce((s,v)=>(v.eventos||[]).reduce((ss,e)=>ss+(e.costo||0)+(e.costoTotal||0),s),0);
+  const totalVeh   = vehFlota.length;
+  const enRep      = vehFlota.filter(v=>v.estado==='En reparación').length;
+  const disponibles= vehFlota.filter(v=>!v.estado||v.estado==='Disponible').length;
+
+  el.innerHTML = `
+    <!-- KPIs globales -->
+    <div class="summary-grid" style="margin-bottom:16px;">
+      <div class="sum-card"><div class="sum-val">${totalVeh}</div><div class="sum-lbl">Vehículos</div></div>
+      <div class="sum-card accent"><div class="sum-val">${disponibles}</div><div class="sum-lbl">Disponibles</div></div>
+      <div class="sum-card danger"><div class="sum-val">${enRep}</div><div class="sum-lbl">En reparación</div></div>
+      <div class="sum-card blue"><div class="sum-val">$${fmtNum(totalCosto)}</div><div class="sum-lbl">Costo total flota</div></div>
+    </div>
+
+    <!-- Alertas -->
+    <div style="font-family:'Space Mono',monospace;font-size:.6rem;color:var(--muted);letter-spacing:.08em;margin-bottom:8px;">ALERTAS (${alertas.length})</div>
+    ${!alertas.length
+      ? '<div style="background:rgba(0,229,160,.07);border:1px solid rgba(0,229,160,.15);border-radius:10px;padding:12px 16px;font-size:.82rem;color:var(--accent);margin-bottom:16px;">✅ Sin alertas activas — toda la flota al día</div>'
+      : alertas.sort((a,b)=>a.nivel==='danger'&&b.nivel!=='danger'?-1:1).map(a=>`
+        <div onclick="vAbrirFicha('${a.txt.split(' —')[0]}')" style="background:${a.nivel==='danger'?'rgba(239,68,68,.08)':'rgba(245,158,11,.08)'};border:1px solid ${a.nivel==='danger'?'rgba(239,68,68,.25)':'rgba(245,158,11,.2)'};border-radius:10px;padding:11px 14px;margin-bottom:6px;cursor:pointer;display:flex;gap:10px;align-items:center;">
+          <span style="font-size:1.2rem;">${a.ico}</span>
+          <div style="flex:1;">
+            <div style="font-size:.82rem;font-weight:600;color:${a.nivel==='danger'?'var(--danger)':'var(--warn)'};">${sanitizar(a.txt)}</div>
+            <div style="font-size:.72rem;color:var(--muted);">${sanitizar(a.sub)}</div>
+          </div>
+          <span style="color:${a.nivel==='danger'?'var(--danger)':'var(--warn)'};font-size:.75rem;">▶</span>
+        </div>`).join('')
+    }
+
+    <!-- Rendimiento por vehículo -->
+    <div style="font-family:'Space Mono',monospace;font-size:.6rem;color:var(--muted);letter-spacing:.08em;margin:16px 0 8px;">RENDIMIENTO COMBUSTIBLE</div>
+    ${vehFlota.map(v => {
+      const rend = vRendimientoPromedio(v);
+      const cargas = (v.eventos||[]).filter(e=>e.tipo==='combustible');
+      const costoC = cargas.reduce((s,e)=>s+(e.costoTotal||e.costo||0),0);
+      return `<div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:11px 14px;margin-bottom:6px;display:flex;align-items:center;gap:12px;">
+        <div style="font-size:1.3rem;">${VEH_TIPO_ICON[v.tipo]||'🚗'}</div>
+        <div style="flex:1;">
+          <div style="font-family:'Space Mono',monospace;font-size:.82rem;font-weight:700;">${sanitizar(v.patente)}</div>
+          <div style="font-size:.72rem;color:var(--muted);">${sanitizar(v.marca)} ${sanitizar(v.modelo)} · ${cargas.length} cargas</div>
+        </div>
+        <div style="text-align:right;">
+          <div style="font-family:'Space Mono',monospace;font-size:.9rem;font-weight:700;color:${rend?rend>=8?'var(--accent)':rend>=6?'var(--warn)':'var(--danger)':'var(--muted)'};">${rend?rend.toFixed(1)+' km/L':'—'}</div>
+          <div style="font-size:.65rem;color:var(--muted);">$${fmtNum(costoC)} total</div>
+        </div>
+      </div>`;
+    }).join('')}
+  `;
+}
+
+// ── MODAL VEHÍCULO: abrir/cerrar/guardar ──────────────
+function vAbrirModalVehiculo(patente) {
+  const isEdit = !!patente;
+  const v = isEdit ? vehFlota.find(x => x.patente===patente) : null;
+  document.getElementById('veh-modal-veh-title').textContent = isEdit ? 'Editar vehículo' : 'Agregar vehículo';
+  document.getElementById('vf-patente').value      = v?.patente     || '';
+  document.getElementById('vf-patente').disabled   = isEdit;
+  document.getElementById('vf-tipo').value         = v?.tipo        || 'Camioneta';
+  document.getElementById('vf-marca').value        = v?.marca       || '';
+  document.getElementById('vf-modelo').value       = v?.modelo      || '';
+  document.getElementById('vf-anio').value         = v?.anio        || '';
+  document.getElementById('vf-color').value        = v?.color       || '';
+  document.getElementById('vf-km').value           = v?.km          || '';
+  document.getElementById('vf-conductor').value    = v?.conductor   || '';
+  document.getElementById('vf-rev-tecnica').value  = v?.revTecnica  || '';
+  document.getElementById('vf-permiso').value      = v?.permiso     || '';
+  document.getElementById('vf-km-aceite').value    = v?.kmAceite    || '';
+  // Conductores datalist
+  const dl = document.getElementById('vf-conductores-dl');
+  if(dl) dl.innerHTML = vGetWorkerNames().map(n=>`<option value="${n}">`).join('');
+  document.getElementById('modal-veh-vehiculo').style.display = 'flex';
+}
+function vCerrarModalVehiculo() {
+  document.getElementById('modal-veh-vehiculo').style.display = 'none';
+}
+function vGuardarVehiculo() {
+  const patente = document.getElementById('vf-patente').value.trim().toUpperCase();
+  if(!patente) return showToast('La patente es obligatoria','error');
+  const existente = vehFlota.find(x => x.patente===patente);
+  const data = {
+    patente,
+    tipo:       document.getElementById('vf-tipo').value,
+    marca:      document.getElementById('vf-marca').value.trim(),
+    modelo:     document.getElementById('vf-modelo').value.trim(),
+    anio:       parseInt(document.getElementById('vf-anio').value)||null,
+    color:      document.getElementById('vf-color').value.trim(),
+    km:         parseFloat(document.getElementById('vf-km').value)||0,
+    conductor:  document.getElementById('vf-conductor').value.trim(),
+    revTecnica: document.getElementById('vf-rev-tecnica').value||null,
+    permiso:    document.getElementById('vf-permiso').value||null,
+    kmAceite:   parseFloat(document.getElementById('vf-km-aceite').value)||null,
+  };
+  if(existente) {
+    Object.assign(existente, data);
+    showToast('✓ Vehículo actualizado','success');
+  } else {
+    vehFlota.push({...data, estado:'Disponible', eventos:[]});
+    showToast('✓ '+patente+' agregado','success');
+  }
+  lsGuardar();
+  vCerrarModalVehiculo();
+  if(_vehActual===patente) vRenderFicha(); else vRenderFlota();
+}
+
+// ── MODAL EVENTO ──────────────────────────────────────
+function vAbrirModalEvento() {
+  _vevTipo = null;
+  document.getElementById('veh-modal-evento-title').textContent = 'Registrar evento — ' + _vehActual;
+  // Reset tipo buttons
+  document.querySelectorAll('.veh-tipo-btn').forEach(b => {
+    b.style.background = 'var(--surface2)'; b.style.borderColor='var(--border)'; b.style.color='var(--text)';
+  });
+  // Hide all conditional fields
+  ['combustible','aceite','descripcion','documento','estado'].forEach(f => {
+    const el = document.getElementById('vev-'+f+'-fields');
+    if(el) el.style.display='none';
+  });
+  // Reset values
+  document.getElementById('vev-fecha').value         = new Date().toISOString().split('T')[0];
+  const v = vehFlota.find(x=>x.patente===_vehActual);
+  document.getElementById('vev-km').value            = v?.km||'';
+  document.getElementById('vev-litros').value        = '';
+  document.getElementById('vev-precio-litro').value  = '';
+  document.getElementById('vev-costo-total').value   = '';
+  document.getElementById('vev-tipo-aceite').value   = '';
+  document.getElementById('vev-km-prox-aceite').value= '';
+  document.getElementById('vev-descripcion').value   = '';
+  document.getElementById('vev-taller').value        = '';
+  document.getElementById('vev-costo').value         = '';
+  document.getElementById('vev-conductor').value     = v?.conductor||'';
+  document.getElementById('vev-notas').value         = '';
+  document.getElementById('vev-rendimiento-preview').style.display='none';
+  // Conductores
+  const dl = document.getElementById('vev-conductores-dl');
+  if(dl) dl.innerHTML = vGetWorkerNames().map(n=>`<option value="${n}">`).join('');
+  document.getElementById('modal-veh-evento').style.display='flex';
+}
+function vCerrarModalEvento() {
+  document.getElementById('modal-veh-evento').style.display='none';
+}
+function vSelTipo(tipo) {
+  _vevTipo = tipo;
+  document.querySelectorAll('.veh-tipo-btn').forEach(b => {
+    const active = b.dataset.tipo === tipo;
+    b.style.background  = active ? 'var(--accent)' : 'var(--surface2)';
+    b.style.borderColor = active ? 'var(--accent)' : 'var(--border)';
+    b.style.color       = active ? 'var(--bg)'     : 'var(--text)';
+  });
+  // Show/hide fields
+  const combustible = tipo==='combustible';
+  const aceite      = tipo==='aceite';
+  const conDesc     = ['mantencion','reparacion','otro'].includes(tipo);
+  const documento   = tipo==='documento';
+  document.getElementById('vev-combustible-fields').style.display = combustible?'block':'none';
+  document.getElementById('vev-aceite-fields').style.display      = aceite?'block':'none';
+  document.getElementById('vev-descripcion-fields').style.display = conDesc?'block':'none';
+  const estadoF = document.getElementById('vev-estado-fields');
+  if(estadoF) estadoF.style.display = tipo==='reparacion'?'block':'none';
+  document.getElementById('vev-documento-fields').style.display   = documento?'block':'none';
+  // En combustible, el costo se calcula; ocultar costo manual
+  document.getElementById('vev-costo-wrap').style.display = combustible?'none':'block';
+}
+function vCalcRendimiento() {
+  const litros = parseFloat(document.getElementById('vev-litros').value)||0;
+  const precioL = parseFloat(document.getElementById('vev-precio-litro').value)||0;
+  const kmActual = parseFloat(document.getElementById('vev-km').value)||0;
+  // Auto-fill costo total
+  if(litros>0 && precioL>0) document.getElementById('vev-costo-total').value = Math.round(litros*precioL);
+  // Rendimiento con carga anterior
+  const v = vehFlota.find(x=>x.patente===_vehActual);
+  if(!v || !kmActual || !litros) { document.getElementById('vev-rendimiento-preview').style.display='none'; return; }
+  const ultCargaLlena = [...(v.eventos||[])].filter(e=>e.tipo==='combustible'&&e.lleno==='si'&&e.km<kmActual).sort((a,b)=>b.km-a.km)[0];
+  if(ultCargaLlena) {
+    const kmRecorridos = kmActual - ultCargaLlena.km;
+    const rend = kmRecorridos / litros;
+    const prev = document.getElementById('vev-rendimiento-preview');
+    prev.style.display='block';
+    prev.textContent = `Est. rendimiento: ${rend.toFixed(1)} km/L (${fmtNum(kmRecorridos)} km recorridos)`;
+  }
+}
+function vGuardarEvento() {
+  if(!_vevTipo) return showToast('Selecciona el tipo de evento','error');
+  const v = vehFlota.find(x=>x.patente===_vehActual);
+  if(!v) return;
+  const fecha    = document.getElementById('vev-fecha').value;
+  const km       = parseFloat(document.getElementById('vev-km').value)||0;
+  const conductor= document.getElementById('vev-conductor').value.trim();
+  const notas    = document.getElementById('vev-notas').value.trim();
+  const evento = { tipo:_vevTipo, fecha, km, conductor, notas, id:'EV-'+Date.now() };
+  if(_vevTipo==='combustible') {
+    const litros    = parseFloat(document.getElementById('vev-litros').value)||0;
+    const precioL   = parseFloat(document.getElementById('vev-precio-litro').value)||0;
+    const costoT    = parseFloat(document.getElementById('vev-costo-total').value)||litros*precioL;
+    const lleno     = document.getElementById('vev-lleno').value;
+    if(!litros) return showToast('Ingresa los litros cargados','error');
+    // Calcular rendimiento
+    const ultCargaLlena = [...(v.eventos||[])].filter(e=>e.tipo==='combustible'&&e.lleno==='si'&&e.km<km&&e.km>0).sort((a,b)=>b.km-a.km)[0];
+    if(ultCargaLlena && km>0 && lleno==='si') {
+      evento.rendimiento = (km - ultCargaLlena.km) / litros;
+    }
+    Object.assign(evento, {litros, preciolitro:precioL, costoTotal:costoT, lleno});
+  }
+  if(_vevTipo==='aceite') {
+    const kmProxAceite = parseFloat(document.getElementById('vev-km-prox-aceite').value)||null;
+    Object.assign(evento, {tipoAceite:document.getElementById('vev-tipo-aceite').value.trim(), costo:parseFloat(document.getElementById('vev-costo').value)||0});
+    if(kmProxAceite) v.kmAceite = kmProxAceite;
+  }
+  if(['mantencion','reparacion','otro'].includes(_vevTipo)) {
+    const estadoCambio = document.getElementById('vev-estado-veh')?.value;
+    Object.assign(evento, {descripcion:document.getElementById('vev-descripcion').value.trim(), taller:document.getElementById('vev-taller').value.trim(), costo:parseFloat(document.getElementById('vev-costo').value)||0});
+    if(estadoCambio) v.estado = estadoCambio;
+  }
+  if(_vevTipo==='documento') {
+    const tipoDoc = document.getElementById('vev-tipo-doc').value;
+    const venc    = document.getElementById('vev-vencimiento').value;
+    Object.assign(evento, {tipoDoc, costo:parseFloat(document.getElementById('vev-costo').value)||0, costo2:0});
+    if(venc) {
+      if(tipoDoc==='Revisión técnica') v.revTecnica = venc;
+      if(tipoDoc==='Permiso circulación') v.permiso = venc;
+    }
+  }
+  // Update vehicle km
+  if(km > v.km) v.km = km;
+  if(!v.eventos) v.eventos = [];
+  v.eventos.push(evento);
+  lsGuardar();
+  vCerrarModalEvento();
+  vRenderFicha();
+  showToast('✓ Evento registrado','success');
+}
+
+// ── ODÓMETRO DIARIO ───────────────────────────────────
+
+function vAbrirRegistroKm() {
+  const v = vehFlota.find(x => x.patente === _vehActual);
+  if(!v) return;
+  document.getElementById('vkm-patente-lbl').textContent = v.patente + ' — ' + v.marca + ' ' + v.modelo;
+  document.getElementById('vkm-fecha').value     = new Date().toISOString().split('T')[0];
+  document.getElementById('vkm-km').value        = v.km || '';
+  document.getElementById('vkm-conductor').value = v.conductor || '';
+  document.getElementById('vkm-notas').value     = '';
+  document.getElementById('vkm-preview').textContent = '';
+  const dl = document.getElementById('vkm-conductores-dl');
+  if(dl) dl.innerHTML = vGetWorkerNames().map(n=>`<option value="${n}">`).join('');
+  document.getElementById('modal-veh-km').style.display = 'flex';
+  setTimeout(() => document.getElementById('vkm-km').focus(), 80);
+}
+
+function vCerrarRegistroKm() {
+  document.getElementById('modal-veh-km').style.display = 'none';
+}
+
+function vKmPreview() {
+  const v = vehFlota.find(x => x.patente === _vehActual);
+  if(!v) return;
+  const nuevoKm = parseFloat(document.getElementById('vkm-km').value)||0;
+  const prev    = document.getElementById('vkm-preview');
+  if(!nuevoKm) { prev.textContent = ''; return; }
+  const diff = nuevoKm - (v.km||0);
+  if(diff > 0) {
+    prev.textContent = `+${fmtNum(diff)} km desde último registro (${fmtNum(v.km||0)} km)`;
+    prev.style.color = 'var(--accent)';
+  } else if(diff < 0) {
+    prev.textContent = `⚠ Menor al odómetro actual (${fmtNum(v.km||0)} km)`;
+    prev.style.color = 'var(--warn)';
+  } else {
+    prev.textContent = 'Sin cambio respecto al registro anterior';
+    prev.style.color = 'var(--muted)';
+  }
+}
+
+function vGuardarKm() {
+  const v = vehFlota.find(x => x.patente === _vehActual);
+  if(!v) return;
+  const km        = parseFloat(document.getElementById('vkm-km').value)||0;
+  const fecha     = document.getElementById('vkm-fecha').value;
+  const conductor = document.getElementById('vkm-conductor').value.trim();
+  const notas     = document.getElementById('vkm-notas').value.trim();
+  if(!km) return showToast('Ingresa el kilometraje','error');
+  if(!fecha) return showToast('Selecciona la fecha','error');
+
+  const kmAnterior = v.km || 0;
+  const diff       = km - kmAnterior;
+
+  if(!v.kmDiario) v.kmDiario = [];
+  v.kmDiario.push({ fecha, km, diff, conductor, notas, id:'KD-'+Date.now() });
+  if(km > v.km) v.km = km;
+
+  lsGuardar();
+  vCerrarRegistroKm();
+  vRenderFicha();
+  showToast(`✓ ${fmtNum(km)} km registrado${diff>0?' (+'+fmtNum(diff)+' km)':''}`, 'success');
+}
+
+// ── PESTAÑA ODÓMETRO ─────────────────────────────────
+function vRenderOdometro() {
+  // Populate vehicle selector
+  const sel = document.getElementById('veh-odo-select');
+  if(sel) {
+    const cur = sel.value || _vehActual || '';
+    sel.innerHTML = '<option value="">— Selecciona vehículo —</option>' +
+      vehFlota.map(v => `<option value="${v.patente}" ${v.patente===cur?'selected':''}>${v.patente} — ${v.marca} ${v.modelo}</option>`).join('');
+    if(cur) sel.value = cur;
+  }
+  if(_vehActual) vOdoSelVehiculo(_vehActual);
+}
+
+function vOdoSelVehiculo(patente) {
+  const el = document.getElementById('veh-odo-content');
+  const lbl = document.getElementById('veh-odo-patente-lbl');
+  if(!patente) { if(el) el.innerHTML = '<div class="empty"><div class="empty-icon">🛣</div>Selecciona un vehículo</div>'; return; }
+
+  // Set tab context
+  _vehActual = patente;
+  const sel = document.getElementById('veh-odo-select');
+  if(sel) sel.value = patente;
+
+  const v = vehFlota.find(x => x.patente === patente);
+  if(!v || !el) return;
+  if(lbl) lbl.textContent = v.patente + ' — ' + v.marca + ' ' + v.modelo;
+
+  const registros = [...(v.kmDiario||[])].sort((a,b) => b.fecha.localeCompare(a.fecha));
+
+  // Stats
+  const totalKm   = registros.length >= 2
+    ? (registros[0].km - registros[registros.length-1].km)
+    : 0;
+  const dias      = registros.length >= 2 ? (() => {
+    const d1 = new Date(registros[registros.length-1].fecha+'T00:00:00');
+    const d2 = new Date(registros[0].fecha+'T00:00:00');
+    return Math.max(1, Math.round((d2-d1)/86400000));
+  })() : 1;
+  const promDia   = registros.length >= 2 ? (totalKm / dias).toFixed(1) : null;
+  const maxDia    = registros.length >= 2 ? Math.max(...registros.filter(r=>r.diff>0).map(r=>r.diff)) : 0;
+
+  // Last 30 days bar chart
+  const hoy   = new Date(); hoy.setHours(0,0,0,0);
+  const hace30= new Date(hoy-29*86400000);
+  const ultimos30 = registros.filter(r => new Date(r.fecha+'T00:00:00') >= hace30);
+  const maxBar = Math.max(...ultimos30.filter(r=>r.diff>0).map(r=>r.diff), 1);
+
+  el.innerHTML = `
+    <!-- KPIs -->
+    <div class="summary-grid" style="margin-bottom:14px;">
+      <div class="sum-card accent"><div class="sum-val">${fmtNum(v.km||0)}</div><div class="sum-lbl">Km actuales</div></div>
+      <div class="sum-card"><div class="sum-val">${promDia ? promDia+' km/d' : '—'}</div><div class="sum-lbl">Promedio diario</div></div>
+      <div class="sum-card"><div class="sum-val">${maxDia ? fmtNum(maxDia)+' km' : '—'}</div><div class="sum-lbl">Máximo en un día</div></div>
+      <div class="sum-card"><div class="sum-val">${registros.length}</div><div class="sum-lbl">Registros totales</div></div>
+    </div>
+
+    <!-- Botón registrar -->
+    <div style="margin-bottom:14px;">
+      <button class="btn btn-primary btn-full" onclick="vAbrirRegistroKm()">+ Registrar km hoy</button>
+    </div>
+
+    ${ultimos30.length >= 2 ? `
+    <!-- Mini gráfico barras últimos 30 días -->
+    <div style="font-family:'Space Mono',monospace;font-size:.6rem;color:var(--muted);letter-spacing:.08em;margin-bottom:8px;">KM RECORRIDOS — ÚLTIMOS 30 DÍAS</div>
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:14px;overflow-x:auto;">
+      <div style="display:flex;align-items:flex-end;gap:3px;height:60px;min-width:${ultimos30.length*16}px;">
+        ${ultimos30.filter(r=>r.diff>0).sort((a,b)=>a.fecha.localeCompare(b.fecha)).map(r => {
+          const h = Math.max(4, Math.round((r.diff/maxBar)*56));
+          const isMax = r.diff === maxBar;
+          return `<div style="display:flex;flex-direction:column;align-items:center;gap:2px;flex:1;min-width:12px;" title="${fmtFecha(r.fecha)}: ${fmtNum(r.diff)} km">
+            <div style="width:100%;height:${h}px;background:${isMax?'var(--accent)':'var(--accent2)'};border-radius:2px 2px 0 0;"></div>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>` : ''}
+
+    <!-- Historial tabla -->
+    <div style="font-family:'Space Mono',monospace;font-size:.6rem;color:var(--muted);letter-spacing:.08em;margin-bottom:8px;">HISTORIAL (${registros.length} registros)</div>
+    ${!registros.length
+      ? '<div style="color:var(--muted);font-size:.8rem;padding:10px 0;">Sin registros de kilometraje aún. Usa "+ Registrar km hoy" para empezar.</div>'
+      : `<div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden;">
+          <table style="width:100%;font-size:.78rem;">
+            <thead><tr>
+              <th style="padding:8px 12px;text-align:left;font-size:.62rem;font-family:'Space Mono',monospace;color:var(--muted);letter-spacing:.05em;border-bottom:1px solid var(--border);">FECHA</th>
+              <th style="padding:8px 12px;text-align:right;font-family:'Space Mono',monospace;font-size:.62rem;color:var(--muted);letter-spacing:.05em;border-bottom:1px solid var(--border);">KM TOTAL</th>
+              <th style="padding:8px 12px;text-align:right;font-family:'Space Mono',monospace;font-size:.62rem;color:var(--muted);letter-spacing:.05em;border-bottom:1px solid var(--border);">RECORRIDO</th>
+              <th style="padding:8px 12px;text-align:left;font-size:.62rem;font-family:'Space Mono',monospace;color:var(--muted);letter-spacing:.05em;border-bottom:1px solid var(--border);">CONDUCTOR / NOTAS</th>
+              <th style="width:32px;border-bottom:1px solid var(--border);"></th>
+            </tr></thead>
+            <tbody>${registros.map((r,i) => `
+              <tr style="border-bottom:1px solid var(--border);">
+                <td style="padding:9px 12px;font-family:'Space Mono',monospace;font-size:.75rem;">${fmtFecha(r.fecha)}</td>
+                <td style="padding:9px 12px;text-align:right;font-family:'Space Mono',monospace;font-weight:700;color:var(--accent);">${fmtNum(r.km)}</td>
+                <td style="padding:9px 12px;text-align:right;font-family:'Space Mono',monospace;font-size:.75rem;color:${r.diff>0?'var(--accent2)':r.diff<0?'var(--danger)':'var(--muted)'};">${r.diff>0?'+'+fmtNum(r.diff):r.diff<0?fmtNum(r.diff):'—'}</td>
+                <td style="padding:9px 12px;font-size:.75rem;color:var(--muted);">${r.conductor?'👤 '+sanitizar(r.conductor):''}${r.notas?' · '+sanitizar(r.notas):''}</td>
+                <td style="padding:9px 8px;text-align:center;"><button onclick="vEliminarKm('${v.patente}','${r.id}')" style="background:none;border:none;cursor:pointer;color:var(--danger);font-size:.75rem;">🗑</button></td>
+              </tr>`).join('')}
+            </tbody>
+          </table>
+        </div>`
+    }
+  `;
+}
+
+function vEliminarKm(patente, id) {
+  if(!confirm('¿Eliminar este registro de kilometraje?')) return;
+  const v = vehFlota.find(x => x.patente === patente);
+  if(!v) return;
+  v.kmDiario = (v.kmDiario||[]).filter(r => r.id !== id);
+  // Recalculate current km from max remaining
+  if(v.kmDiario.length > 0) {
+    v.km = Math.max(...v.kmDiario.map(r=>r.km));
+  }
+  lsGuardar();
+  vOdoSelVehiculo(patente);
+  showToast('Registro eliminado','error');
+}
+
+
+function vEliminarEvento(patente, idx) {
+  if(!confirm('¿Eliminar este evento?')) return;
+  const v = vehFlota.find(x=>x.patente===patente);
+  if(!v) return;
+  // Sort same as display (desc) to get correct index
+  const sorted = [...(v.eventos||[])].sort((a,b)=>b.fecha.localeCompare(a.fecha));
+  const evId   = sorted[idx]?.id;
+  if(evId) v.eventos = v.eventos.filter(e=>e.id!==evId);
+  lsGuardar();
+  vRenderFicha();
+  showToast('Evento eliminado','error');
+}
+
+
 // ════════════════════════════════════════════════════
 // BEZANILLA — Productos de compra (oficina, limpieza, etc.)
 // ════════════════════════════════════════════════════
@@ -6312,6 +7099,7 @@ window._fbSubscribe = function() {
       if(data.proveedores) { proveedores = data.proveedores; localStorage.setItem(LS_PROVEEDORES, JSON.stringify(proveedores)); }
         if(data.costosData) { costosData={...costosData,...data.costosData}; localStorage.setItem(LS_COSTOS, JSON.stringify(costosData)); }
         if(data.bzProductos) { bzProductos = data.bzProductos; localStorage.setItem(LS_BEZANILLA, JSON.stringify(bzProductos)); }
+        if(data.vehFlota) { vehFlota = data.vehFlota; localStorage.setItem(LS_VEHICULOS, JSON.stringify(vehFlota)); }
       updateHeader();
       const active = document.querySelector('#seccion-materiales .page.active');
       if(active) {
@@ -6965,6 +7753,262 @@ function menuUrnEditarOPs() {
     <div style="display:flex;gap:8px;">
       <button class="btn btn-primary" style="flex:1;" onclick="bzGuardar()">✓ Guardar</button>
       <button class="btn btn-secondary" style="flex:1;" onclick="bzCerrarModal()">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: AGREGAR/EDITAR VEHÍCULO -->
+<div class="modal-overlay" id="modal-veh-vehiculo" onclick="if(event.target===this)vCerrarModalVehiculo()" style="display:none;">
+  <div class="modal-box" style="max-width:500px;width:96%;max-height:92vh;overflow-y:auto;">
+    <div class="modal-title" id="veh-modal-veh-title">Agregar vehículo</div>
+    <div class="form-row" style="margin-bottom:10px;">
+      <div>
+        <label style="font-size:.72rem;color:var(--muted);">Patente</label>
+        <input type="text" id="vf-patente" placeholder="ej: ABCD12" style="width:100%;margin-top:4px;font-family:'Space Mono',monospace;text-transform:uppercase;">
+      </div>
+      <div>
+        <label style="font-size:.72rem;color:var(--muted);">Tipo</label>
+        <select id="vf-tipo" style="width:100%;margin-top:4px;">
+          <option value="Auto">Auto / Sedán</option>
+          <option value="Camioneta">Camioneta / SUV</option>
+          <option value="Furgón">Furgón / Van</option>
+          <option value="Camión">Camión</option>
+          <option value="Moto">Moto</option>
+          <option value="Maquinaria">Maquinaria / Equipo</option>
+          <option value="Otro">Otro</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row" style="margin-bottom:10px;">
+      <div>
+        <label style="font-size:.72rem;color:var(--muted);">Marca</label>
+        <input type="text" id="vf-marca" placeholder="ej: Toyota" style="width:100%;margin-top:4px;">
+      </div>
+      <div>
+        <label style="font-size:.72rem;color:var(--muted);">Modelo</label>
+        <input type="text" id="vf-modelo" placeholder="ej: Hilux" style="width:100%;margin-top:4px;">
+      </div>
+    </div>
+    <div class="form-row" style="margin-bottom:10px;">
+      <div>
+        <label style="font-size:.72rem;color:var(--muted);">Año</label>
+        <input type="number" id="vf-anio" placeholder="ej: 2020" min="1990" max="2030" style="width:100%;margin-top:4px;">
+      </div>
+      <div>
+        <label style="font-size:.72rem;color:var(--muted);">Color</label>
+        <input type="text" id="vf-color" placeholder="ej: Blanco" style="width:100%;margin-top:4px;">
+      </div>
+    </div>
+    <div class="form-row" style="margin-bottom:10px;">
+      <div>
+        <label style="font-size:.72rem;color:var(--muted);">Km actuales</label>
+        <input type="number" id="vf-km" placeholder="ej: 45000" min="0" style="width:100%;margin-top:4px;">
+      </div>
+      <div>
+        <label style="font-size:.72rem;color:var(--muted);">Conductor principal (opcional)</label>
+        <input type="text" id="vf-conductor" placeholder="ej: Juan Pérez" style="width:100%;margin-top:4px;" list="vf-conductores-dl">
+        <datalist id="vf-conductores-dl"></datalist>
+      </div>
+    </div>
+    <div class="form-row" style="margin-bottom:10px;">
+      <div>
+        <label style="font-size:.72rem;color:var(--muted);">Vencimiento revisión técnica</label>
+        <input type="date" id="vf-rev-tecnica" style="width:100%;margin-top:4px;">
+      </div>
+      <div>
+        <label style="font-size:.72rem;color:var(--muted);">Vencimiento permiso circulación</label>
+        <input type="date" id="vf-permiso" style="width:100%;margin-top:4px;">
+      </div>
+    </div>
+    <div style="margin-bottom:14px;">
+      <label style="font-size:.72rem;color:var(--muted);">Km para próximo cambio de aceite</label>
+      <input type="number" id="vf-km-aceite" placeholder="ej: 50000" min="0" style="width:100%;margin-top:4px;">
+    </div>
+    <div style="display:flex;gap:8px;">
+      <button class="btn btn-primary" style="flex:1;" onclick="vGuardarVehiculo()">✓ Guardar</button>
+      <button class="btn btn-secondary" onclick="vCerrarModalVehiculo()">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: REGISTRAR EVENTO (combustible, aceite, mantención, reparación, etc.) -->
+<div class="modal-overlay" id="modal-veh-evento" onclick="if(event.target===this)vCerrarModalEvento()" style="display:none;">
+  <div class="modal-box" style="max-width:460px;width:96%;max-height:92vh;overflow-y:auto;">
+    <div class="modal-title" id="veh-modal-evento-title">Registrar evento</div>
+
+    <!-- Tipo de evento -->
+    <div style="margin-bottom:12px;">
+      <label style="font-size:.72rem;color:var(--muted);">Tipo de registro</label>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:6px;" id="veh-tipo-btns">
+        <button onclick="vSelTipo('combustible')" class="veh-tipo-btn" data-tipo="combustible"
+          style="padding:8px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);cursor:pointer;font-size:.75rem;display:flex;align-items:center;gap:6px;">
+          ⛽ Combustible
+        </button>
+        <button onclick="vSelTipo('aceite')" class="veh-tipo-btn" data-tipo="aceite"
+          style="padding:8px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);cursor:pointer;font-size:.75rem;display:flex;align-items:center;gap:6px;">
+          🛢 Cambio aceite
+        </button>
+        <button onclick="vSelTipo('mantencion')" class="veh-tipo-btn" data-tipo="mantencion"
+          style="padding:8px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);cursor:pointer;font-size:.75rem;display:flex;align-items:center;gap:6px;">
+          🔧 Mantención
+        </button>
+        <button onclick="vSelTipo('reparacion')" class="veh-tipo-btn" data-tipo="reparacion"
+          style="padding:8px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);cursor:pointer;font-size:.75rem;display:flex;align-items:center;gap:6px;">
+          🔨 Reparación
+        </button>
+        <button onclick="vSelTipo('documento')" class="veh-tipo-btn" data-tipo="documento"
+          style="padding:8px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);cursor:pointer;font-size:.75rem;display:flex;align-items:center;gap:6px;">
+          📋 Documento
+        </button>
+        <button onclick="vSelTipo('otro')" class="veh-tipo-btn" data-tipo="otro"
+          style="padding:8px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);cursor:pointer;font-size:.75rem;display:flex;align-items:center;gap:6px;">
+          📝 Otro
+        </button>
+      </div>
+    </div>
+
+    <!-- Campos comunes -->
+    <div class="form-row" style="margin-bottom:10px;">
+      <div>
+        <label style="font-size:.72rem;color:var(--muted);">Fecha</label>
+        <input type="date" id="vev-fecha" style="width:100%;margin-top:4px;">
+      </div>
+      <div>
+        <label style="font-size:.72rem;color:var(--muted);">Km al momento</label>
+        <input type="number" id="vev-km" placeholder="km actuales" min="0" style="width:100%;margin-top:4px;" oninput="vCalcRendimiento()">
+      </div>
+    </div>
+
+    <!-- Campos de combustible -->
+    <div id="vev-combustible-fields" style="display:none;">
+      <div class="form-row" style="margin-bottom:10px;">
+        <div>
+          <label style="font-size:.72rem;color:var(--muted);">Litros cargados</label>
+          <input type="number" id="vev-litros" placeholder="ej: 40" min="0" step="0.1" style="width:100%;margin-top:4px;" oninput="vCalcRendimiento()">
+        </div>
+        <div>
+          <label style="font-size:.72rem;color:var(--muted);">Precio por litro ($)</label>
+          <input type="number" id="vev-precio-litro" placeholder="ej: 1050" min="0" style="width:100%;margin-top:4px;" oninput="vCalcRendimiento()">
+        </div>
+      </div>
+      <div style="margin-bottom:10px;">
+        <label style="font-size:.72rem;color:var(--muted);">Costo total ($)</label>
+        <input type="number" id="vev-costo-total" placeholder="se calcula automático" min="0" style="width:100%;margin-top:4px;">
+      </div>
+      <div id="vev-rendimiento-preview" style="display:none;background:rgba(0,229,160,.08);border:1px solid rgba(0,229,160,.2);border-radius:8px;padding:8px 12px;margin-bottom:10px;font-family:'Space Mono',monospace;font-size:.75rem;color:var(--accent);"></div>
+      <div style="margin-bottom:10px;">
+        <label style="font-size:.72rem;color:var(--muted);">¿Tanque lleno?</label>
+        <select id="vev-lleno" style="width:100%;margin-top:4px;">
+          <option value="si">Sí — tanque lleno</option>
+          <option value="no">No — carga parcial</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Campos de aceite -->
+    <div id="vev-aceite-fields" style="display:none;">
+      <div class="form-row" style="margin-bottom:10px;">
+        <div>
+          <label style="font-size:.72rem;color:var(--muted);">Tipo de aceite</label>
+          <input type="text" id="vev-tipo-aceite" placeholder="ej: 10W-40 sintético" style="width:100%;margin-top:4px;">
+        </div>
+        <div>
+          <label style="font-size:.72rem;color:var(--muted);">Próximo cambio (km)</label>
+          <input type="number" id="vev-km-prox-aceite" placeholder="ej: 55000" style="width:100%;margin-top:4px;">
+        </div>
+      </div>
+    </div>
+
+    <!-- Campos de mantención / reparación / otro -->
+    <div id="vev-descripcion-fields" style="display:none;">
+      <div style="margin-bottom:10px;">
+        <label style="font-size:.72rem;color:var(--muted);">Descripción</label>
+        <input type="text" id="vev-descripcion" placeholder="ej: Cambio filtro aire, pastillas freno" style="width:100%;margin-top:4px;">
+      </div>
+      <div style="margin-bottom:10px;">
+        <label style="font-size:.72rem;color:var(--muted);">Taller / Proveedor</label>
+        <input type="text" id="vev-taller" placeholder="ej: Taller Pérez" style="width:100%;margin-top:4px;">
+      </div>
+      <div id="vev-estado-fields" style="display:none;">
+        <label style="font-size:.72rem;color:var(--muted);">Estado del vehículo</label>
+        <select id="vev-estado-veh" style="width:100%;margin-top:4px;">
+          <option value="">Sin cambio de estado</option>
+          <option value="En reparación">En reparación (no disponible)</option>
+          <option value="Disponible">Disponible (terminada reparación)</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Documento -->
+    <div id="vev-documento-fields" style="display:none;">
+      <div class="form-row" style="margin-bottom:10px;">
+        <div>
+          <label style="font-size:.72rem;color:var(--muted);">Tipo de documento</label>
+          <select id="vev-tipo-doc" style="width:100%;margin-top:4px;">
+            <option value="Revisión técnica">Revisión técnica</option>
+            <option value="Permiso circulación">Permiso circulación</option>
+            <option value="SOAP">SOAP</option>
+            <option value="Otro">Otro documento</option>
+          </select>
+        </div>
+        <div>
+          <label style="font-size:.72rem;color:var(--muted);">Nuevo vencimiento</label>
+          <input type="date" id="vev-vencimiento" style="width:100%;margin-top:4px;">
+        </div>
+      </div>
+    </div>
+
+    <!-- Costo y conductor (común) -->
+    <div class="form-row" style="margin-bottom:10px;" id="vev-costo-conductor-row">
+      <div id="vev-costo-wrap">
+        <label style="font-size:.72rem;color:var(--muted);">Costo ($)</label>
+        <input type="number" id="vev-costo" placeholder="0" min="0" style="width:100%;margin-top:4px;">
+      </div>
+      <div>
+        <label style="font-size:.72rem;color:var(--muted);">Conductor</label>
+        <input type="text" id="vev-conductor" placeholder="ej: Juan Pérez" style="width:100%;margin-top:4px;" list="vev-conductores-dl">
+        <datalist id="vev-conductores-dl"></datalist>
+      </div>
+    </div>
+
+    <div style="margin-bottom:14px;">
+      <label style="font-size:.72rem;color:var(--muted);">Notas (opcional)</label>
+      <input type="text" id="vev-notas" placeholder="Observaciones adicionales" style="width:100%;margin-top:4px;">
+    </div>
+
+    <div style="display:flex;gap:8px;">
+      <button class="btn btn-primary" style="flex:1;" onclick="vGuardarEvento()">✓ Registrar</button>
+      <button class="btn btn-secondary" onclick="vCerrarModalEvento()">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: REGISTRAR KM DIARIO -->
+<div class="modal-overlay" id="modal-veh-km" onclick="if(event.target===this)vCerrarRegistroKm()" style="display:none;">
+  <div class="modal-box" style="max-width:360px;width:94%;">
+    <div class="modal-title">🛣 Registrar kilometraje</div>
+    <div style="font-family:'Space Mono',monospace;font-size:.72rem;color:var(--accent);margin-bottom:12px;" id="vkm-patente-lbl"></div>
+    <div style="margin-bottom:10px;">
+      <label style="font-size:.72rem;color:var(--muted);">Fecha</label>
+      <input type="date" id="vkm-fecha" style="width:100%;margin-top:4px;">
+    </div>
+    <div style="margin-bottom:10px;">
+      <label style="font-size:.72rem;color:var(--muted);">Odómetro (km actuales)</label>
+      <input type="number" id="vkm-km" placeholder="ej: 45320" min="0" style="width:100%;margin-top:4px;font-family:'Space Mono',monospace;font-size:1rem;font-weight:700;" oninput="vKmPreview()">
+    </div>
+    <div id="vkm-preview" style="font-size:.72rem;font-family:'Space Mono',monospace;min-height:18px;color:var(--accent2);margin-bottom:10px;"></div>
+    <div style="margin-bottom:14px;">
+      <label style="font-size:.72rem;color:var(--muted);">Conductor (opcional)</label>
+      <input type="text" id="vkm-conductor" style="width:100%;margin-top:4px;" list="vkm-conductores-dl">
+      <datalist id="vkm-conductores-dl"></datalist>
+    </div>
+    <div style="margin-bottom:14px;">
+      <label style="font-size:.72rem;color:var(--muted);">Notas (opcional)</label>
+      <input type="text" id="vkm-notas" placeholder="ej: Viaje Santiago" style="width:100%;margin-top:4px;">
+    </div>
+    <div style="display:flex;gap:8px;">
+      <button class="btn btn-primary" style="flex:1;" onclick="vGuardarKm()">✓ Guardar</button>
+      <button class="btn btn-secondary" onclick="vCerrarRegistroKm()">Cancelar</button>
     </div>
   </div>
 </div>
