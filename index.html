@@ -66,7 +66,14 @@
         var nombre = user.email.split('@')[0];
         await setDoc(uRef, { email: user.email, nombre: nombre, rol: rol, activo: true });
         if (isFirst) await setDoc(doc(fbDb, 'meta', 'stats'), { creado: new Date().toISOString() });
-        try{var _ls=await getDoc(doc(fbDb,'meta','userList'));var _us=_ls.exists()?(_ls.data().uids||[]):[];if(!_us.includes(user.uid)){_us.push(user.uid);await setDoc(doc(fbDb,'meta','userList'),{uids:_us});}}catch(_){}
+        try {
+          const listSnap = await getDoc(doc(fbDb, 'meta', 'userList'));
+          const uids = listSnap.exists() ? (listSnap.data().uids || []) : [];
+          if (!uids.includes(user.uid)) {
+            uids.push(user.uid);
+            await setDoc(doc(fbDb, 'meta', 'userList'), { uids });
+          }
+        } catch (_) {}
         window._currentUser = { uid: user.uid, email: user.email, rol: rol, nombre: nombre };
       } else {
         const data = uSnap.data();
@@ -1526,27 +1533,9 @@ const LS_COSTOS      = 'inventapp_costos';
 const LS_BEZANILLA   = 'inventapp_bezanilla';
 const LS_VEHICULOS   = 'inventapp_vehiculos';
 
-const DEFAULT_PRODUCTS = [
-  {id:"PROD-001",name:"Laptop Dell Inspiron", stock:15,min:5, cost:850.00},
-  {id:"PROD-002",name:"Mouse Inalámbrico",    stock:3, min:10,cost:25.50},
-  {id:"PROD-003",name:"Teclado Mecánico",     stock:8, min:5, cost:75.00},
-  {id:"PROD-004",name:"Monitor 24\"",         stock:0, min:3, cost:320.00},
-  {id:"PROD-005",name:"Auriculares Bluetooth",stock:20,min:8, cost:55.00},
-];
-const DEFAULT_MOVEMENTS = [
-  {id:"MOV-001",date:"2025-02-01",prodId:"PROD-001",prodName:"Laptop Dell Inspiron", type:"Ingreso",qty:10,cost:850,worker:"",obs:"Compra inicial"},
-  {id:"MOV-002",date:"2025-02-05",prodId:"PROD-002",prodName:"Mouse Inalámbrico",    type:"Salida", qty:2, cost:0,  worker:"Juan Pérez",    obs:""},
-  {id:"MOV-003",date:"2025-02-10",prodId:"PROD-003",prodName:"Teclado Mecánico",     type:"Ingreso",qty:8, cost:75, worker:"",              obs:"Reposición"},
-  {id:"MOV-004",date:"2025-02-12",prodId:"PROD-004",prodName:"Monitor 24\"",         type:"Salida", qty:1, cost:0,  worker:"María González", obs:""},
-  {id:"MOV-005",date:"2025-02-15",prodId:"PROD-005",prodName:"Auriculares Bluetooth",type:"Ingreso",qty:20,cost:55, worker:"",              obs:"Proveedor A"},
-];
-const DEFAULT_WORKERS = [
-  {name:"Juan Pérez",    area:"Materiales"},
-  {name:"María González",area:"Urnas"},
-  {name:"Carlos Rojas",  area:"Materiales"},
-  {name:"Ana Martínez",  area:"Administración"},
-  {name:"Luis Soto",     area:"Producción"},
-];
+const DEFAULT_PRODUCTS  = [];
+const DEFAULT_MOVEMENTS = [];
+const DEFAULT_WORKERS   = [];
 
 // ── FIRESTORE SAVE/LOAD ───────────────────────────────
 // Debounce: avoid writing on every keystroke
