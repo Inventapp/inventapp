@@ -1229,13 +1229,9 @@ tr:hover td{background:rgba(255,255,255,.02);}
 
 <!-- LISTA DE TRABAJADORES -->
 <div id="trab-lista-view" style="padding:16px;max-width:700px;margin:0 auto;">
-  <div class="card" style="border-color:var(--accent);margin-bottom:14px;">
-    <div class="card-title">Agregar trabajador</div>
-    <div style="display:flex;gap:8px;margin-bottom:10px;">
-      <input type="text" id="trab-name" placeholder="Nombre completo" style="flex:2" onkeydown="if(event.key==='Enter')document.getElementById('trab-area').focus()">
-      <input type="text" id="trab-area" placeholder="Área (ej: Producción)" style="flex:1" onkeydown="if(event.key==='Enter')addTrabajadorGlobal()">
-    </div>
-    <button class="btn btn-primary" style="width:100%;justify-content:center;" onclick="addTrabajadorGlobal()">+ Agregar trabajador</button>
+  <div style="display:flex;gap:8px;align-items:center;margin-bottom:12px;">
+    <input type="text" id="trab-search" placeholder="🔍 Buscar trabajador o área…" style="flex:1;" oninput="renderTrabajadoresGlobal()">
+    <button class="btn btn-primary" style="white-space:nowrap;" onclick="trabAbrirModal()">+ Trabajador</button>
   </div>
   <div class="card" style="padding:0;overflow:hidden;">
     <div style="padding:12px 17px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;">
@@ -1370,11 +1366,28 @@ tr:hover td{background:rgba(255,255,255,.02);}
 <div class="page" id="cpage-resultados">
   <div style="font-family:'Space Mono',monospace;font-size:.6rem;color:var(--muted);padding:4px 0 8px;letter-spacing:.08em;">PRODUCTO: <span id="c-prod-lbl-resultados" style="color:var(--accent);">—</span></div>
   <div class="card" style="margin-bottom:12px;">
-    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:14px;">
-      <div class="card-title" style="margin:0;">CIF Total mensual ($)</div>
-      <input type="number" id="c-cif-total" value="3000000" min="0" step="100000"
-        style="width:160px;text-align:right;font-family:'Space Mono',monospace;"
-        onchange="cGuardarCIF()">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">
+      <div>
+        <label style="font-size:.68rem;color:var(--muted);">CIF mensual ($)</label>
+        <input type="number" id="c-cif-total" value="3000000" min="0" step="100000"
+          style="width:100%;margin-top:4px;text-align:right;font-family:'Space Mono',monospace;"
+          onchange="cGuardarCIF()">
+      </div>
+      <div>
+        <label style="font-size:.68rem;color:var(--muted);">Unidades producidas / mes</label>
+        <input type="number" id="c-unidades-mes" value="50" min="1" step="1"
+          style="width:100%;margin-top:4px;text-align:right;font-family:'Space Mono',monospace;"
+          onchange="cGuardarCIF()">
+      </div>
+      <div>
+        <label style="font-size:.68rem;color:var(--muted);">Precio de venta ($)</label>
+        <input type="number" id="c-precio-venta" value="0" min="0" step="1000"
+          style="width:100%;margin-top:4px;text-align:right;font-family:'Space Mono',monospace;"
+          onchange="cGuardarCIF()">
+      </div>
+      <div style="display:flex;flex-direction:column;justify-content:flex-end;">
+        <div id="c-margen-preview" style="background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:7px 10px;font-family:'Space Mono',monospace;font-size:.78rem;color:var(--muted);min-height:34px;margin-top:4px;">Margen: —</div>
+      </div>
     </div>
     <button class="btn btn-primary btn-full" onclick="cCalcularTodo()">🧮 Calcular costos</button>
   </div>
@@ -1447,19 +1460,6 @@ tr:hover td{background:rgba(255,255,255,.02);}
   <div id="veh-ficha-content"></div>
 </div>
 
-<!-- VEH: ODÓMETRO DIARIO -->
-<div class="page" id="vpage-odometro">
-  <div style="display:flex;gap:8px;align-items:center;margin-bottom:12px;flex-wrap:wrap;">
-    <div id="veh-odo-patente-lbl" style="font-family:'Space Mono',monospace;font-size:.82rem;color:var(--muted);">Selecciona un vehículo</div>
-    <div style="flex:1;"></div>
-    <select id="veh-odo-select" style="font-size:.78rem;max-width:180px;" onchange="vOdoSelVehiculo(this.value)">
-      <option value="">— Selecciona vehículo —</option>
-    </select>
-  </div>
-  <div id="veh-odo-content">
-    <div class="empty"><div class="empty-icon">🛣</div>Selecciona un vehículo para ver su historial de kilometraje</div>
-  </div>
-</div>
 
 <!-- VEH: RESUMEN Y ALERTAS -->
 <div class="page" id="vpage-resumen">
@@ -1469,6 +1469,28 @@ tr:hover td{background:rgba(255,255,255,.02);}
 </main>
 </div><!-- fin seccion-vehiculos -->
 
+
+<!-- MODAL: AGREGAR/EDITAR TRABAJADOR -->
+<div class="modal-overlay" id="modal-trabajador" onclick="if(event.target===this)trabCerrarModal()" style="display:none;">
+  <div class="modal-box" style="max-width:420px;width:94%;">
+    <div class="modal-title" id="trab-modal-title">Agregar trabajador</div>
+    <div style="margin-bottom:10px;">
+      <label style="font-size:.72rem;color:var(--muted);">Nombre completo</label>
+      <input type="text" id="trab-modal-name" placeholder="ej: Juan Pérez" style="width:100%;margin-top:4px;"
+        onkeydown="if(event.key==='Enter')document.getElementById('trab-modal-area').focus()">
+    </div>
+    <div style="margin-bottom:14px;">
+      <label style="font-size:.72rem;color:var(--muted);">Área de trabajo</label>
+      <input type="text" id="trab-modal-area" placeholder="ej: Producción, Barniz, Admin" style="width:100%;margin-top:4px;"
+        list="trab-area-dl" onkeydown="if(event.key==='Enter')trabGuardar()">
+      <datalist id="trab-area-dl"></datalist>
+    </div>
+    <div style="display:flex;gap:8px;">
+      <button class="btn btn-primary" style="flex:1;" onclick="trabGuardar()">✓ Guardar</button>
+      <button class="btn btn-secondary" onclick="trabCerrarModal()">Cancelar</button>
+    </div>
+  </div>
+</div>
 
 <!-- MODAL RESET STOCK -->
 <div class="modal-overlay" id="modal-reset-stock" onclick="if(event.target===this)cerrarModalResetStock()">
@@ -1598,7 +1620,10 @@ let costosData = {
     telas:      {sueldo:750000, horasMes:180, horasUnidad:3.0,  merma:2},
     terminacion:{sueldo:700000, horasMes:180, horasUnidad:1.5,  merma:2},
   },
-  cifTotal:  3000000,
+  cifTotal:      3000000,
+  unidadesMes:   50,
+  precioVenta:   0,
+  ultimoResultado: null,
   matExtra:  {}, // {prodId: {formato:10, unidad:'L'}} extra cost metadata per material
 };
 let cProdActual = null; // currently selected uProduct id
@@ -2685,9 +2710,7 @@ function addProduct(){
   const nombrePres  = (document.getElementById('np-nombre-pres')?.value||'').trim().toLowerCase();
   products.push({id, name, cat, stock, min, cost, formato, unidad, nombrePres});
   // Sync con costosData.matExtra para el módulo de Costos
-  if(!costosData.matExtra[id]) costosData.matExtra[id]={};
-  costosData.matExtra[id].formato = formato;
-  costosData.matExtra[id].unidad  = unidad;
+  costosData.matExtra[id] = { formato, unidad };
   document.getElementById('add-product-form').style.display='none';
   ['np-id','np-name','np-cat'].forEach(x=>document.getElementById(x).value='');
   document.getElementById('np-formato').value='1';
@@ -4883,8 +4906,22 @@ function cSetMOD(proceso, field, val) {
   lsGuardar();
 }
 function cGuardarCIF() {
-  costosData.cifTotal = parseFloat(document.getElementById('c-cif-total')?.value) || 0;
+  costosData.cifTotal    = parseFloat(document.getElementById('c-cif-total')?.value)    || 0;
+  costosData.unidadesMes = parseFloat(document.getElementById('c-unidades-mes')?.value) || 50;
+  costosData.precioVenta = parseFloat(document.getElementById('c-precio-venta')?.value) || 0;
   lsGuardar();
+  cUpdateMargenPreview();
+}
+function cUpdateMargenPreview() {
+  const pv   = parseFloat(document.getElementById('c-precio-venta')?.value) || 0;
+  const prev = document.getElementById('c-margen-preview');
+  if(!prev) return;
+  if(!pv || !costosData.ultimoResultado) { prev.textContent = 'Margen: —'; prev.style.color='var(--muted)'; return; }
+  const costo  = costosData.ultimoResultado.costoTotal;
+  const margen = pv > 0 ? ((pv - costo) / pv * 100) : 0;
+  const ganancia = pv - costo;
+  prev.textContent = `Margen: ${margen.toFixed(1)}% ($${fmtNum(Math.round(ganancia))})`;
+  prev.style.color = margen >= 20 ? 'var(--accent)' : margen >= 0 ? 'var(--warn)' : 'var(--danger)';
 }
 
 // ── Tab: RESULTADOS ───────────────────────────────────
@@ -4893,7 +4930,17 @@ function cInitResultados() {
   if(lbl) lbl.textContent = cProdActual ? (uProducts.find(p=>p.id===cProdActual)?.name || cProdActual) : '—';
   const cifEl = document.getElementById('c-cif-total');
   if(cifEl) cifEl.value = costosData.cifTotal || 3000000;
-  document.getElementById('c-resultados-content').style.display = 'none';
+  const unEl = document.getElementById('c-unidades-mes');
+  if(unEl) unEl.value = costosData.unidadesMes || 50;
+  const pvEl = document.getElementById('c-precio-venta');
+  if(pvEl) pvEl.value = costosData.precioVenta || 0;
+  // Restore last result if exists and same product
+  if(costosData.ultimoResultado && costosData.ultimoResultado.prodId === cProdActual) {
+    cMostrarResultado(costosData.ultimoResultado);
+  } else {
+    document.getElementById('c-resultados-content').style.display = 'none';
+  }
+  cUpdateMargenPreview();
 }
 
 function cCalcularProceso(proceso) {
@@ -4912,32 +4959,49 @@ function cCalcularProceso(proceso) {
   return { materiales: costoMats * (1 + merma), mod: modVal };
 }
 
+function cMostrarResultado(r) {
+  document.getElementById('c-res-kpis').innerHTML = r.kpisHtml;
+  document.getElementById('c-desglose-tbody').innerHTML = r.desgHtml;
+  document.getElementById('c-resultados-content').style.display = 'block';
+}
+
 function cCalcularTodo() {
   if(!cProdActual) return showToast('Selecciona primero un producto en la pestaña Productos','error');
 
-  const cif = parseFloat(document.getElementById('c-cif-total')?.value) || costosData.cifTotal || 0;
+  const cifMes    = parseFloat(document.getElementById('c-cif-total')?.value)    || costosData.cifTotal    || 0;
+  const unidades  = parseFloat(document.getElementById('c-unidades-mes')?.value) || costosData.unidadesMes || 50;
+  const precioV   = parseFloat(document.getElementById('c-precio-venta')?.value) || costosData.precioVenta || 0;
+
+  // CIF por unidad (proporcional)
+  const cifPorUnidad = unidades > 0 ? cifMes / unidades : 0;
+
   const res = {};
   C_PROCESOS.forEach(p => { res[p] = cCalcularProceso(p); });
 
   const modTotal = C_PROCESOS.reduce((s,p) => s + res[p].mod, 0);
   C_PROCESOS.forEach(p => {
-    res[p].cif   = modTotal > 0 ? (res[p].mod / modTotal) * cif : cif / C_PROCESOS.length;
+    res[p].cif   = modTotal > 0 ? (res[p].mod / modTotal) * cifPorUnidad : cifPorUnidad / C_PROCESOS.length;
     res[p].total = res[p].materiales + res[p].mod + res[p].cif;
   });
 
   const costoTotal = C_PROCESOS.reduce((s,p) => s + res[p].total, 0);
   const matsTot    = C_PROCESOS.reduce((s,p) => s + res[p].materiales, 0);
+  const margen     = precioV > 0 ? ((precioV - costoTotal) / precioV * 100) : null;
+  const ganancia   = precioV > 0 ? precioV - costoTotal : null;
 
   // KPI cards
-  document.getElementById('c-res-kpis').innerHTML = `
+  const kpisHtml = `
     <div class="sum-card accent"><div class="sum-val">$${fmtNum(Math.round(costoTotal))}</div><div class="sum-lbl">Costo unitario</div></div>
     <div class="sum-card"><div class="sum-val">$${fmtNum(Math.round(matsTot))}</div><div class="sum-lbl">Materiales</div></div>
     <div class="sum-card"><div class="sum-val">$${fmtNum(Math.round(modTotal))}</div><div class="sum-lbl">MOD total</div></div>
-    <div class="sum-card"><div class="sum-val">$${fmtNum(Math.round(cif))}</div><div class="sum-lbl">CIF asignado</div></div>`;
+    ${precioV > 0
+      ? `<div class="sum-card" style="border-color:${margen>=20?'rgba(0,229,160,.3)':margen>=0?'rgba(245,158,11,.3)':'rgba(239,68,68,.3)'};"><div class="sum-val" style="color:${margen>=20?'var(--accent)':margen>=0?'var(--warn)':'var(--danger)'};">${margen.toFixed(1)}%</div><div class="sum-lbl">Margen bruto</div></div>`
+      : `<div class="sum-card"><div class="sum-val">$${fmtNum(Math.round(cifPorUnidad))}</div><div class="sum-lbl">CIF/unidad (${unidades} uds)</div></div>`
+    }`;
 
   // Desglose
   const totMat = C_PROCESOS.reduce((s,p)=>s+res[p].materiales,0);
-  document.getElementById('c-desglose-tbody').innerHTML = C_PROCESOS.map(p => `
+  const desgHtml = C_PROCESOS.map(p => `
     <tr>
       <td>${C_PROC_LABEL[p]}</td>
       <td style="text-align:right;font-family:'Space Mono',monospace;">$${fmtNum(Math.round(res[p].materiales))}</td>
@@ -4949,11 +5013,17 @@ function cCalcularTodo() {
       <td>TOTAL</td>
       <td style="text-align:right;font-family:'Space Mono',monospace;">$${fmtNum(Math.round(totMat))}</td>
       <td style="text-align:right;font-family:'Space Mono',monospace;">$${fmtNum(Math.round(modTotal))}</td>
-      <td style="text-align:right;font-family:'Space Mono',monospace;">$${fmtNum(Math.round(cif))}</td>
+      <td style="text-align:right;font-family:'Space Mono',monospace;">$${fmtNum(Math.round(cifPorUnidad))}</td>
       <td style="text-align:right;font-family:'Space Mono',monospace;color:var(--accent);font-size:1rem;">$${fmtNum(Math.round(costoTotal))}</td>
     </tr>`;
 
-  document.getElementById('c-resultados-content').style.display = 'block';
+  // Save result for persistence
+  const resultadoGuardado = { prodId: cProdActual, costoTotal, kpisHtml, desgHtml };
+  costosData.ultimoResultado = resultadoGuardado;
+  lsGuardar();
+
+  cMostrarResultado(resultadoGuardado);
+  cUpdateMargenPreview();
   showToast('✓ Costos calculados', 'success');
 }
 
@@ -5060,8 +5130,10 @@ function vRenderFlota() {
     const rend     = vRendimientoPromedio(v);
     const estadoC  = vEstadoColor(v.estado);
     const alertas  = [];
+    const diasSoap  = vDiasHasta(v.soap);
     if(diasRev  !== null && diasRev  <= 60) alertas.push({txt: vAlertLabel(diasRev, 'Rev. técnica'), c: vAlertColor(diasRev)});
     if(diasPerm !== null && diasPerm <= 60) alertas.push({txt: vAlertLabel(diasPerm, 'Permiso circ.'), c: vAlertColor(diasPerm)});
+    if(diasSoap !== null && diasSoap <= 60) alertas.push({txt: vAlertLabel(diasSoap, 'SOAP'), c: vAlertColor(diasSoap)});
     if(kmAceit  !== null && kmAceit  <= 2000) alertas.push({txt: (kmAceit<=0?'Aceite VENCIDO':'Aceite en '+fmtNum(kmAceit)+' km'), c: kmAceit<=0?'var(--danger)':'var(--warn)'});
     const costoTotal = (v.eventos||[]).reduce((s,e) => s+(e.costo||0)+(e.costoTotal||0),0);
     const ultKm = v.km || 0;
@@ -5163,7 +5235,11 @@ function vRenderFicha() {
     <!-- ③ KPIs -->
     <div class="summary-grid" style="margin-bottom:12px;">
       <div class="sum-card accent"><div class="sum-val" style="font-size:1rem;">${fmtNum(v.km||0)}</div><div class="sum-lbl">Km actuales</div></div>
-      <div class="sum-card"><div class="sum-val" style="font-size:1rem;color:var(--accent2);">${rend?rend.toFixed(1)+' km/L':'—'}</div><div class="sum-lbl">Rendimiento</div></div>
+      ${(()=>{
+        const isHv = ['Camión','Furgón','Maquinaria'].includes(v.tipo);
+        const rc = rend ? (rend>=(isHv?5:8)?'var(--accent)':rend>=(isHv?3:6)?'var(--warn)':'var(--danger)') : 'var(--muted)';
+        return `<div class="sum-card"><div class="sum-val" style="font-size:1rem;color:${rc};">${rend?rend.toFixed(1)+' km/L':'—'}</div><div class="sum-lbl">Rendimiento</div></div>`;
+      })()}
       <div class="sum-card"><div class="sum-val" style="font-size:1rem;color:${kmAceit!==null&&kmAceit<=0?'var(--danger)':kmAceit!==null&&kmAceit<=2000?'var(--warn)':'var(--accent)'};">${kmAceit!==null?(kmAceit<=0?'VENCIDO':fmtNum(kmAceit)+' km'):'—'}</div><div class="sum-lbl">Próx. aceite</div></div>
       <div class="sum-card"><div class="sum-val" style="font-size:1rem;color:var(--accent2);">$${fmtNum(costoTotal)}</div><div class="sum-lbl">Costo vehículo</div></div>
     </div>
@@ -5172,6 +5248,7 @@ function vRenderFicha() {
     <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px;">
       ${vDocChip('Rev. técnica', v.revTecnica, diasRev)}
       ${vDocChip('Permiso circ.', v.permiso, diasPerm)}
+      ${vDocChip('SOAP', v.soap, vDiasHasta(v.soap))}
     </div>
 
     <!-- ⑤ COSTOS DESGLOSADOS -->
@@ -5292,8 +5369,10 @@ function vRenderResumen() {
     const diasPerm = vDiasHasta(v.permiso);
     const kmAceit  = vKmAceiteRestante(v);
     if(v.estado === 'En reparación') alertas.push({nivel:'danger', ico:'🔨', txt:`${v.patente} — En reparación`, sub:v.marca+' '+v.modelo});
+    const diasSoapR = vDiasHasta(v.soap);
     if(diasRev  !== null && diasRev  <= 60) alertas.push({nivel:diasRev<0?'danger':'warn', ico:'📋', txt:`${v.patente} — Rev. técnica: ${diasRev<0?'VENCIDA hace '+Math.abs(diasRev)+'d':'vence en '+diasRev+'d'}`, sub:v.marca+' '+v.modelo});
     if(diasPerm !== null && diasPerm <= 60) alertas.push({nivel:diasPerm<0?'danger':'warn', ico:'📄', txt:`${v.patente} — Permiso circ.: ${diasPerm<0?'VENCIDO':'vence en '+diasPerm+'d'}`, sub:v.marca+' '+v.modelo});
+    if(diasSoapR!== null && diasSoapR <= 60) alertas.push({nivel:diasSoapR<0?'danger':'warn', ico:'🛡', txt:`${v.patente} — SOAP: ${diasSoapR<0?'VENCIDO':'vence en '+diasSoapR+'d'}`, sub:v.marca+' '+v.modelo});
     if(kmAceit  !== null && kmAceit  <= 2000) alertas.push({nivel:kmAceit<=0?'danger':'warn', ico:'🛢', txt:`${v.patente} — Cambio aceite: ${kmAceit<=0?'VENCIDO':'en '+fmtNum(kmAceit)+' km'}`, sub:v.marca+' '+v.modelo});
   });
   const totalCosto = vehFlota.reduce((s,v)=>(v.eventos||[]).reduce((ss,e)=>ss+(e.costo||0)+(e.costoTotal||0),s),0);
@@ -5343,7 +5422,11 @@ function vRenderResumen() {
         const rendHist = vRendimientoPromedio(v);
         const costoRec = rec90.reduce((s,e)=>s+(e.costoTotal||e.costo||0),0);
         const costoTot = todas.reduce((s,e)=>s+(e.costoTotal||e.costo||0),0);
-        const rc = rendRec?rendRec>=8?'var(--accent)':rendRec>=6?'var(--warn)':'var(--danger)':'var(--muted)';
+        // Thresholds by type: trucks/vans lower than cars
+        const isHeavy = ['Camión','Furgón','Maquinaria'].includes(v.tipo);
+        const umbroBueno  = isHeavy ? 5 : 8;
+        const umbroMedio  = isHeavy ? 3 : 6;
+        const rc = rendRec?(rendRec>=umbroBueno?'var(--accent)':rendRec>=umbroMedio?'var(--warn)':'var(--danger)'):'var(--muted)';
         return `<div onclick="vAbrirFicha('${v.patente}')" style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:11px 14px;margin-bottom:6px;cursor:pointer;display:flex;align-items:center;gap:12px;">
           <div style="font-size:1.3rem;">${VEH_TIPO_ICON[v.tipo]||'🚗'}</div>
           <div style="flex:1;min-width:0;">
@@ -5378,6 +5461,7 @@ function vAbrirModalVehiculo(patente) {
   document.getElementById('vf-conductor').value    = v?.conductor   || '';
   document.getElementById('vf-rev-tecnica').value  = v?.revTecnica  || '';
   document.getElementById('vf-permiso').value      = v?.permiso     || '';
+  document.getElementById('vf-soap').value          = v?.soap         || '';
   document.getElementById('vf-km-aceite').value    = v?.kmAceite    || '';
   // Conductores datalist
   const dl = document.getElementById('vf-conductores-dl');
@@ -5402,6 +5486,7 @@ function vGuardarVehiculo() {
     conductor:  document.getElementById('vf-conductor').value.trim(),
     revTecnica: document.getElementById('vf-rev-tecnica').value||null,
     permiso:    document.getElementById('vf-permiso').value||null,
+    soap:       document.getElementById('vf-soap').value||null,
     kmAceite:   parseFloat(document.getElementById('vf-km-aceite').value)||null,
   };
   if(existente) {
@@ -5531,6 +5616,7 @@ function vGuardarEvento() {
     if(venc) {
       if(tipoDoc==='Revisión técnica') v.revTecnica = venc;
       if(tipoDoc==='Permiso circulación') v.permiso = venc;
+      if(tipoDoc==='SOAP') v.soap = venc;
     }
   }
   // Update vehicle km
@@ -6463,31 +6549,80 @@ function uClearMovements() {
 
 // ── TRABAJADORES GLOBAL ──
 function addTrabajadorGlobal(){
-  const name=document.getElementById('trab-name').value.trim();
-  const area=document.getElementById('trab-area').value.trim()||'Sin área';
-  if(!name)return showToast('Ingresa un nombre','error');
-  if(workers.find(w=>workerName(w)===name))return showToast('Ya existe','error');
-  workers.push({name,area});
-  document.getElementById('trab-name').value='';
-  document.getElementById('trab-area').value='';
-  lsGuardar();renderTrabajadoresGlobal();
-  showToast('✓ '+name+' agregado','success');
+  // legacy compatibility — redirect to modal
+  trabAbrirModal();
+}
+let _trabEditIdx = null;
+function trabAbrirModal(idx) {
+  _trabEditIdx = (idx !== undefined) ? idx : null;
+  const w = _trabEditIdx !== null ? workers[_trabEditIdx] : null;
+  document.getElementById('trab-modal-title').textContent = w ? 'Editar trabajador' : 'Agregar trabajador';
+  document.getElementById('trab-modal-name').value = w ? workerName(w) : '';
+  document.getElementById('trab-modal-area').value = w ? (w.area||'') : '';
+  // Populate area datalist
+  const dl = document.getElementById('trab-area-dl');
+  if(dl) dl.innerHTML = [...new Set(workers.map(w=>w.area||'').filter(Boolean))].sort().map(a=>`<option value="${a}">`).join('');
+  document.getElementById('modal-trabajador').style.display = 'flex';
+  setTimeout(()=>document.getElementById('trab-modal-name').focus(), 80);
+}
+function trabCerrarModal() {
+  document.getElementById('modal-trabajador').style.display = 'none';
+  _trabEditIdx = null;
+}
+function trabGuardar() {
+  const name = document.getElementById('trab-modal-name').value.trim();
+  const area = document.getElementById('trab-modal-area').value.trim() || 'Sin área';
+  if(!name) return showToast('El nombre es obligatorio','error');
+  if(_trabEditIdx !== null) {
+    // Edit: update movements/km references if name changed
+    const oldName = workerName(workers[_trabEditIdx]);
+    if(oldName !== name) {
+      // Update all movements referencing this worker
+      movements.forEach(m=>{ if(m.worker===oldName) m.worker=name; });
+      uMovements.forEach(m=>{ if(m.worker===oldName) m.worker=name; });
+      vehFlota.forEach(v=>{
+        (v.eventos||[]).forEach(e=>{ if(e.conductor===oldName) e.conductor=name; });
+        (v.kmDiario||[]).forEach(k=>{ if(k.conductor===oldName) k.conductor=name; });
+      });
+    }
+    workers[_trabEditIdx] = {name, area};
+    showToast('✓ '+name+' actualizado','success');
+  } else {
+    if(workers.find(w=>workerName(w)===name)) return showToast('Ya existe un trabajador con ese nombre','error');
+    workers.push({name, area});
+    showToast('✓ '+name+' agregado','success');
+  }
+  lsGuardar();
+  trabCerrarModal();
+  renderTrabajadoresGlobal();
 }
 function renderTrabajadoresGlobal(){
   const tbody=document.getElementById('trab-tbody');
   if(!tbody)return;
+  const q=(document.getElementById('trab-search')?.value||'').toLowerCase().trim();
+  const filtrados = q
+    ? workers.filter((w,i)=>{
+        const nm=workerName(w).toLowerCase();
+        const ar=(w.area||'').toLowerCase();
+        return nm.includes(q)||ar.includes(q);
+      })
+    : workers;
   document.getElementById('trab-count').textContent=workers.length+' trabajadores';
   tbody.innerHTML='';
   if(!workers.length){
-    tbody.innerHTML='<tr><td colspan="3"><div class="empty" style="padding:30px 0;"><div class="empty-icon">👷</div>Sin trabajadores registrados</div></td></tr>';
+    tbody.innerHTML='<tr><td colspan="4"><div class="empty" style="padding:30px 0;"><div class="empty-icon">👷</div>Sin trabajadores registrados. Usa "+ Trabajador" para agregar.</div></td></tr>';
+    return;
+  }
+  if(!filtrados.length){
+    tbody.innerHTML='<tr><td colspan="4"><div class="empty" style="padding:20px 0;"><div class="empty-icon">🔍</div>Sin resultados</div></td></tr>';
     return;
   }
   const areaColors=['var(--accent)','var(--accent2)','var(--warn)','#8B5CF6','#EC4899','#14B8A6'];
   const areaMap={};
   [...new Set(workers.map(w=>w.area||'Sin área'))].forEach((a,i)=>areaMap[a]=areaColors[i%areaColors.length]);
-  // Ordenar: categoría alfabética → nombre alfabético
-  const sorted = workers
-    .map((w,i)=>({w,i}))
+  // Ordenar: área → nombre
+  const sorted = filtrados
+    .map(w=>({w, i:workers.indexOf(w)}))
     .sort((a,b)=>{
       const areaA=(a.w.area||'Sin área').toLowerCase();
       const areaB=(b.w.area||'Sin área').toLowerCase();
@@ -6497,11 +6632,14 @@ function renderTrabajadoresGlobal(){
   sorted.forEach(({w,i})=>{
     const nm=workerName(w);
     const area=sanitizar(w.area||'Sin área');
-    const c=areaMap[area]||'var(--muted)';
+    const c=areaMap[w.area||'Sin área']||'var(--muted)';
     tbody.insertAdjacentHTML('beforeend',`<tr style="cursor:pointer;" onclick="abrirPerfilTrabajador(${i})">
-      <td><b>${nm}</b> <span style="font-size:.65rem;color:var(--muted);margin-left:4px;">→</span></td>
+      <td><b>${sanitizar(nm)}</b></td>
       <td><span style="font-family:'Space Mono',monospace;font-size:.68rem;padding:3px 10px;border-radius:6px;background:${c}22;color:${c};">${area}</span></td>
-      <td style="text-align:right;"><button onclick="event.stopPropagation();eliminarTrabajador(${i})" style="background:none;border:none;cursor:pointer;color:var(--danger);font-size:1rem;padding:4px 8px;">✕</button></td>
+      <td style="text-align:right;display:flex;gap:4px;justify-content:flex-end;">
+        <button onclick="event.stopPropagation();trabAbrirModal(${i})" style="background:none;border:1px solid var(--border);border-radius:5px;cursor:pointer;color:var(--muted);font-size:.72rem;padding:3px 8px;">✏</button>
+        <button onclick="event.stopPropagation();eliminarTrabajador(${i})" style="background:none;border:none;cursor:pointer;color:var(--danger);font-size:1rem;padding:4px 6px;">✕</button>
+      </td>
     </tr>`);
   });
 }
@@ -6540,9 +6678,8 @@ function renderPerfilTrabajador(w, nm){
     .filter(o => o.estado === 'Terminada')
     .reduce((s,op) => s + (op.lineas||[]).filter(l=>l.responsable===nm).length, 0);
 
-  // Es trabajador de producción (Barniz, Cera, etc.)?
-  const esProd = area && area !== 'Sin área' &&
-    !['ventas','despacho','admin','bodega'].some(a => area.toLowerCase().includes(a));
+  // Mostrar OPs si tiene OPs asignadas (sin importar área)
+  const esProd = opsConWorker.length > 0;
 
   // ── Tabla de OPs ──
   const ESTADO_STYLE = {
@@ -6605,13 +6742,14 @@ function renderPerfilTrabajador(w, nm){
   const container = document.getElementById('trab-perfil-content');
   container.innerHTML = `
     <!-- Header tarjeta -->
-    <div class="card" style="margin-bottom:14px;padding:20px;display:flex;align-items:center;gap:16px;">
+    <div class="card" style="margin-bottom:14px;padding:16px 20px;display:flex;align-items:center;gap:16px;">
       <div style="font-size:2.2rem;flex-shrink:0;">👷</div>
-      <div>
+      <div style="flex:1;">
         <div style="font-size:1.1rem;font-weight:700;">${nm}</div>
         <div style="font-family:'Space Mono',monospace;font-size:.72rem;color:var(--muted);margin-top:2px;">${area}</div>
         ${ultima ? `<div style="font-size:.68rem;color:var(--muted);margin-top:4px;">Última actividad: ${fmtFecha(ultima)}</div>` : ''}
       </div>
+      <button onclick="trabAbrirModal(${workers.indexOf(w)})" style="background:none;border:1px solid var(--border);border-radius:7px;padding:6px 12px;cursor:pointer;color:var(--muted);font-size:.72rem;flex-shrink:0;">✏ Editar</button>
     </div>
 
     <!-- Métricas generales -->
@@ -6624,6 +6762,35 @@ function renderPerfilTrabajador(w, nm){
 
     ${tablaOPs}
 
+    <!-- Km por conductor en vehículos -->
+    ${(()=>{
+      const kmLogs = vehFlota.flatMap(v =>
+        (v.kmDiario||[]).filter(k=>k.conductor===nm).map(k=>({...k, patente:v.patente, marca:v.marca, modelo:v.modelo}))
+      ).sort((a,b)=>b.fecha.localeCompare(a.fecha));
+      if(!kmLogs.length) return '';
+      const totalKm = kmLogs.reduce((s,k)=>s+(k.diff>0?k.diff:0),0);
+      const vehiculos = [...new Set(kmLogs.map(k=>k.patente))];
+      return `<div class="card" style="padding:0;overflow:hidden;margin-bottom:14px;">
+        <div style="padding:11px 17px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">
+          <div class="card-title" style="margin:0;">🚗 Km registrados como conductor</div>
+          <span style="font-family:'Space Mono',monospace;font-size:.72rem;color:var(--accent);">${fmtNum(totalKm)} km · ${vehiculos.length} vehículo${vehiculos.length!==1?'s':''}</span>
+        </div>
+        <div class="table-wrap" style="border:none;border-radius:0;">
+          <table>
+            <thead><tr><th>Fecha</th><th>Vehículo</th><th style="text-align:right;">Km total</th><th style="text-align:right;">Recorrido</th></tr></thead>
+            <tbody>
+              ${kmLogs.slice(0,15).map(k=>`<tr>
+                <td class="td-mono">${fmtFecha(k.fecha)}</td>
+                <td><span style="font-family:'Space Mono',monospace;font-size:.72rem;">${sanitizar(k.patente)}</span> <span style="font-size:.7rem;color:var(--muted);">${sanitizar(k.marca||'')} ${sanitizar(k.modelo||'')}</span></td>
+                <td class="td-mono" style="text-align:right;">${fmtNum(k.km)}</td>
+                <td class="td-mono" style="text-align:right;color:${k.diff>0?'var(--accent2)':'var(--muted)'};">${k.diff>0?'+'+fmtNum(k.diff):'—'}</td>
+              </tr>`).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>`;
+    })()}
+
     <!-- Historial de retiros de materiales -->
     <div class="card" style="padding:0;overflow:hidden;">
       <div style="padding:11px 17px;border-bottom:1px solid var(--border);">
@@ -6633,13 +6800,17 @@ function renderPerfilTrabajador(w, nm){
         <table>
           <thead><tr><th>Fecha</th><th>Producto</th><th>Cant.</th><th>Costo unit.</th></tr></thead>
           <tbody>
-            ${entMat.length ? [...entMat].sort((a,b)=>b.date.localeCompare(a.date)).map(m=>`
-              <tr>
+            ${entMat.length ? [...entMat].sort((a,b)=>b.date.localeCompare(a.date)).map(m=>{
+              const prod = products.find(p=>p.id===m.prodId);
+              const hasPres = prod && prod.formato>1 && prod.unidad && prod.unidad!=='u';
+              const presName = hasPres ? (prod.nombrePres||prod.unidad) : (prod?.unidad&&prod.unidad!=='u'?prod.unidad:'uds');
+              const qtyLabel = m.qtyLabel || (m.qty + ' ' + presName);
+              return `<tr>
                 <td class="td-mono">${fmtFecha(m.date)}</td>
                 <td>${sanitizar(m.prodName||'—')}</td>
-                <td class="td-mono">${m.qty}</td>
+                <td class="td-mono">${sanitizar(qtyLabel)}</td>
                 <td class="td-mono">$${fmtNum(m.cost||0)}</td>
-              </tr>`).join('') :
+              </tr>`;}).join('') :
               '<tr><td colspan="4"><div class="empty" style="padding:20px 0;"><div class="empty-icon">📋</div>Sin retiros de materiales</div></td></tr>'
             }
           </tbody>
@@ -7880,9 +8051,15 @@ function menuUrnEditarOPs() {
         <input type="date" id="vf-permiso" style="width:100%;margin-top:4px;">
       </div>
     </div>
-    <div style="margin-bottom:14px;">
-      <label style="font-size:.72rem;color:var(--muted);">Km para próximo cambio de aceite</label>
-      <input type="number" id="vf-km-aceite" placeholder="ej: 50000" min="0" style="width:100%;margin-top:4px;">
+    <div class="form-row" style="margin-bottom:10px;">
+      <div>
+        <label style="font-size:.72rem;color:var(--muted);">Vencimiento SOAP</label>
+        <input type="date" id="vf-soap" style="width:100%;margin-top:4px;">
+      </div>
+      <div>
+        <label style="font-size:.72rem;color:var(--muted);">Km para próximo cambio de aceite</label>
+        <input type="number" id="vf-km-aceite" placeholder="ej: 50000" min="0" style="width:100%;margin-top:4px;">
+      </div>
     </div>
     <div style="display:flex;gap:8px;">
       <button class="btn btn-primary" style="flex:1;" onclick="vGuardarVehiculo()">✓ Guardar</button>
