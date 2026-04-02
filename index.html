@@ -444,6 +444,7 @@ tr:hover td{background:rgba(255,255,255,.02);}
     </div>
     <div class="stat-chip" id="hdr-chip" style="display:none">Productos <b id="hdr-products">0</b></div>
     <div class="stat-chip" id="hdr-alert-wrap" style="display:none"><span style="color:var(--warn)">⚠ <b id="hdr-alerts">0</b></span></div>
+    <div id="offline-badge" style="display:none;background:var(--warn);color:#111;font-family:'Space Mono',monospace;font-size:.55rem;padding:2px 8px;border-radius:4px;font-weight:700;letter-spacing:.05em;flex-shrink:0;">SIN CONEXIÓN</div>
     <button class="hamburger" id="hamburger-btn" onclick="toggleMenu()" style="display:none">
       <span></span><span></span><span></span>
     </button>
@@ -686,6 +687,11 @@ tr:hover td{background:rgba(255,255,255,.02);}
         <thead><tr><th>SKU</th><th>Nombre</th><th>Categoría</th><th>Stock</th><th>Mín.</th><th>Costo</th><th>Valor</th></tr></thead>
         <tbody id="inv-tbody"></tbody>
       </table>
+    </div>
+    <div id="inv-pager" style="display:none;padding:10px 14px;align-items:center;justify-content:center;gap:12px;border-top:1px solid var(--border);">
+      <button class="btn btn-secondary" id="inv-prev" onclick="invPrevPage()" style="font-size:.72rem;padding:5px 12px;">← Ant.</button>
+      <span id="inv-pager-info" style="font-family:'Space Mono',monospace;font-size:.72rem;color:var(--muted);"></span>
+      <button class="btn btn-secondary" id="inv-next" onclick="invNextPage()" style="font-size:.72rem;padding:5px 12px;">Sig. →</button>
     </div>
   </div>
   <div class="card" id="add-product-form" style="display:none;border-color:var(--accent);">
@@ -1545,6 +1551,9 @@ const DEFAULT_MOVEMENTS = [];
 const DEFAULT_WORKERS   = [];
 
 // ── FIRESTORE SAVE/LOAD ───────────────────────────────
+// Nonce sets: track our own writes so we can skip the echo snapshot
+const _myMatNonces = new Set();
+const _myUrnNonces = new Set();
 // Debounce: avoid writing on every keystroke
 let _saveMatTimer = null;
 function lsGuardar() {
@@ -1564,12 +1573,15 @@ function lsGuardar() {
 }
 async function fbSaveMat() {
   if(!window._fbDb) return;
+  const nonce = Math.random().toString(36).slice(2);
+  _myMatNonces.add(nonce);
   try {
     await window._fbSetDoc(
       window._fbDoc(window._fbDb, 'inventario', 'materiales'),
-      { products, movements, workers, proveedores, costosData, bzProductos, vehFlota, updatedAt: new Date().toISOString() }
+      { products, movements, workers, proveedores, costosData, bzProductos, vehFlota,
+        updatedAt: new Date().toISOString(), nonce }
     );
-  } catch(e) { console.warn('Firestore save error (mat):', e); }
+  } catch(e) { console.warn('Firestore save error (mat):', e); _myMatNonces.delete(nonce); }
 }
 // Genera un ID único combinando timestamp + aleatoriedad.
 // Reemplaza la generación basada en movements.length que causaba
@@ -2506,6 +2518,9 @@ function handleScan(text) {
 // ── SORT STATE ──
 let _invSort = 'alfa'; // alfa | freq | cat | custom
 let _invCustomOrder = []; // array of product IDs in custom order
+const _INV_PAGE_SIZE = 50;
+let _invPage = 0;
+let _invTotalPages = 1;
 
 function toggleInvSort(){
   const m=document.getElementById('inv-sort-menu');
@@ -2572,6 +2587,8 @@ function renderInventory(filtro) {
   const nos=products.filter(p=>p.stock===0).length;
   const val=products.reduce((s,p)=>s+p.stock*pValorUnitario(p),0);
   const f=filtro!==undefined?filtro:(window._invFiltro||null);
+  // Reset page when filter changes
+  if(filtro !== undefined && filtro !== window._invFiltro) _invPage = 0;
   window._invFiltro=f;
   document.getElementById('inv-summary').innerHTML=`
     <div class="sum-card accent" style="cursor:pointer;" onclick="renderInventory(null)" title="Ver todos"><div class="sum-val">${products.length}</div><div class="sum-lbl">Productos</div></div>
@@ -2592,6 +2609,23 @@ function renderInventory(filtro) {
     return;
   }
   lista=_sortedProducts(lista);
+  // Pagination (disabled in custom-sort mode to preserve drag-drop UX)
+  const pager = document.getElementById('inv-pager');
+  if(_invSort === 'custom' || lista.length <= _INV_PAGE_SIZE) {
+    _invTotalPages = 1; _invPage = 0;
+    if(pager) pager.style.display = 'none';
+  } else {
+    _invTotalPages = Math.ceil(lista.length / _INV_PAGE_SIZE);
+    _invPage = Math.min(_invPage, _invTotalPages - 1);
+    lista = lista.slice(_invPage * _INV_PAGE_SIZE, (_invPage + 1) * _INV_PAGE_SIZE);
+    if(pager) {
+      pager.style.display = 'flex';
+      document.getElementById('inv-pager-info').textContent =
+        `Pág. ${_invPage + 1} / ${_invTotalPages}`;
+      document.getElementById('inv-prev').disabled = _invPage === 0;
+      document.getElementById('inv-next').disabled = _invPage === _invTotalPages - 1;
+    }
+  }
   // Group header for category sort
   let lastCat=null;
   lista.forEach(p=>{
@@ -2628,6 +2662,8 @@ function renderInventory(filtro) {
   });
   if(_invSort==='custom') _invEnableDrag();
 }
+function invPrevPage() { if(_invPage > 0) { _invPage--; renderInventory(); } }
+function invNextPage() { if(_invPage < _invTotalPages - 1) { _invPage++; renderInventory(); } }
 function showAddProduct(){
   const f=document.getElementById('add-product-form');
   // Populate catlist
@@ -3392,12 +3428,14 @@ function lsGuardarU() {
 }
 async function fbSaveUrn() {
   if(!window._fbDb) return;
+  const nonce = Math.random().toString(36).slice(2);
+  _myUrnNonces.add(nonce);
   try {
     await window._fbSetDoc(
       window._fbDoc(window._fbDb, 'inventario', 'urnas'),
-      { uProducts, uMovements, uOPs, uUnidades, updatedAt: new Date().toISOString() }
+      { uProducts, uMovements, uOPs, uUnidades, updatedAt: new Date().toISOString(), nonce }
     );
-  } catch(e) { console.warn('Firestore save error (urn):', e); }
+  } catch(e) { console.warn('Firestore save error (urn):', e); _myUrnNonces.delete(nonce); }
 }
 function lsCargarU() {
   try {
@@ -7400,7 +7438,8 @@ window._fbSubscribe = function() {
     (snap) => {
       if(!snap.exists()) return; // first time, no data yet
       const data = snap.data();
-      // Only update if data is newer than local (avoid overwriting own pending saves)
+      // Skip echo of our own writes (nonce round-trip)
+      if(data.nonce && _myMatNonces.has(data.nonce)) { _myMatNonces.delete(data.nonce); return; }
       if(data.products)   { products  = data.products;  localStorage.setItem(LS_PRODUCTS,  JSON.stringify(products)); }
       if(data.movements)  { movements = data.movements; localStorage.setItem(LS_MOVEMENTS, JSON.stringify(movements)); }
       if(data.workers)    {
@@ -7429,6 +7468,8 @@ window._fbSubscribe = function() {
     (snap) => {
       if(!snap.exists()) return;
       const data = snap.data();
+      // Skip echo of our own writes (nonce round-trip)
+      if(data.nonce && _myUrnNonces.has(data.nonce)) { _myUrnNonces.delete(data.nonce); return; }
       if(data.uProducts)  { uProducts  = data.uProducts;  localStorage.setItem(LS_U_PRODUCTS,  JSON.stringify(uProducts)); }
       if(data.uMovements) { uMovements = data.uMovements; localStorage.setItem(LS_U_MOVEMENTS, JSON.stringify(uMovements)); }
       if(data.uOPs)       { uOPs       = data.uOPs;       localStorage.setItem(LS_U_OPS,       JSON.stringify(uOPs)); }
@@ -7949,6 +7990,16 @@ function menuUrnEditarOPs() {
   entrarSeccion('urnas');
   uNavTo('uop');
 }
+
+// ── INDICADOR OFFLINE ─────────────────────────────────
+(function() {
+  const badge = () => document.getElementById('offline-badge');
+  const update = () => { const b = badge(); if(b) b.style.display = navigator.onLine ? 'none' : 'flex'; };
+  window.addEventListener('online',  update);
+  window.addEventListener('offline', update);
+  // Check on load (service worker may serve cached content while offline)
+  document.addEventListener('DOMContentLoaded', update);
+})();
 
 </script>
 
