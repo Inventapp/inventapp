@@ -444,6 +444,7 @@ tr:hover td{background:rgba(255,255,255,.02);}
     </div>
     <div class="stat-chip" id="hdr-chip" style="display:none">Productos <b id="hdr-products">0</b></div>
     <div class="stat-chip" id="hdr-alert-wrap" style="display:none"><span style="color:var(--warn)">⚠ <b id="hdr-alerts">0</b></span></div>
+    <div id="offline-badge" style="display:none;background:var(--warn);color:#111;font-family:'Space Mono',monospace;font-size:.55rem;padding:2px 8px;border-radius:4px;font-weight:700;letter-spacing:.05em;flex-shrink:0;">SIN CONEXIÓN</div>
     <button class="hamburger" id="hamburger-btn" onclick="toggleMenu()" style="display:none">
       <span></span><span></span><span></span>
     </button>
@@ -686,6 +687,11 @@ tr:hover td{background:rgba(255,255,255,.02);}
         <thead><tr><th>SKU</th><th>Nombre</th><th>Categoría</th><th>Stock</th><th>Mín.</th><th>Costo</th><th>Valor</th></tr></thead>
         <tbody id="inv-tbody"></tbody>
       </table>
+    </div>
+    <div id="inv-pager" style="display:none;padding:10px 14px;align-items:center;justify-content:center;gap:12px;border-top:1px solid var(--border);">
+      <button class="btn btn-secondary" id="inv-prev" onclick="invPrevPage()" style="font-size:.72rem;padding:5px 12px;">← Ant.</button>
+      <span id="inv-pager-info" style="font-family:'Space Mono',monospace;font-size:.72rem;color:var(--muted);"></span>
+      <button class="btn btn-secondary" id="inv-next" onclick="invNextPage()" style="font-size:.72rem;padding:5px 12px;">Sig. →</button>
     </div>
   </div>
   <div class="card" id="add-product-form" style="display:none;border-color:var(--accent);">
@@ -1545,6 +1551,9 @@ const DEFAULT_MOVEMENTS = [];
 const DEFAULT_WORKERS   = [];
 
 // ── FIRESTORE SAVE/LOAD ───────────────────────────────
+// Nonce sets: track our own writes so we can skip the echo snapshot
+const _myMatNonces = new Set();
+const _myUrnNonces = new Set();
 // Debounce: avoid writing on every keystroke
 let _saveMatTimer = null;
 function lsGuardar() {
@@ -1564,12 +1573,19 @@ function lsGuardar() {
 }
 async function fbSaveMat() {
   if(!window._fbDb) return;
+  const nonce = Math.random().toString(36).slice(2);
+  _myMatNonces.add(nonce);
   try {
     await window._fbSetDoc(
       window._fbDoc(window._fbDb, 'inventario', 'materiales'),
-      { products, movements, workers, proveedores, costosData, bzProductos, vehFlota, updatedAt: new Date().toISOString() }
+      { products, movements, workers, proveedores, costosData, bzProductos, vehFlota,
+        updatedAt: new Date().toISOString(), nonce }
     );
-  } catch(e) { console.warn('Firestore save error (mat):', e); }
+  } catch(e) {
+    console.warn('Firestore save error (mat):', e);
+    _myMatNonces.delete(nonce);
+    showToast('⚠ No se pudo guardar en la nube. Verifica tu conexión.', 'error');
+  }
 }
 // Genera un ID único combinando timestamp + aleatoriedad.
 // Reemplaza la generación basada en movements.length que causaba
@@ -1602,7 +1618,10 @@ function lsCargar() {
         if(!costosData.matExtra[p.id].unidad)  costosData.matExtra[p.id].unidad  = p.unidad;
       }
     });
-  } catch(e) { console.warn('Error leyendo localStorage:', e); }
+  } catch(e) {
+    console.warn('Error leyendo localStorage (mat):', e);
+    // Continuar con arrays vacíos — datos se cargarán desde Firestore
+  }
 }
 // Helper: get worker name from object or string
 function workerName(w){ return typeof w==='object'&&w!==null ? w.name : w; }
@@ -2016,12 +2035,7 @@ function setStatus(msg, found) {
   s.textContent = msg;
   s.className = 'scanner-status'+(found?' found':'');
 }
-function handleScan(text) {
-  const cleaned = (text||'').trim().toUpperCase();
-  const prod = products.find(p => p.id.trim().toUpperCase() === cleaned);
-  if (prod) { showProduct(prod); showToast('✓ '+prod.name+' seleccionado','success'); }
-  else showToast('QR: "'+text+'" — no encontrado','error');
-}
+
 
 // ── ALT INPUT (Materiales - kept for scanner fallback) ──
 function toggleAlt(id) {
@@ -2506,6 +2520,9 @@ function handleScan(text) {
 // ── SORT STATE ──
 let _invSort = 'alfa'; // alfa | freq | cat | custom
 let _invCustomOrder = []; // array of product IDs in custom order
+const _INV_PAGE_SIZE = 50;
+let _invPage = 0;
+let _invTotalPages = 1;
 
 function toggleInvSort(){
   const m=document.getElementById('inv-sort-menu');
@@ -2572,6 +2589,8 @@ function renderInventory(filtro) {
   const nos=products.filter(p=>p.stock===0).length;
   const val=products.reduce((s,p)=>s+p.stock*pValorUnitario(p),0);
   const f=filtro!==undefined?filtro:(window._invFiltro||null);
+  // Reset page when filter changes
+  if(filtro !== undefined && filtro !== window._invFiltro) _invPage = 0;
   window._invFiltro=f;
   document.getElementById('inv-summary').innerHTML=`
     <div class="sum-card accent" style="cursor:pointer;" onclick="renderInventory(null)" title="Ver todos"><div class="sum-val">${products.length}</div><div class="sum-lbl">Productos</div></div>
@@ -2592,6 +2611,23 @@ function renderInventory(filtro) {
     return;
   }
   lista=_sortedProducts(lista);
+  // Pagination (disabled in custom-sort mode to preserve drag-drop UX)
+  const pager = document.getElementById('inv-pager');
+  if(_invSort === 'custom' || lista.length <= _INV_PAGE_SIZE) {
+    _invTotalPages = 1; _invPage = 0;
+    if(pager) pager.style.display = 'none';
+  } else {
+    _invTotalPages = Math.ceil(lista.length / _INV_PAGE_SIZE);
+    _invPage = Math.min(_invPage, _invTotalPages - 1);
+    lista = lista.slice(_invPage * _INV_PAGE_SIZE, (_invPage + 1) * _INV_PAGE_SIZE);
+    if(pager) {
+      pager.style.display = 'flex';
+      document.getElementById('inv-pager-info').textContent =
+        `Pág. ${_invPage + 1} / ${_invTotalPages}`;
+      document.getElementById('inv-prev').disabled = _invPage === 0;
+      document.getElementById('inv-next').disabled = _invPage === _invTotalPages - 1;
+    }
+  }
   // Group header for category sort
   let lastCat=null;
   lista.forEach(p=>{
@@ -2628,6 +2664,8 @@ function renderInventory(filtro) {
   });
   if(_invSort==='custom') _invEnableDrag();
 }
+function invPrevPage() { if(_invPage > 0) { _invPage--; renderInventory(); } }
+function invNextPage() { if(_invPage < _invTotalPages - 1) { _invPage++; renderInventory(); } }
 function showAddProduct(){
   const f=document.getElementById('add-product-form');
   // Populate catlist
@@ -2934,9 +2972,9 @@ function _renderEditorProductos(){
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:6px;">
         <div><label style="font-size:.65rem;color:var(--muted);">Nombre</label>
-          <input id="ep-m-name-${i}" type="text" value="${p.name}" style="width:100%;padding:6px 9px;border-radius:7px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:.83rem;"></div>
+          <input id="ep-m-name-${i}" type="text" value="${sanitizar(p.name)}" style="width:100%;padding:6px 9px;border-radius:7px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:.83rem;"></div>
         <div><label style="font-size:.65rem;color:var(--muted);">Categoría</label>
-          <input id="ep-m-cat-${i}" type="text" value="${p.cat||''}" list="ep-cat-dl" placeholder="ej: Adhesivos" style="width:100%;padding:6px 9px;border-radius:7px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:.83rem;"></div>
+          <input id="ep-m-cat-${i}" type="text" value="${sanitizar(p.cat||'')}" list="ep-cat-dl" placeholder="ej: Adhesivos" style="width:100%;padding:6px 9px;border-radius:7px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:.83rem;"></div>
         <div><label style="font-size:.65rem;color:var(--muted);">Stock mínimo</label>
           <input id="ep-m-min-${i}" type="number" value="${p.min}" min="0" style="width:100%;padding:6px 9px;border-radius:7px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:.83rem;"></div>
         <div><label style="font-size:.65rem;color:var(--muted);">Costo unitario ($)</label>
@@ -2984,7 +3022,7 @@ function _renderEditorProductosUrnas(){
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:6px;">
           <div><label style="font-size:.65rem;color:var(--muted);">Nombre</label>
-            <input id="ep-u-name-${i}" type="text" value="${p.name}" style="width:100%;padding:6px 9px;border-radius:7px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:.83rem;"></div>
+            <input id="ep-u-name-${i}" type="text" value="${sanitizar(p.name)}" style="width:100%;padding:6px 9px;border-radius:7px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:.83rem;"></div>
           <div><label style="font-size:.65rem;color:var(--muted);">Terminación</label>
             <select id="ep-u-term-${i}" style="width:100%;padding:6px 9px;border-radius:7px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:.83rem;">
               ${TERMS.map(t=>`<option value="${t}" ${term===t?'selected':''}>${t}</option>`).join('')}
@@ -3392,12 +3430,18 @@ function lsGuardarU() {
 }
 async function fbSaveUrn() {
   if(!window._fbDb) return;
+  const nonce = Math.random().toString(36).slice(2);
+  _myUrnNonces.add(nonce);
   try {
     await window._fbSetDoc(
       window._fbDoc(window._fbDb, 'inventario', 'urnas'),
-      { uProducts, uMovements, uOPs, uUnidades, updatedAt: new Date().toISOString() }
+      { uProducts, uMovements, uOPs, uUnidades, updatedAt: new Date().toISOString(), nonce }
     );
-  } catch(e) { console.warn('Firestore save error (urn):', e); }
+  } catch(e) {
+    console.warn('Firestore save error (urn):', e);
+    _myUrnNonces.delete(nonce);
+    showToast('⚠ No se pudo guardar en la nube. Verifica tu conexión.', 'error');
+  }
 }
 function lsCargarU() {
   try {
@@ -3405,7 +3449,10 @@ function lsCargarU() {
     const m=localStorage.getItem(LS_U_MOVEMENTS); if(m) uMovements=JSON.parse(m);
     const o=localStorage.getItem(LS_U_OPS);       if(o) uOPs=JSON.parse(o);
     const u=localStorage.getItem(LS_U_UNIDADES);  if(u) uUnidades=JSON.parse(u);
-  } catch(e) {}
+  } catch(e) {
+    console.warn('Error leyendo localStorage (urn):', e);
+    // Continuar con arrays vacíos — datos se cargarán desde Firestore
+  }
 }
 
 // ── SERIAL GENERATION ─────────────────────────────────
@@ -3793,9 +3840,16 @@ function uSetEstadoFiltro(estado) {
   uRenderUnidades();
 }
 function uRenderInventory() {
-  const sinStock  = uProducts.filter(p => uStockDe(p.id) === 0).length;
-  const stockBajo = uProducts.filter(p => { const s=uStockDe(p.id); return s>0 && s<=(p.min||0); }).length;
-  const valorTotal = uProducts.reduce((s, p) => s + uStockDe(p.id)*(p.cost||0), 0);
+  // Pre-compute stock counts in O(n) instead of O(n*m) N+1 calls
+  const _stockMap = new Map();
+  uUnidades.forEach(u => {
+    if(u.estado === 'En Stock') _stockMap.set(u.skuId, (_stockMap.get(u.skuId) || 0) + 1);
+  });
+  const _stock = skuId => _stockMap.get(skuId) || 0;
+
+  const sinStock  = uProducts.filter(p => _stock(p.id) === 0).length;
+  const stockBajo = uProducts.filter(p => { const s=_stock(p.id); return s>0 && s<=(p.min||0); }).length;
+  const valorTotal = uProducts.reduce((s, p) => s + _stock(p.id)*(p.cost||0), 0);
   document.getElementById('u-inv-summary').innerHTML = `
     <div class="sum-card accent"><div class="sum-val">${uProducts.length}</div><div class="sum-lbl">Productos</div></div>
     <div class="sum-card danger"><div class="sum-val">${sinStock}</div><div class="sum-lbl">Sin stock</div></div>
@@ -3820,8 +3874,8 @@ function uRenderInventory() {
     if(secId) {
       const kpiEl = document.getElementById(secId+'-kpi');
       if(kpiEl) {
-        const totalS = prods.reduce((s,p)=>s+uStockDe(p.id),0);
-        const sinS   = prods.filter(p=>uStockDe(p.id)===0).length;
+        const totalS = prods.reduce((s,p)=>s+_stock(p.id),0);
+        const sinS   = prods.filter(p=>_stock(p.id)===0).length;
         kpiEl.textContent = prods.length+' SKUs · '+totalS+' uds'+(sinS>0?' · '+sinS+' sin stock':'');
         kpiEl.style.color = sinS>0?'var(--danger)':'var(--muted)';
       }
@@ -3837,10 +3891,10 @@ function uRenderInventory() {
     prods.forEach(p => { if(!byName[p.name]) byName[p.name]=[]; byName[p.name].push(p); });
 
     Object.entries(byName).forEach(([nombre, skus], gi) => {
-      const totalStock = skus.reduce((s,p) => s+uStockDe(p.id), 0);
+      const totalStock = skus.reduce((s,p) => s+_stock(p.id), 0);
       const totalMin   = skus.reduce((s,p) => s+(p.min||0), 0);
       const totalCosto = skus.length ? skus.reduce((s,p)=>s+(p.cost||0),0)/skus.length : 0;
-      const totalVal   = skus.reduce((s,p) => s+uStockDe(p.id)*(p.cost||0), 0);
+      const totalVal   = skus.reduce((s,p) => s+_stock(p.id)*(p.cost||0), 0);
       const bc  = totalStock===0?'var(--danger)':totalStock<=totalMin?'var(--warn)':'var(--accent)';
       const pct = totalMin>0?Math.min(100,(totalStock/totalMin)*100):(totalStock>0?100:0);
       const grpId = 'ugrp-'+key+'-'+gi;
@@ -3865,7 +3919,7 @@ function uRenderInventory() {
         return aB - bB;
       });
       const innerRows = skusSorted.map(p => {
-        const s   = uStockDe(p.id);
+        const s   = _stock(p.id);
         const bc2 = s===0?'var(--danger)':s<=(p.min||0)?'var(--warn)':'var(--accent)';
         const pct2 = (p.min||0)>0?Math.min(100,(s/(p.min||1))*100):(s>0?100:0);
         return `<tr style="background:var(--surface2);">
@@ -7400,7 +7454,8 @@ window._fbSubscribe = function() {
     (snap) => {
       if(!snap.exists()) return; // first time, no data yet
       const data = snap.data();
-      // Only update if data is newer than local (avoid overwriting own pending saves)
+      // Skip echo of our own writes (nonce round-trip)
+      if(data.nonce && _myMatNonces.has(data.nonce)) { _myMatNonces.delete(data.nonce); return; }
       if(data.products)   { products  = data.products;  localStorage.setItem(LS_PRODUCTS,  JSON.stringify(products)); }
       if(data.movements)  { movements = data.movements; localStorage.setItem(LS_MOVEMENTS, JSON.stringify(movements)); }
       if(data.workers)    {
@@ -7429,6 +7484,8 @@ window._fbSubscribe = function() {
     (snap) => {
       if(!snap.exists()) return;
       const data = snap.data();
+      // Skip echo of our own writes (nonce round-trip)
+      if(data.nonce && _myUrnNonces.has(data.nonce)) { _myUrnNonces.delete(data.nonce); return; }
       if(data.uProducts)  { uProducts  = data.uProducts;  localStorage.setItem(LS_U_PRODUCTS,  JSON.stringify(uProducts)); }
       if(data.uMovements) { uMovements = data.uMovements; localStorage.setItem(LS_U_MOVEMENTS, JSON.stringify(uMovements)); }
       if(data.uOPs)       { uOPs       = data.uOPs;       localStorage.setItem(LS_U_OPS,       JSON.stringify(uOPs)); }
@@ -7481,14 +7538,18 @@ function adminRenderUsers(users) {
     <div style="padding:12px 0;border-bottom:1px solid var(--border);">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:8px;">
         <div style="min-width:0;">
-          <div style="font-weight:700;font-size:.88rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${u.nombre||u.email}</div>
-          <div style="font-size:.65rem;color:var(--muted);margin-top:1px;">${u.email}</div>
+          <div style="font-weight:700;font-size:.88rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${sanitizar(u.nombre||u.email)}</div>
+          <div style="font-size:.65rem;color:var(--muted);margin-top:1px;">${sanitizar(u.email)}</div>
         </div>
         <div style="display:flex;gap:5px;flex-shrink:0;">
-          <button onclick="adminToggleActivo('${u.uid}',${u.activo})" style="background:none;border:1px solid ${u.activo?'var(--accent)':'var(--danger)'};border-radius:6px;padding:3px 9px;cursor:pointer;font-size:.62rem;color:${u.activo?'var(--accent)':'var(--danger)'};">
+          <button data-uid="${sanitizar(u.uid)}" data-activo="${u.activo?'1':'0'}"
+            onclick="adminToggleActivo(this.dataset.uid, this.dataset.activo==='1')"
+            style="background:none;border:1px solid ${u.activo?'var(--accent)':'var(--danger)'};border-radius:6px;padding:3px 9px;cursor:pointer;font-size:.62rem;color:${u.activo?'var(--accent)':'var(--danger)'};">
             ${u.activo?'Activo':'Inactivo'}
           </button>
-          <button onclick="adminEliminarUsuario('${u.uid}','${u.nombre||u.email}')" style="background:none;border:1px solid var(--danger);border-radius:6px;padding:3px 9px;cursor:pointer;font-size:.62rem;color:var(--danger);">
+          <button data-uid="${sanitizar(u.uid)}" data-nombre="${sanitizar(u.nombre||u.email)}"
+            onclick="adminEliminarUsuario(this.dataset.uid, this.dataset.nombre)"
+            style="background:none;border:1px solid var(--danger);border-radius:6px;padding:3px 9px;cursor:pointer;font-size:.62rem;color:var(--danger);">
             🗑
           </button>
         </div>
@@ -7496,12 +7557,13 @@ function adminRenderUsers(users) {
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
         <div>
           <div style="font-size:.6rem;color:var(--muted);margin-bottom:3px;">NOMBRE</div>
-          <input value="${u.nombre||''}" placeholder="Nombre" onblur="adminCambiarNombre('${u.uid}',this.value)"
+          <input value="${sanitizar(u.nombre||'')}" placeholder="Nombre"
+            data-uid="${sanitizar(u.uid)}" onblur="adminCambiarNombre(this.dataset.uid, this.value)"
             style="width:100%;padding:6px 8px;border-radius:7px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:.78rem;">
         </div>
         <div>
           <div style="font-size:.6rem;color:var(--muted);margin-bottom:3px;">ROL</div>
-          <select onchange="adminCambiarRol('${u.uid}',this.value)"
+          <select data-uid="${sanitizar(u.uid)}" onchange="adminCambiarRol(this.dataset.uid, this.value)"
             style="width:100%;padding:6px 8px;border-radius:7px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:.78rem;">
             ${ROLES.map(r=>`<option value="${r}" ${r===u.rol?'selected':''}>${r==='admin'?'Admin':r==='instalacion'?'Instalacion':r==='ventas'?'Ventas':'Solo lectura'}</option>`).join('')}
           </select>
@@ -7589,9 +7651,9 @@ function _renderEditorProductosConEliminar() {
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:6px;">
         <div><label style="font-size:.65rem;color:var(--muted);">Nombre</label>
-          <input id="ep-m-name-${i}" type="text" value="${p.name.replace(/"/g,'&quot;')}" style="width:100%;padding:6px 9px;border-radius:7px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:.83rem;"></div>
+          <input id="ep-m-name-${i}" type="text" value="${sanitizar(p.name)}" style="width:100%;padding:6px 9px;border-radius:7px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:.83rem;"></div>
         <div><label style="font-size:.65rem;color:var(--muted);">Categoría</label>
-          <input id="ep-m-cat-${i}" type="text" value="${p.cat||''}" list="ep-cat-dl2" placeholder="ej: Adhesivos" style="width:100%;padding:6px 9px;border-radius:7px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:.83rem;"></div>
+          <input id="ep-m-cat-${i}" type="text" value="${sanitizar(p.cat||'')}" list="ep-cat-dl2" placeholder="ej: Adhesivos" style="width:100%;padding:6px 9px;border-radius:7px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:.83rem;"></div>
         <div><label style="font-size:.65rem;color:var(--muted);">Stock mínimo</label>
           <input id="ep-m-min-${i}" type="number" value="${p.min}" min="0" style="width:100%;padding:6px 9px;border-radius:7px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:.83rem;"></div>
         <div><label style="font-size:.65rem;color:var(--muted);">Costo unitario ($)</label>
@@ -7895,7 +7957,7 @@ function _renderEditorInventarioUrnas() {
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:6px;">
           <div><label style="font-size:.65rem;color:var(--muted);">Nombre</label>
-            <input id="epu-name-${i}" type="text" value="${p.name.replace(/"/g,'&quot;')}" style="width:100%;padding:6px 9px;border-radius:7px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:.83rem;"></div>
+            <input id="epu-name-${i}" type="text" value="${sanitizar(p.name)}" style="width:100%;padding:6px 9px;border-radius:7px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:.83rem;"></div>
           <div><label style="font-size:.65rem;color:var(--muted);">Terminación</label>
             <select id="epu-term-${i}" style="width:100%;padding:6px 9px;border-radius:7px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:.83rem;">
               ${TERMS_P.map(t=>`<option value="${t}" ${term===t?'selected':''}>${t}</option>`).join('')}
@@ -7949,6 +8011,16 @@ function menuUrnEditarOPs() {
   entrarSeccion('urnas');
   uNavTo('uop');
 }
+
+// ── INDICADOR OFFLINE ─────────────────────────────────
+(function() {
+  const badge = () => document.getElementById('offline-badge');
+  const update = () => { const b = badge(); if(b) b.style.display = navigator.onLine ? 'none' : 'flex'; };
+  window.addEventListener('online',  update);
+  window.addEventListener('offline', update);
+  // Check on load (service worker may serve cached content while offline)
+  document.addEventListener('DOMContentLoaded', update);
+})();
 
 </script>
 
