@@ -1885,8 +1885,8 @@ function rstRenderList(){
     list.insertAdjacentHTML('beforeend',`
       <div style="display:flex;align-items:center;gap:8px;background:var(--surface2);border-radius:8px;padding:9px 12px;flex-wrap:wrap;">
         <div style="flex:1;min-width:0;">
-          <div style="font-size:.83rem;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${p.name}${term}</div>
-          <div style="font-family:'Space Mono',monospace;font-size:.65rem;color:var(--muted);">${p.id}</div>
+          <div style="font-size:.83rem;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${sanitizar(p.name)}${term}</div>
+          <div style="font-family:'Space Mono',monospace;font-size:.65rem;color:var(--muted);">${sanitizar(p.id)}</div>
         </div>
         ${stockDisplay}
         ${extraCols}
@@ -1984,7 +1984,7 @@ function populateProductSelect() {
   sel.innerHTML = '<option value="">— Elige un producto —</option>';
   products.forEach(p => {
     const ico = p.stock===0?'⛔':p.stock<=p.min?'⚠':'✔';
-    sel.insertAdjacentHTML('beforeend',`<option value="${p.id}">${ico} ${p.name} (Stock: ${p.stock})</option>`);
+    sel.insertAdjacentHTML('beforeend',`<option value="${sanitizar(p.id)}">${ico} ${sanitizar(p.name)} (Stock: ${p.stock})</option>`);
   });
 }
 function lookupManual() {
@@ -2541,13 +2541,13 @@ function renderInventory(filtro) {
     if(_invSort==='cat'&&cat!==lastCat){
       lastCat=cat;
       tbody.insertAdjacentHTML('beforeend',`<tr style="background:var(--surface2);pointer-events:none;">
-        <td colspan="7" style="padding:5px 14px;font-family:'Space Mono',monospace;font-size:.65rem;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;">${cat||'Sin categoría'}</td>
+        <td colspan="7" style="padding:5px 14px;font-family:'Space Mono',monospace;font-size:.65rem;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;">${sanitizar(cat)||'Sin categoría'}</td>
       </tr>`);
     }
-    tbody.insertAdjacentHTML('beforeend',`<tr data-pid="${p.id}">
-      <td><span style="font-family:'Space Mono',monospace;font-size:.72rem;background:var(--surface2);padding:2px 6px;border-radius:4px;color:var(--muted);">${p.id}</span></td>
-      <td><b>${p.name}</b></td>
-      <td><span style="font-size:.75rem;color:var(--muted);">${cat||'—'}</span></td>
+    tbody.insertAdjacentHTML('beforeend',`<tr data-pid="${sanitizar(p.id)}">
+      <td><span style="font-family:'Space Mono',monospace;font-size:.72rem;background:var(--surface2);padding:2px 6px;border-radius:4px;color:var(--muted);">${sanitizar(p.id)}</span></td>
+      <td><b>${sanitizar(p.name)}</b></td>
+      <td><span style="font-size:.75rem;color:var(--muted);">${sanitizar(cat)||'—'}</span></td>
       <td><div class="stock-bar-wrap">
         <div style="min-width:56px;display:flex;align-items:baseline;gap:3px;flex-shrink:0;">
           ${(()=>{
@@ -2555,7 +2555,7 @@ function renderInventory(filtro) {
             const pn = p.nombrePres||(p.unidad&&p.unidad!=='u'?p.unidad:'');
             if(!hasPres) return `<span style="color:${bc};font-weight:700;">${p.stock}</span>`;
             const stockDisp = Number(p.stock.toFixed(3)).toLocaleString('es-CL',{maximumFractionDigits:3});
-            const unitLabel = pn ? `<span style="font-size:.62rem;color:var(--muted);font-family:'Space Mono',monospace;">${pn}</span>` : '';
+            const unitLabel = pn ? `<span style="font-size:.62rem;color:var(--muted);font-family:'Space Mono',monospace;">${sanitizar(pn)}</span>` : '';
             return `<span style="color:${bc};font-weight:700;">${stockDisp}</span>${unitLabel}`;
           })()}
         </div>
@@ -3030,17 +3030,17 @@ function renderMovements(){
       tbody.insertAdjacentHTML('beforeend',`<tr>
         <td class="td-mono">${rowNum--}</td>
         <td class="td-mono">${rep.date}</td>
-        <td><b>${rep.prodName}</b><br><span class="td-mono" style="font-size:.68rem;color:var(--muted);">${rep.prodId}</span></td>
+        <td><b>${sanitizar(rep.prodName)}</b><br><span class="td-mono" style="font-size:.68rem;color:var(--muted);">${sanitizar(rep.prodId)}</span></td>
         <td><span class="pill ${isAdj?'pill-ajuste':isIn?'pill-in':'pill-out'}">${rep.type}</span></td>
-        <td style="text-align:center;font-weight:600">${rep.qtyLabel||rep.qty+(rep.unidad&&rep.unidad!=='u'?' '+rep.unidad:'')}</td>
-        <td style="font-size:.81rem;color:var(--accent2)">${rep.worker?'👷 '+rep.worker:'—'}</td>
+        <td style="text-align:center;font-weight:600">${rep.qtyLabel||rep.qty+(rep.unidad&&rep.unidad!=='u'?' '+sanitizar(rep.unidad):'')}</td>
+        <td style="font-size:.81rem;color:var(--accent2)">${rep.worker?'👷 '+sanitizar(rep.worker):'—'}</td>
         <td class="td-mono">${isIn?'$'+fmtNum(rep.cost):'—'}</td>
         <td class="td-mono">${isIn?'$'+fmtNum(rep.qty*rep.cost):'—'}</td>
-        <td style="color:var(--muted);font-size:.76rem">${rep.obs||'—'}</td>
+        <td style="color:var(--muted);font-size:.76rem">${sanitizar(rep.obs||'—')}</td>
       </tr>`);
     } else {
       // ── Multi-product batch: collapsible header ─────────
-      const preview = batch.map(m=>m.prodName).join(', ');
+      const preview = batch.map(m=>sanitizar(m.prodName)).join(', ');
       const previewShort = preview.length > 55 ? preview.slice(0,55)+'…' : preview;
       tbody.insertAdjacentHTML('beforeend',`
         <tr style="cursor:pointer;" onclick="movToggleBatch('${detailId}')">
@@ -3054,10 +3054,10 @@ function renderMovements(){
           </td>
           <td><span class="pill ${isAdj?'pill-ajuste':isIn?'pill-in':'pill-out'}">${rep.type}</span></td>
           <td style="text-align:center;font-weight:600;color:var(--accent);">${totalQty} <span style="font-size:.65rem;color:var(--muted);">uds</span></td>
-          <td style="font-size:.81rem;color:var(--accent2)">${rep.worker?'👷 '+rep.worker:'—'}</td>
+          <td style="font-size:.81rem;color:var(--accent2)">${rep.worker?'👷 '+sanitizar(rep.worker):'—'}</td>
           <td class="td-mono">${isIn?'$'+fmtNum(totalCosto):'—'}</td>
           <td class="td-mono">—</td>
-          <td style="color:var(--muted);font-size:.76rem">${rep.obs||'—'}</td>
+          <td style="color:var(--muted);font-size:.76rem">${sanitizar(rep.obs||'—')}</td>
         </tr>
         <tr id="${detailId}" style="display:none;">
           <td colspan="9" style="padding:0;background:var(--surface2);">
@@ -3071,7 +3071,7 @@ function renderMovements(){
               </tr></thead>
               <tbody>
                 ${batch.map(m=>`<tr>
-                  <td style="padding-left:24px;"><b>${m.prodName}</b><br><span class="td-mono" style="font-size:.65rem;color:var(--muted);">${m.prodId}</span></td>
+                  <td style="padding-left:24px;"><b>${sanitizar(m.prodName)}</b><br><span class="td-mono" style="font-size:.65rem;color:var(--muted);">${sanitizar(m.prodId)}</span></td>
                   <td class="td-mono">${m.qty}</td>
                   <td class="td-mono">${isIn?'$'+fmtNum(m.cost):'—'}</td>
                   <td class="td-mono">${isIn?'$'+fmtNum(m.qty*m.cost):'—'}</td>
@@ -3139,7 +3139,8 @@ function renderQR(){
     const sid=p.id.replace(/[^a-z0-9]/gi,'');
     const card=document.createElement('div');
     card.className='qr-card';
-    card.innerHTML=`<div id="qr-${sid}" style="background:#fff;padding:6px;border-radius:6px;display:inline-block;"></div><h4>${p.name}</h4><p>${p.id}</p><button class="qr-print-btn" onclick="printQR('${p.id}','${p.name}')">🖨 Imprimir</button>`;
+    const _qrSafeName = p.name.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+    card.innerHTML=`<div id="qr-${sid}" style="background:#fff;padding:6px;border-radius:6px;display:inline-block;"></div><h4>${sanitizar(p.name)}</h4><p>${sanitizar(p.id)}</p><button class="qr-print-btn" onclick="printQR('${p.id}','${_qrSafeName}')">🖨 Imprimir</button>`;
     grid.appendChild(card);
     setTimeout(()=>{
       const el=document.getElementById('qr-'+sid);
@@ -3150,14 +3151,14 @@ function renderQR(){
 function printQR(id,name){
   const area=document.getElementById('print-area');
   area.style.display='flex';
-  area.innerHTML=`<div class="qr-print-item"><div id="print-qr" style="background:#fff;padding:8px;display:inline-block;"></div><p><b>${name}</b></p><p>${id}</p></div>`;
+  area.innerHTML=`<div class="qr-print-item"><div id="print-qr" style="background:#fff;padding:8px;display:inline-block;"></div><p><b>${sanitizar(name)}</b></p><p>${sanitizar(id)}</p></div>`;
   new QRCode(document.getElementById('print-qr'),{text:id,width:180,height:180,colorDark:'#000000',colorLight:'#ffffff'});
   setTimeout(()=>{window.print();area.style.display='none';area.innerHTML='';},300);
 }
 function printAllQR(){
   const area=document.getElementById('print-area');
   area.style.display='flex';
-  area.innerHTML=products.map((p,i)=>`<div class="qr-print-item"><div id="pqr${i}" style="background:#fff;padding:6px;display:inline-block;"></div><p><b>${p.name}</b></p><p>${p.id}</p></div>`).join('');
+  area.innerHTML=products.map((p,i)=>`<div class="qr-print-item"><div id="pqr${i}" style="background:#fff;padding:6px;display:inline-block;"></div><p><b>${sanitizar(p.name)}</b></p><p>${sanitizar(p.id)}</p></div>`).join('');
   products.forEach((p,i)=>new QRCode(document.getElementById('pqr'+i),{text:p.id,width:140,height:140,colorDark:'#000000',colorLight:'#ffffff'}));
   setTimeout(()=>{window.print();area.style.display='none';area.innerHTML='';},400);
 }
@@ -3756,7 +3757,7 @@ function uRenderInventory() {
 
       tbody.insertAdjacentHTML('beforeend', `
         <tr style="cursor:pointer;" onclick="uToggleTerminaciones('${grpId}')">
-          <td><b>${nombre}</b></td>
+          <td><b>${sanitizar(nombre)}</b></td>
           <td><div class="stock-bar-wrap">
             <span style="color:${bc};font-weight:700;">${totalStock}</span>
             <div class="stock-bar"><div class="stock-bar-fill" style="width:${pct}%;background:${bc}"></div></div>
@@ -3779,8 +3780,8 @@ function uRenderInventory() {
         const pct2 = (p.min||0)>0?Math.min(100,(s/(p.min||1))*100):(s>0?100:0);
         return `<tr style="background:var(--surface2);">
           <td style="padding-left:20px;">
-            <span style="font-size:.72rem;padding:2px 7px;border-radius:5px;background:${uTermBg(p.terminacion)};color:${uTermColor(p.terminacion)};font-family:'Space Mono',monospace;">${p.terminacion||'Bruto'}</span>
-            <span style="font-family:'Space Mono',monospace;font-size:.65rem;color:var(--muted);margin-left:6px;">${p.id}</span>
+            <span style="font-size:.72rem;padding:2px 7px;border-radius:5px;background:${uTermBg(p.terminacion)};color:${uTermColor(p.terminacion)};font-family:'Space Mono',monospace;">${sanitizar(p.terminacion||'Bruto')}</span>
+            <span style="font-family:'Space Mono',monospace;font-size:.65rem;color:var(--muted);margin-left:6px;">${sanitizar(p.id)}</span>
           </td>
           <td><div class="stock-bar-wrap">
             <span style="color:${bc2};font-weight:700;">${s}</span>
@@ -3848,12 +3849,12 @@ function uRenderUnidades() {
       ? `<button onclick="uAbrirVentaModal('${u.id}')" style="background:none;border:1px solid var(--accent);border-radius:6px;padding:2px 8px;cursor:pointer;font-size:.65rem;color:var(--accent);">Vender</button>`
       : '';
     tbody.insertAdjacentHTML('beforeend', `<tr>
-      <td><span style="font-family:'Space Mono',monospace;font-size:.78rem;color:var(--accent);font-weight:700;">${u.id}</span></td>
-      <td style="font-size:.82rem;">${u.nombre}</td>
-      <td><span style="font-size:.68rem;padding:1px 7px;border-radius:5px;background:${uTermBg(u.terminacion)};color:${uTermColor(u.terminacion)};font-family:'Space Mono',monospace;">${u.terminacion||'—'}</span></td>
+      <td><span style="font-family:'Space Mono',monospace;font-size:.78rem;color:var(--accent);font-weight:700;">${sanitizar(u.id)}</span></td>
+      <td style="font-size:.82rem;">${sanitizar(u.nombre)}</td>
+      <td><span style="font-size:.68rem;padding:1px 7px;border-radius:5px;background:${uTermBg(u.terminacion)};color:${uTermColor(u.terminacion)};font-family:'Space Mono',monospace;">${sanitizar(u.terminacion||'—')}</span></td>
       <td style="text-align:center;">${circulo}</td>
       <td class="td-mono" style="font-size:.72rem;">${fmtFecha(u.fechaIngreso)}</td>
-      <td style="font-size:.72rem;color:var(--muted);max-width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${u.notas||''}">${u.notas||'—'}</td>
+      <td style="font-size:.72rem;color:var(--muted);max-width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${sanitizar(u.notas||'')}">${sanitizar(u.notas||'—')}</td>
       <td style="text-align:right;white-space:nowrap;">${acciones}</td>
     </tr>`);
   });
@@ -3959,11 +3960,11 @@ function uRenderMovements() {
     tbody.insertAdjacentHTML('beforeend', `<tr>
       <td class="td-mono">${ventas.length - i}</td>
       <td class="td-mono">${fmtFecha(m.date)}</td>
-      <td><span style="font-family:'Space Mono',monospace;font-size:.75rem;color:var(--accent);">${m.serial}</span></td>
-      <td><b>${m.nombre||'—'}</b></td>
-      <td style="font-size:.72rem;color:var(--muted);">${m.terminacion||'—'}</td>
-      <td><span style="font-family:'Space Mono',monospace;font-size:.78rem;font-weight:700;color:var(--accent2);">${m.contrato||'—'}</span></td>
-      <td style="font-size:.75rem;color:var(--muted);">${m.cliente||'—'}</td>
+      <td><span style="font-family:'Space Mono',monospace;font-size:.75rem;color:var(--accent);">${sanitizar(m.serial)}</span></td>
+      <td><b>${sanitizar(m.nombre||'—')}</b></td>
+      <td style="font-size:.72rem;color:var(--muted);">${sanitizar(m.terminacion||'—')}</td>
+      <td><span style="font-family:'Space Mono',monospace;font-size:.78rem;font-weight:700;color:var(--accent2);">${sanitizar(m.contrato||'—')}</span></td>
+      <td style="font-size:.75rem;color:var(--muted);">${sanitizar(m.cliente||'—')}</td>
     </tr>`);
   });
 }
@@ -3988,10 +3989,10 @@ function uRenderQR() {
   uProducts.forEach(p => {
     const div = document.createElement('div');
     div.className = 'qr-card';
-    div.innerHTML = `<div style="font-family:'Space Mono',monospace;font-size:.65rem;color:var(--muted);margin-bottom:6px;">${p.id}</div>
+    div.innerHTML = `<div style="font-family:'Space Mono',monospace;font-size:.65rem;color:var(--muted);margin-bottom:6px;">${sanitizar(p.id)}</div>
       <div id="qr-u-${p.id}" class="qr-img"></div>
-      <div style="font-size:.75rem;margin-top:6px;text-align:center;">${p.name}</div>
-      <div style="font-size:.65rem;color:var(--muted);text-align:center;">${p.terminacion||''}</div>`;
+      <div style="font-size:.75rem;margin-top:6px;text-align:center;">${sanitizar(p.name)}</div>
+      <div style="font-size:.65rem;color:var(--muted);text-align:center;">${sanitizar(p.terminacion||'')}</div>`;
     grid.appendChild(div);
     if(typeof QRCode !== 'undefined') {
       new QRCode(document.getElementById('qr-u-' + p.id), { text: p.id, width: 100, height: 100, colorDark:'#000000', colorLight:'#ffffff' });
