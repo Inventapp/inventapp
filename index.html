@@ -112,7 +112,7 @@
 </script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script src="https://unpkg.com/@zxing/library@0.19.1/umd/index.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<!-- xlsx se carga bajo demanda (lazy) al exportar Excel → ahorra ~400KB en carga inicial -->
 <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
 :root {
@@ -132,9 +132,9 @@ header{position:sticky;top:0;z-index:100;background:rgba(13,15,20,.94);backdrop-
 .stat-chip{font-family:'Space Mono',monospace;font-size:.7rem;color:var(--muted);display:flex;align-items:center;gap:5px;}
 .stat-chip b{color:var(--text);}
 
-/* HAMBURGER */
-.hamburger{width:36px;height:36px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;flex-shrink:0;}
-.hamburger span{display:block;width:15px;height:2px;background:var(--text);border-radius:2px;transition:all .22s;}
+/* HAMBURGER — mínimo 48×48px para uso con guantes (WCAG 2.5.5) */
+.hamburger{width:48px;height:48px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;flex-shrink:0;}
+.hamburger span{display:block;width:18px;height:2px;background:var(--text);border-radius:2px;transition:all .22s;}
 .hamburger.open span:nth-child(1){transform:translateY(7px) rotate(45deg);}
 .hamburger.open span:nth-child(2){opacity:0;}
 .hamburger.open span:nth-child(3){transform:translateY(-7px) rotate(-45deg);}
@@ -149,8 +149,8 @@ header{position:sticky;top:0;z-index:100;background:rgba(13,15,20,.94);backdrop-
 .dropdown-overlay.open{display:block;}
 /* MENU SECTION LABELS */
 .menu-label{font-family:'Space Mono',monospace;font-size:.58rem;color:var(--muted);padding:10px 18px 4px;letter-spacing:.08em;display:block;}
-/* GEAR BUTTON (contextual per section) */
-.gear-btn{background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:5px 10px;cursor:pointer;color:var(--muted);font-size:.72rem;display:flex;align-items:center;gap:5px;transition:all .15s;white-space:nowrap;font-family:'Space Mono',monospace;}
+/* GEAR BUTTON — mínimo 48px altura */
+.gear-btn{background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:10px 14px;cursor:pointer;color:var(--muted);font-size:.72rem;display:flex;align-items:center;gap:5px;transition:all .15s;white-space:nowrap;font-family:'Space Mono',monospace;min-height:48px;}
 .gear-btn:hover{border-color:var(--accent);color:var(--accent);}
 .gear-wrap{position:relative;margin-left:auto;margin-bottom:2px;flex-shrink:0;}
 .gear-dropdown{position:absolute;top:calc(100% + 6px);right:0;min-width:210px;background:var(--surface);border:1px solid var(--border);border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.4);z-index:300;display:none;overflow:hidden;}
@@ -162,9 +162,9 @@ header{position:sticky;top:0;z-index:100;background:rgba(13,15,20,.94);backdrop-
 .gear-dropdown a:last-child{border-bottom:none;}
 .gear-dropdown a:hover{background:var(--surface2);color:var(--accent);}
 
-/* NAV */
-nav{position:relative;z-index:1;display:flex;gap:4px;padding:14px 18px 0;border-bottom:1px solid var(--border);}
-.tab{font-family:'Space Mono',monospace;font-size:.75rem;padding:9px 16px;border-radius:8px 8px 0 0;border:1px solid transparent;border-bottom:none;cursor:pointer;color:var(--muted);background:transparent;transition:all .2s;position:relative;bottom:-1px;}
+/* NAV — tabs con mínimo 48px altura */
+nav{position:relative;z-index:1;display:flex;gap:4px;padding:8px 18px 0;border-bottom:1px solid var(--border);}
+.tab{font-family:'Space Mono',monospace;font-size:.75rem;padding:13px 16px;border-radius:8px 8px 0 0;border:1px solid transparent;border-bottom:none;cursor:pointer;color:var(--muted);background:transparent;transition:all .2s;position:relative;bottom:-1px;min-height:48px;display:flex;align-items:center;}
 .tab:hover{color:var(--text);}
 .tab.active{color:var(--accent);background:var(--surface);border-color:var(--border);border-bottom-color:var(--surface);}
 
@@ -233,8 +233,8 @@ select option{background:var(--surface2);}
 .type-btn.selected-in{border-color:var(--accent);color:var(--accent);background:rgba(0,229,160,.08);}
 .type-btn.selected-out{border-color:var(--danger);color:var(--danger);background:rgba(255,71,87,.08);}
 
-/* BUTTONS */
-.btn{display:inline-flex;align-items:center;gap:7px;padding:10px 18px;border-radius:8px;border:none;font-family:'Space Mono',monospace;font-size:.75rem;cursor:pointer;transition:all .2s;font-weight:700;}
+/* BUTTONS — mínimo 48px altura para uso con guantes */
+.btn{display:inline-flex;align-items:center;gap:7px;padding:13px 18px;border-radius:8px;border:none;font-family:'Space Mono',monospace;font-size:.75rem;cursor:pointer;transition:all .2s;font-weight:700;min-height:48px;}
 .btn-primary{background:var(--accent);color:#0d0f14;}
 .btn-primary:hover{background:#00ffb3;transform:translateY(-1px);}
 .btn-secondary{background:var(--surface2);color:var(--text);border:1px solid var(--border);}
@@ -433,7 +433,7 @@ tr:hover td{background:rgba(255,255,255,.02);}
 <div id="print-area"></div>
 
 <header>
-  <button id="back-btn" onclick="volverHome()" style="display:none;background:none;border:none;cursor:pointer;color:var(--accent);font-family:'Space Mono',monospace;font-size:.8rem;padding:4px 8px;flex-shrink:0;">← Inicio</button>
+  <button id="back-btn" onclick="volverHome()" aria-label="Volver al inicio" style="display:none;background:none;border:none;cursor:pointer;color:var(--accent);font-family:'Space Mono',monospace;font-size:.8rem;padding:4px 8px;flex-shrink:0;">← Inicio</button>
   <div class="logo" id="header-logo" style="position:absolute;left:50%;transform:translateX(-50%);">Invent<span>App</span></div>
   <div id="header-seccion" style="display:none;position:absolute;left:50%;transform:translateX(-50%);font-family:'Space Mono',monospace;font-size:.75rem;color:var(--text);font-weight:700;letter-spacing:.05em;text-transform:uppercase;"></div>
   <div class="header-right">
@@ -445,7 +445,7 @@ tr:hover td{background:rgba(255,255,255,.02);}
     <div class="stat-chip" id="hdr-chip" style="display:none">Productos <b id="hdr-products">0</b></div>
     <div class="stat-chip" id="hdr-alert-wrap" style="display:none"><span style="color:var(--warn)">⚠ <b id="hdr-alerts">0</b></span></div>
     <div id="offline-badge" style="display:none;background:var(--warn);color:#111;font-family:'Space Mono',monospace;font-size:.55rem;padding:2px 8px;border-radius:4px;font-weight:700;letter-spacing:.05em;flex-shrink:0;">SIN CONEXIÓN</div>
-    <button class="hamburger" id="hamburger-btn" onclick="toggleMenu()" style="display:none">
+    <button class="hamburger" id="hamburger-btn" onclick="toggleMenu()" aria-label="Abrir menú" aria-expanded="false" aria-controls="dropdown-menu" style="display:none">
       <span></span><span></span><span></span>
     </button>
   </div>
@@ -497,7 +497,7 @@ tr:hover td{background:rgba(255,255,255,.02);}
 </div>
 
 <!-- MODAL ESTADO OP -->
-<div class="modal-overlay" id="modal-estado">
+<div class="modal-overlay" id="modal-estado" role="dialog" aria-modal="true" aria-label="Cambiar estado de orden">
   <div class="modal-box">
     <div class="modal-title">Cambiar estado — <span id="modal-op-id"></span></div>
     <div class="estado-opt" onclick="uSetEstado('Pendiente')">
@@ -554,13 +554,13 @@ tr:hover td{background:rgba(255,255,255,.02);}
 <!-- SECCION MATERIALES -->
 <div id="seccion-materiales" style="display:none">
 <nav>
-  <button class="tab active" id="tab-scan"      onclick="navTo('scan')">📷 Escanear</button>
-  <button class="tab"        id="tab-inventory"  onclick="navTo('inventory')">📦 Inventario</button>
-  <button class="tab"        id="tab-movements"  onclick="navTo('movements')">📋 Movimientos</button>
-  <button class="tab"        id="tab-resumen"    onclick="navTo('resumen')">📊 Resumen</button>
-  <button class="tab"        id="tab-proveedores" onclick="navTo('proveedores')">🏭 Proveedores</button>
+  <button class="tab active" id="tab-scan"      onclick="navTo('scan')"       aria-label="Escanear producto">📷 Escanear</button>
+  <button class="tab"        id="tab-inventory"  onclick="navTo('inventory')"  aria-label="Ver inventario">📦 Inventario</button>
+  <button class="tab"        id="tab-movements"  onclick="navTo('movements')"  aria-label="Ver movimientos">📋 Movimientos</button>
+  <button class="tab"        id="tab-resumen"    onclick="navTo('resumen')"    aria-label="Ver resumen">📊 Resumen</button>
+  <button class="tab"        id="tab-proveedores" onclick="navTo('proveedores')" aria-label="Ver proveedores">🏭 Proveedores</button>
   <div class="gear-wrap" id="gear-mat-wrap" style="display:none">
-    <button class="gear-btn" onclick="toggleGear('gear-mat')">⚙ Gestión ▾</button>
+    <button class="gear-btn" onclick="toggleGear('gear-mat')" aria-label="Gestión de materiales" aria-expanded="false" aria-controls="gear-mat">⚙ Gestión ▾</button>
     <div class="gear-dropdown" id="gear-mat">
       <a class="dropdown-item" onclick="closeGear('gear-mat');menuMatEditarInventario()">✏️ Editar inventario</a>
       <a class="dropdown-item" onclick="closeGear('gear-mat');menuMatEditarMovimientos()">🔄 Editar movimientos</a>
@@ -581,7 +581,7 @@ tr:hover td{background:rgba(255,255,255,.02);}
       <div class="scanner-status" id="scanner-status">Apunta al código QR…</div>
     </div>
     <div class="scan-btn-wrap">
-      <button class="scan-big-btn" id="scan-toggle-btn" onclick="toggleScanner()">
+      <button class="scan-big-btn" id="scan-toggle-btn" onclick="toggleScanner()" aria-label="Activar escáner de cámara">
         <span class="icon">📷</span>
         <span class="lbl" id="scan-btn-lbl">ESCANEAR</span>
       </button>
@@ -592,7 +592,7 @@ tr:hover td{background:rgba(255,255,255,.02);}
       <button class="alt-btn" onclick="toggleAlt('dropdown-input')">☰ Elegir de lista</button>
     </div>
     <div id="manual-input" style="display:none;margin-top:12px;">
-      <label>ID del Producto</label>
+      <label for="manual-id">ID del Producto</label>
       <div style="display:flex;gap:8px;">
         <input type="text" id="manual-id" placeholder="ej: PROD-001" style="flex:1" onkeydown="if(event.key==='Enter')lookupManual()">
         <button class="btn btn-primary" onclick="lookupManual()">Buscar</button>
@@ -622,7 +622,7 @@ tr:hover td{background:rgba(255,255,255,.02);}
 
       <!-- Trabajador (Salida) -->
       <div id="worker-field-wrap" style="display:none;margin-bottom:12px;">
-        <label>Entregado a</label>
+        <label for="mov-worker">Entregado a</label>
         <div style="display:flex;gap:8px;">
           <select id="mov-worker" style="flex:1"><option value="">— Seleccionar trabajador —</option></select>
           <button class="btn btn-secondary" style="padding:10px 11px;font-size:.72rem;" onclick="toggleNewWorker()">+ Nuevo</button>
@@ -637,7 +637,7 @@ tr:hover td{background:rgba(255,255,255,.02);}
 
       <!-- Proveedor (solo Ingreso) -->
       <div id="mov-prov-wrap" style="display:none;margin-bottom:12px;">
-        <label>Proveedor (opcional)</label>
+        <label for="mov-proveedor">Proveedor (opcional)</label>
         <select id="mov-proveedor" style="width:100%;"><option value="">— Sin especificar —</option></select>
       </div>
 
@@ -648,7 +648,7 @@ tr:hover td{background:rgba(255,255,255,.02);}
 
       <!-- Observaciones -->
       <div style="margin-top:12px;">
-        <label>Observaciones (opcional)</label>
+        <label for="mov-obs">Observaciones (opcional)</label>
         <input type="text" id="mov-obs" placeholder="ej: Compra proveedor A, Lote #23">
       </div>
 
@@ -697,23 +697,23 @@ tr:hover td{background:rgba(255,255,255,.02);}
   <div class="card" id="add-product-form" style="display:none;border-color:var(--accent);">
     <div class="card-title">Nuevo producto</div>
     <div class="form-row">
-      <div><label>SKU / ID</label><input type="text" id="np-id" placeholder="Auto" style="font-family:'Space Mono',monospace;color:var(--accent);font-weight:700;"></div>
-      <div><label>Nombre</label><input type="text" id="np-name" placeholder="ej: Adhesivo PVC" required maxlength="100" oninput="npAutoId(this.value)"></div>
+      <div><label for="np-id">SKU / ID</label><input type="text" id="np-id" placeholder="Auto" style="font-family:'Space Mono',monospace;color:var(--accent);font-weight:700;"></div>
+      <div><label for="np-name">Nombre</label><input type="text" id="np-name" placeholder="ej: Adhesivo PVC" required maxlength="100" oninput="npAutoId(this.value)"></div>
     </div>
     <div class="form-row">
-      <div><label>Categoría</label><input type="text" id="np-cat" placeholder="ej: Adhesivos" list="cat-datalist"></div>
-      <div><label>Costo unitario ($)</label><input type="number" id="np-cost" value="0" min="0" step="0.01" oninput="npCalcCostoBase()"></div>
+      <div><label for="np-cat">Categoría</label><input type="text" id="np-cat" placeholder="ej: Adhesivos" list="cat-datalist"></div>
+      <div><label for="np-cost">Costo unitario ($)</label><input type="number" id="np-cost" value="0" min="0" step="0.01" oninput="npCalcCostoBase()"></div>
     </div>
     <!-- Presentación / formato -->
     <div style="background:var(--surface2);border-radius:9px;padding:10px 12px;margin-top:2px;margin-bottom:2px;">
       <div style="font-family:'Space Mono',monospace;font-size:.58rem;color:var(--muted);letter-spacing:.08em;margin-bottom:8px;">PRESENTACIÓN</div>
       <div class="form-row" style="margin-bottom:6px;">
         <div>
-          <label>Formato (cantidad por presentación)</label>
+          <label for="np-formato">Formato (cantidad por presentación)</label>
           <input type="number" id="np-formato" value="1" min="0.001" step="any" placeholder="ej: 28" oninput="npCalcCostoBase()">
         </div>
         <div>
-          <label>Unidad base</label>
+          <label for="np-unidad">Unidad base</label>
           <select id="np-unidad" onchange="npCalcCostoBase()" style="width:100%;">
             <option value="u">u (unidad simple)</option>
             <option value="gr">gr (gramos)</option>
@@ -743,10 +743,10 @@ tr:hover td{background:rgba(255,255,255,.02);}
     </div>
     <div class="form-row">
       <div>
-        <label>Stock inicial</label>
+        <label for="np-stock">Stock inicial</label>
         <div style="display:flex;gap:6px;margin-top:4px;">
           <input type="number" id="np-stock" value="0" min="0" style="flex:1;" oninput="npUpdateStockEquiv()">
-          <select id="np-stock-unit" onchange="npUpdateStockEquiv()" style="width:auto;min-width:80px;font-family:'Space Mono',monospace;font-size:.78rem;color:var(--accent);">
+          <select id="np-stock-unit" onchange="npUpdateStockEquiv()" aria-label="Unidad de stock inicial" style="width:auto;min-width:80px;font-family:'Space Mono',monospace;font-size:.78rem;color:var(--accent);">
             <option value="pres">unid.</option>
             <option value="base">base</option>
           </select>
@@ -754,10 +754,10 @@ tr:hover td{background:rgba(255,255,255,.02);}
         <div id="np-stock-equiv" style="font-size:.65rem;color:var(--muted);margin-top:3px;font-family:'Space Mono',monospace;min-height:14px;"></div>
       </div>
       <div>
-        <label>Stock mínimo</label>
+        <label for="np-min">Stock mínimo</label>
         <div style="display:flex;gap:6px;margin-top:4px;">
           <input type="number" id="np-min" value="1" min="0" style="flex:1;" oninput="npUpdateMinEquiv()">
-          <select id="np-min-unit" onchange="npUpdateMinEquiv()" style="width:auto;min-width:80px;font-family:'Space Mono',monospace;font-size:.78rem;color:var(--muted);">
+          <select id="np-min-unit" onchange="npUpdateMinEquiv()" aria-label="Unidad de stock mínimo" style="width:auto;min-width:80px;font-family:'Space Mono',monospace;font-size:.78rem;color:var(--muted);">
             <option value="pres">unid.</option>
             <option value="base">base</option>
           </select>
@@ -859,14 +859,14 @@ tr:hover td{background:rgba(255,255,255,.02);}
 <!-- SECCION URNAS -->
 <div id="seccion-urnas" style="display:none">
 <nav>
-  <button class="tab active" id="utab-scan"      onclick="uNavTo('uscan')">📷 Escanear</button>
-  <button class="tab"        id="utab-inventory"  onclick="uNavTo('uinventory')">📦 Inventario</button>
-  <button class="tab"        id="utab-uunidades"  onclick="uNavTo('uunidades')">🔢 Unidades</button>
-  <button class="tab"        id="utab-umovements" onclick="uNavTo('umovements')">💰 Ventas</button>
-  <button class="tab"        id="utab-op"         onclick="uNavTo('uop')">🗂 Orden Prod.</button>
-  <button class="tab"        id="utab-resumen"    onclick="uNavTo('uresumen')">📊 Resumen</button>
+  <button class="tab active" id="utab-scan"      onclick="uNavTo('uscan')"       aria-label="Escanear urna">📷 Escanear</button>
+  <button class="tab"        id="utab-inventory"  onclick="uNavTo('uinventory')"  aria-label="Ver inventario de urnas">📦 Inventario</button>
+  <button class="tab"        id="utab-uunidades"  onclick="uNavTo('uunidades')"   aria-label="Ver unidades">🔢 Unidades</button>
+  <button class="tab"        id="utab-umovements" onclick="uNavTo('umovements')"  aria-label="Ver ventas">💰 Ventas</button>
+  <button class="tab"        id="utab-op"         onclick="uNavTo('uop')"         aria-label="Ver órdenes de producción">🗂 Orden Prod.</button>
+  <button class="tab"        id="utab-resumen"    onclick="uNavTo('uresumen')"    aria-label="Ver resumen urnas">📊 Resumen</button>
   <div class="gear-wrap" id="gear-urn-wrap" style="display:none">
-    <button class="gear-btn" onclick="toggleGear('gear-urn')">⚙ Gestión ▾</button>
+    <button class="gear-btn" onclick="toggleGear('gear-urn')" aria-label="Gestión de urnas" aria-expanded="false" aria-controls="gear-urn">⚙ Gestión ▾</button>
     <div class="gear-dropdown" id="gear-urn">
       <a class="dropdown-item" onclick="closeGear('gear-urn');menuUrnEditarInventario()">✏️ Editar inventario</a>
       <a class="dropdown-item" onclick="closeGear('gear-urn');abrirEditarUnidades()">🔢 Editar unidades</a>
@@ -886,7 +886,7 @@ tr:hover td{background:rgba(255,255,255,.02);}
       <div class="scanner-status" id="u-scanner-status">Apunta al código QR…</div>
     </div>
     <div class="scan-btn-wrap">
-      <button class="scan-big-btn" id="u-scan-toggle-btn" onclick="uToggleScanner()">
+      <button class="scan-big-btn" id="u-scan-toggle-btn" onclick="uToggleScanner()" aria-label="Activar escáner de cámara para urnas">
         <span class="icon">📷</span>
         <span class="lbl" id="u-scan-btn-lbl">ESCANEAR</span>
       </button>
@@ -898,7 +898,7 @@ tr:hover td{background:rgba(255,255,255,.02);}
     </div>
     <!-- SKU manual (para venta o consulta) -->
     <div id="u-manual-input" style="display:none;margin-top:12px;">
-      <label>SKU de unidad (código)</label>
+      <label for="u-manual-id">SKU de unidad (código)</label>
       <div style="display:flex;gap:8px;">
         <input type="text" id="u-manual-id" placeholder="ej: PAI-001" style="flex:1;font-family:'Space Mono',monospace;text-transform:uppercase;" onkeydown="if(event.key==='Enter')uLookupSerial()">
         <button class="btn btn-primary" onclick="uLookupSerial()">Buscar</button>
@@ -947,8 +947,8 @@ tr:hover td{background:rgba(255,255,255,.02);}
       <!-- Panel venta (solo si En Stock) -->
       <div id="u-ficha-venta-panel" style="display:none;border-top:1px solid var(--border);padding-top:12px;margin-top:4px;">
         <div style="font-family:'Space Mono',monospace;font-size:.65rem;color:var(--muted);margin-bottom:8px;">REGISTRAR VENTA</div>
-        <div><label>N° Contrato</label><input type="text" id="u-venta-contrato" placeholder="ej: 2026-031" style="width:100%;"></div>
-        <div style="margin-top:10px;"><label>Notas</label>
+        <div><label for="u-venta-contrato">N° Contrato</label><input type="text" id="u-venta-contrato" placeholder="ej: 2026-031" style="width:100%;"></div>
+        <div style="margin-top:10px;"><label for="u-venta-cliente">Notas</label>
           <input type="text" id="u-venta-cliente" placeholder="Observaciones (opcional)" style="width:100%;">
         </div>
         <button class="btn btn-primary btn-full" style="margin-top:13px;" onclick="uConfirmarVenta()">✓ Confirmar venta</button>
@@ -972,10 +972,10 @@ tr:hover td{background:rgba(255,255,255,.02);}
           <div id="u-ing-term-display" style="font-size:.82rem;font-weight:600;"></div></div>
       </div>
       <div class="form-row">
-        <div><label>Cantidad</label><input type="number" id="u-ing-qty" min="1" value="1" oninput="uPreviewSeriales()"></div>
-        <div><label>Costo unit. ($)</label><input type="number" id="u-ing-cost" min="0" step="1" placeholder="0"></div>
+        <div><label for="u-ing-qty">Cantidad</label><input type="number" id="u-ing-qty" min="1" value="1" oninput="uPreviewSeriales()"></div>
+        <div><label for="u-ing-cost">Costo unit. ($)</label><input type="number" id="u-ing-cost" min="0" step="1" placeholder="0"></div>
       </div>
-      <div style="margin-top:10px;"><label>Notas (opcional)</label>
+      <div style="margin-top:10px;"><label for="u-ing-notas">Notas (opcional)</label>
         <input type="text" id="u-ing-notas" placeholder="ej: Lote proveedor A" style="width:100%;">
       </div>
       <!-- Preview seriales -->
@@ -1007,11 +1007,11 @@ tr:hover td{background:rgba(255,255,255,.02);}
   <div class="card" id="u-add-product-form" style="display:none;border-color:var(--accent);">
     <div class="card-title">Nuevo SKU</div>
     <div class="form-row">
-      <div><label>SKU / ID</label><input type="text" id="u-np-id" placeholder="PAI-B"></div>
-      <div><label>Nombre</label><input type="text" id="u-np-name" placeholder="ej: Paisley Roble" required maxlength="100"></div>
+      <div><label for="u-np-id">SKU / ID</label><input type="text" id="u-np-id" placeholder="PAI-B"></div>
+      <div><label for="u-np-name">Nombre</label><input type="text" id="u-np-name" placeholder="ej: Paisley Roble" required maxlength="100"></div>
     </div>
     <div style="margin-top:11px;">
-      <label>Categoría</label>
+      <label for="u-np-categoria">Categoría</label>
       <select id="u-np-categoria" style="width:100%" onchange="uNpUpdateTerminaciones()">
         <option value="estandar">Urnas estándar</option>
         <option value="especial">Urnas especiales</option>
@@ -1019,7 +1019,7 @@ tr:hover td{background:rgba(255,255,255,.02);}
       </select>
     </div>
     <div style="margin-top:11px;">
-      <label>Terminación</label>
+      <label for="u-np-terminacion">Terminación</label>
       <select id="u-np-terminacion" style="width:100%">
         <option value="Barniz-Oscura">Barniz-Oscura</option>
         <option value="Barniz-Clara">Barniz-Clara</option>
@@ -1029,8 +1029,8 @@ tr:hover td{background:rgba(255,255,255,.02);}
       </select>
     </div>
     <div class="form-row" style="margin-top:11px;">
-      <div><label>Costo estándar ($)</label><input type="number" id="u-np-cost" value="0" min="0" step="1"></div>
-      <div><label>Stock mínimo</label><input type="number" id="u-np-min" value="2" min="0"></div>
+      <div><label for="u-np-cost">Costo estándar ($)</label><input type="number" id="u-np-cost" value="0" min="0" step="1"></div>
+      <div><label for="u-np-min">Stock mínimo</label><input type="number" id="u-np-min" value="2" min="0"></div>
     </div>
     <div class="action-row" style="margin-top:13px;">
       <button class="btn btn-primary" onclick="uAddProduct()">Guardar</button>
@@ -1491,7 +1491,7 @@ tr:hover td{background:rgba(255,255,255,.02);}
 
 
 <!-- MODAL: AGREGAR/EDITAR TRABAJADOR -->
-<div class="modal-overlay" id="modal-trabajador" onclick="if(event.target===this)trabCerrarModal()" style="display:none;">
+<div class="modal-overlay" id="modal-trabajador" onclick="if(event.target===this)trabCerrarModal()" role="dialog" aria-modal="true" aria-labelledby="trab-modal-title" style="display:none;">
   <div class="modal-box" style="max-width:420px;width:94%;">
     <div class="modal-title" id="trab-modal-title">Agregar trabajador</div>
     <div style="margin-bottom:10px;">
@@ -1513,7 +1513,7 @@ tr:hover td{background:rgba(255,255,255,.02);}
 </div>
 
 <!-- MODAL RESET STOCK -->
-<div class="modal-overlay" id="modal-reset-stock" onclick="if(event.target===this)cerrarModalResetStock()">
+<div class="modal-overlay" id="modal-reset-stock" onclick="if(event.target===this)cerrarModalResetStock()" role="dialog" aria-modal="true" aria-label="Ajustar stock">
   <div class="modal-box" style="max-width:480px;width:94%;max-height:85vh;display:flex;flex-direction:column;">
     <div class="modal-title" style="flex-shrink:0;">📦 Ajustar stock</div>
     <div style="flex-shrink:0;margin-bottom:12px;">
@@ -1531,7 +1531,7 @@ tr:hover td{background:rgba(255,255,255,.02);}
   </div>
 </div>
 
-<div id="toast"></div>
+<div id="toast" role="status" aria-live="polite" aria-atomic="true"></div>
 
 <script>
 // STATE
@@ -1843,6 +1843,7 @@ function toggleMenu() {
   document.getElementById('dropdown-menu').classList.toggle('open');
   document.getElementById('menu-overlay').classList.toggle('open');
   const isOpen = document.getElementById('dropdown-menu').classList.contains('open');
+  document.getElementById('hamburger-btn').setAttribute('aria-expanded', isOpen ? 'true' : 'false');
   if(isOpen) {
     const u = window._currentUser;
     const nm = document.getElementById('menu-user-name');
@@ -1857,6 +1858,7 @@ function closeMenu() {
   document.getElementById('hamburger-btn').classList.remove('open');
   document.getElementById('dropdown-menu').classList.remove('open');
   document.getElementById('menu-overlay').classList.remove('open');
+  document.getElementById('hamburger-btn').setAttribute('aria-expanded', 'false');
   closeGear();
 }
 function toggleGear(id) {
@@ -2628,33 +2630,35 @@ function renderInventory(filtro) {
       document.getElementById('inv-next').disabled = _invPage === _invTotalPages - 1;
     }
   }
-  // Group header for category sort
+  // Batch all rows into a single innerHTML assignment (one reflow instead of N)
   let lastCat=null;
+  const rows=[];
   lista.forEach(p=>{
     const pct=p.min>0?Math.min(100,(p.stock/p.min)*100):100;
     const bc=p.stock===0?'var(--danger)':p.stock<=p.min?'var(--warn)':'var(--accent)';
     const cat=p.cat||'';
     if(_invSort==='cat'&&cat!==lastCat){
       lastCat=cat;
-      tbody.insertAdjacentHTML('beforeend',`<tr style="background:var(--surface2);pointer-events:none;">
+      rows.push(`<tr style="background:var(--surface2);pointer-events:none;">
         <td colspan="7" style="padding:5px 14px;font-family:'Space Mono',monospace;font-size:.65rem;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;">${sanitizar(cat)||'Sin categoría'}</td>
       </tr>`);
     }
-    tbody.insertAdjacentHTML('beforeend',`<tr data-pid="${sanitizar(p.id)}">
+    const hasPres = p.formato>1 && p.unidad && p.unidad!=='u';
+    const pn = p.nombrePres||(p.unidad&&p.unidad!=='u'?p.unidad:'');
+    let stockHtml;
+    if(!hasPres) {
+      stockHtml = `<span style="color:${bc};font-weight:700;">${p.stock}</span>`;
+    } else {
+      const stockDisp = Number(p.stock.toFixed(3)).toLocaleString('es-CL',{maximumFractionDigits:3});
+      const unitLabel = pn ? `<span style="font-size:.62rem;color:var(--muted);font-family:'Space Mono',monospace;">${sanitizar(pn)}</span>` : '';
+      stockHtml = `<span style="color:${bc};font-weight:700;">${stockDisp}</span>${unitLabel}`;
+    }
+    rows.push(`<tr data-pid="${sanitizar(p.id)}">
       <td><span style="font-family:'Space Mono',monospace;font-size:.72rem;background:var(--surface2);padding:2px 6px;border-radius:4px;color:var(--muted);">${sanitizar(p.id)}</span></td>
       <td><b>${sanitizar(p.name)}</b></td>
       <td><span style="font-size:.75rem;color:var(--muted);">${sanitizar(cat)||'—'}</span></td>
       <td><div class="stock-bar-wrap">
-        <div style="min-width:56px;display:flex;align-items:baseline;gap:3px;flex-shrink:0;">
-          ${(()=>{
-            const hasPres = p.formato>1 && p.unidad && p.unidad!=='u';
-            const pn = p.nombrePres||(p.unidad&&p.unidad!=='u'?p.unidad:'');
-            if(!hasPres) return `<span style="color:${bc};font-weight:700;">${p.stock}</span>`;
-            const stockDisp = Number(p.stock.toFixed(3)).toLocaleString('es-CL',{maximumFractionDigits:3});
-            const unitLabel = pn ? `<span style="font-size:.62rem;color:var(--muted);font-family:'Space Mono',monospace;">${sanitizar(pn)}</span>` : '';
-            return `<span style="color:${bc};font-weight:700;">${stockDisp}</span>${unitLabel}`;
-          })()}
-        </div>
+        <div style="min-width:56px;display:flex;align-items:baseline;gap:3px;flex-shrink:0;">${stockHtml}</div>
         <div class="stock-bar"><div class="stock-bar-fill" style="width:${pct}%;background:${bc}"></div></div>
       </div></td>
       <td class="td-mono">${p.min}</td>
@@ -2662,6 +2666,7 @@ function renderInventory(filtro) {
       <td class="td-mono">$${fmtNum(p.stock*pValorUnitario(p))}</td>
     </tr>`);
   });
+  tbody.innerHTML = rows.join('');
   if(_invSort==='custom') _invEnableDrag();
 }
 function invPrevPage() { if(_invPage > 0) { _invPage--; renderInventory(); } }
@@ -3117,20 +3122,21 @@ function renderMovements(){
     groups.push(batch);
   });
 
+  // Batch all rows into single innerHTML assignment (one reflow instead of N)
   let rowNum = groups.length;
-  groups.forEach(batch => {
-    const rep   = batch[0];
-    const isIn  = rep.type === 'Ingreso';
-      const isAdj = rep.type === 'Ajuste';
-    const isSolo = batch.length === 1;
+  const movRows = groups.map(batch => {
+    const rep     = batch[0];
+    const isIn    = rep.type === 'Ingreso';
+    const isAdj   = rep.type === 'Ajuste';
+    const isSolo  = batch.length === 1;
     const totalQty   = batch.reduce((s,m)=>s+m.qty,0);
     const totalCosto = batch.reduce((s,m)=>s+(isIn?m.qty*m.cost:0),0);
     const detailId   = 'bdet-' + (rep.batchId||`${rep.worker||'x'}_${rep.date}_${rep.type}`).replace(/[^a-z0-9]/gi,'_');
+    const n = rowNum--;
 
     if(isSolo) {
-      // ── Single movement ─────────────────────────────────
-      tbody.insertAdjacentHTML('beforeend',`<tr>
-        <td class="td-mono">${rowNum--}</td>
+      return `<tr>
+        <td class="td-mono">${n}</td>
         <td class="td-mono">${rep.date}</td>
         <td><b>${sanitizar(rep.prodName)}</b><br><span class="td-mono" style="font-size:.68rem;color:var(--muted);">${sanitizar(rep.prodId)}</span></td>
         <td><span class="pill ${isAdj?'pill-ajuste':isIn?'pill-in':'pill-out'}">${rep.type}</span></td>
@@ -3139,52 +3145,48 @@ function renderMovements(){
         <td class="td-mono">${isIn?'$'+fmtNum(rep.cost):'—'}</td>
         <td class="td-mono">${isIn?'$'+fmtNum(rep.qty*rep.cost):'—'}</td>
         <td style="color:var(--muted);font-size:.76rem">${sanitizar(rep.obs||'—')}</td>
-      </tr>`);
-    } else {
-      // ── Multi-product batch: collapsible header ─────────
-      const preview = batch.map(m=>sanitizar(m.prodName)).join(', ');
-      const previewShort = preview.length > 55 ? preview.slice(0,55)+'…' : preview;
-      tbody.insertAdjacentHTML('beforeend',`
-        <tr style="cursor:pointer;" onclick="movToggleBatch('${detailId}')">
-          <td class="td-mono">${rowNum--}</td>
-          <td class="td-mono">${rep.date}</td>
-          <td>
-            <b style="color:var(--accent);">${batch.length} productos</b>
-            <span id="${detailId}-arrow" style="font-size:.7rem;color:var(--accent);margin-left:5px;">▼</span>
-            <br>
-            <span style="font-size:.68rem;color:var(--muted);">${previewShort}</span>
-          </td>
-          <td><span class="pill ${isAdj?'pill-ajuste':isIn?'pill-in':'pill-out'}">${rep.type}</span></td>
-          <td style="text-align:center;font-weight:600;color:var(--accent);">${totalQty} <span style="font-size:.65rem;color:var(--muted);">uds</span></td>
-          <td style="font-size:.81rem;color:var(--accent2)">${rep.worker?'👷 '+sanitizar(rep.worker):'—'}</td>
-          <td class="td-mono">${isIn?'$'+fmtNum(totalCosto):'—'}</td>
-          <td class="td-mono">—</td>
-          <td style="color:var(--muted);font-size:.76rem">${sanitizar(rep.obs||'—')}</td>
-        </tr>
-        <tr id="${detailId}" style="display:none;">
-          <td colspan="9" style="padding:0;background:var(--surface2);">
-            <table style="width:100%;margin:0;">
-              <thead><tr style="background:var(--bg);">
-                <th style="padding-left:24px;">Producto</th>
-                <th>Cant.</th>
-                <th>Costo unit.</th>
-                <th>Total</th>
-                <th>Obs.</th>
-              </tr></thead>
-              <tbody>
-                ${batch.map(m=>`<tr>
-                  <td style="padding-left:24px;"><b>${sanitizar(m.prodName)}</b><br><span class="td-mono" style="font-size:.65rem;color:var(--muted);">${sanitizar(m.prodId)}</span></td>
-                  <td class="td-mono">${m.qty}</td>
-                  <td class="td-mono">${isIn?'$'+fmtNum(m.cost):'—'}</td>
-                  <td class="td-mono">${isIn?'$'+fmtNum(m.qty*m.cost):'—'}</td>
-                  <td style="font-size:.72rem;color:var(--muted);">${sanitizar(m.obs||'—')}</td>
-                </tr>`).join('')}
-              </tbody>
-            </table>
-          </td>
-        </tr>`);
+      </tr>`;
     }
+    const preview = batch.map(m=>sanitizar(m.prodName)).join(', ');
+    const previewShort = preview.length > 55 ? preview.slice(0,55)+'…' : preview;
+    return `
+      <tr style="cursor:pointer;" onclick="movToggleBatch('${detailId}')">
+        <td class="td-mono">${n}</td>
+        <td class="td-mono">${rep.date}</td>
+        <td>
+          <b style="color:var(--accent);">${batch.length} productos</b>
+          <span id="${detailId}-arrow" style="font-size:.7rem;color:var(--accent);margin-left:5px;">▼</span>
+          <br>
+          <span style="font-size:.68rem;color:var(--muted);">${previewShort}</span>
+        </td>
+        <td><span class="pill ${isAdj?'pill-ajuste':isIn?'pill-in':'pill-out'}">${rep.type}</span></td>
+        <td style="text-align:center;font-weight:600;color:var(--accent);">${totalQty} <span style="font-size:.65rem;color:var(--muted);">uds</span></td>
+        <td style="font-size:.81rem;color:var(--accent2)">${rep.worker?'👷 '+sanitizar(rep.worker):'—'}</td>
+        <td class="td-mono">${isIn?'$'+fmtNum(totalCosto):'—'}</td>
+        <td class="td-mono">—</td>
+        <td style="color:var(--muted);font-size:.76rem">${sanitizar(rep.obs||'—')}</td>
+      </tr>
+      <tr id="${detailId}" style="display:none;">
+        <td colspan="9" style="padding:0;background:var(--surface2);">
+          <table style="width:100%;margin:0;">
+            <thead><tr style="background:var(--bg);">
+              <th style="padding-left:24px;">Producto</th>
+              <th>Cant.</th><th>Costo unit.</th><th>Total</th><th>Obs.</th>
+            </tr></thead>
+            <tbody>
+              ${batch.map(m=>`<tr>
+                <td style="padding-left:24px;"><b>${sanitizar(m.prodName)}</b><br><span class="td-mono" style="font-size:.65rem;color:var(--muted);">${sanitizar(m.prodId)}</span></td>
+                <td class="td-mono">${m.qty}</td>
+                <td class="td-mono">${isIn?'$'+fmtNum(m.cost):'—'}</td>
+                <td class="td-mono">${isIn?'$'+fmtNum(m.qty*m.cost):'—'}</td>
+                <td style="font-size:.72rem;color:var(--muted);">${sanitizar(m.obs||'—')}</td>
+              </tr>`).join('')}
+            </tbody>
+          </table>
+        </td>
+      </tr>`;
   });
+  tbody.innerHTML = movRows.join('');
 }
 
 function movToggleBatch(detailId) {
@@ -3273,7 +3275,23 @@ function exportCSV(){
   dl('movimientos.csv','data:text/csv;charset=utf-8,\uFEFF'+encodeURIComponent(csv));
   showToast('CSV descargado','success');
 }
-function exportExcel(){
+async function exportExcel(){
+  // Carga xlsx bajo demanda para no bloquear la carga inicial (~400KB)
+  if(!window.XLSX) {
+    showToast('Preparando exportación…', 'success');
+    try {
+      await new Promise((resolve, reject) => {
+        const s = document.createElement('script');
+        s.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+        s.onload = resolve;
+        s.onerror = () => reject(new Error('No se pudo cargar la biblioteca de Excel'));
+        document.head.appendChild(s);
+      });
+    } catch(e) {
+      showToast('Error: ' + e.message + '. Usa "Exportar CSV" sin conexión.', 'error');
+      return;
+    }
+  }
   const mr=movements.map((m,i)=>({'N°':movements.length-i,'Fecha':m.date,'ID':m.prodId,'Producto':m.prodName,'Tipo':m.type,'Cantidad':m.qty,'Entregado a':m.worker||'','Costo Unit.':m.type==='Ingreso'?m.cost:'','Costo Total':m.type==='Ingreso'?m.qty*m.cost:'','Obs.':m.obs||''}));
   const ir=products.map(p=>({'ID':p.id,'Nombre':p.name,'Stock':p.stock+((p.unidad&&p.unidad!=='u')?' '+p.unidad:''),'Mínimo':p.min,'Estado':p.stock===0?'Sin Stock':p.stock<=p.min?'Stock Bajo':'OK','Costo ($)':p.cost,'Costo/unidad':pValorUnitario(p),'Valor total':p.stock*pValorUnitario(p)}));
   const wb=XLSX.utils.book_new();
@@ -8602,14 +8620,33 @@ function menuUrnEditarOPs() {
   </div>
 </div>
 
+<!-- Banner de actualización (mostrado por el SW cuando hay nueva versión) -->
+<div id="sw-update-banner" style="display:none;position:fixed;bottom:0;left:0;right:0;z-index:9999;
+  background:var(--surface);border-top:2px solid var(--accent);padding:10px 16px;
+  align-items:center;justify-content:space-between;gap:12px;font-family:'Space Mono',monospace;font-size:.72rem;">
+  <span style="color:var(--text);">✨ Nueva versión disponible</span>
+  <button onclick="window.location.reload()" style="background:var(--accent);color:#000;
+    border:none;border-radius:7px;padding:6px 14px;cursor:pointer;font-family:'Space Mono',monospace;
+    font-size:.72rem;font-weight:700;">Actualizar</button>
+</div>
+
 </div><!-- /app-root -->
 
 <script>
 if('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('sw.js')
-      .then(() => console.log('SW registrado'))
-      .catch(e => console.log('SW error:', e));
+      .then(reg => {
+        // Escuchar mensajes del SW (ej. nueva versión disponible)
+        navigator.serviceWorker.addEventListener('message', e => {
+          if(e.data && e.data.type === 'SW_UPDATED') {
+            // Mostrar banner no intrusivo de actualización
+            const b = document.getElementById('sw-update-banner');
+            if(b) b.style.display = 'flex';
+          }
+        });
+      })
+      .catch(e => console.warn('SW error:', e));
   });
 }
 </script>
