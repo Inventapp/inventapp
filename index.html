@@ -397,11 +397,13 @@ tr:hover td{background:rgba(255,255,255,.02);}
       <div style="margin-bottom:12px;">
         <label style="font-size:.72rem;color:var(--muted);">Correo electrónico</label>
         <input type="email" id="login-email" placeholder="correo@empresa.com"
+          required autocomplete="email"
           style="width:100%;margin-top:4px;" onkeydown="if(event.key==='Enter')document.getElementById('login-pass').focus()">
       </div>
       <div style="margin-bottom:16px;">
         <label style="font-size:.72rem;color:var(--muted);">Contraseña</label>
         <input type="password" id="login-pass" placeholder="••••••••"
+          required autocomplete="current-password" minlength="6"
           style="width:100%;margin-top:4px;" onkeydown="if(event.key==='Enter')doLogin()">
       </div>
       <div id="login-error" style="display:none;font-size:.75rem;color:var(--danger);margin-bottom:12px;padding:8px 12px;background:rgba(255,71,87,.1);border-radius:7px;border:1px solid var(--danger);"></div>
@@ -693,7 +695,7 @@ tr:hover td{background:rgba(255,255,255,.02);}
     <div class="card-title">Nuevo producto</div>
     <div class="form-row">
       <div><label>SKU / ID</label><input type="text" id="np-id" placeholder="Auto" style="font-family:'Space Mono',monospace;color:var(--accent);font-weight:700;"></div>
-      <div><label>Nombre</label><input type="text" id="np-name" placeholder="ej: Adhesivo PVC" oninput="npAutoId(this.value)"></div>
+      <div><label>Nombre</label><input type="text" id="np-name" placeholder="ej: Adhesivo PVC" required maxlength="100" oninput="npAutoId(this.value)"></div>
     </div>
     <div class="form-row">
       <div><label>Categoría</label><input type="text" id="np-cat" placeholder="ej: Adhesivos" list="cat-datalist"></div>
@@ -792,7 +794,7 @@ tr:hover td{background:rgba(255,255,255,.02);}
   <div class="card" style="border-color:var(--accent);">
     <div class="card-title">Agregar trabajador</div>
     <div style="display:flex;gap:8px;">
-      <input type="text" id="wk-name" placeholder="Nombre completo" style="flex:1" onkeydown="if(event.key==='Enter')addWorkerPage()">
+      <input type="text" id="wk-name" placeholder="Nombre completo" required maxlength="80" style="flex:1" onkeydown="if(event.key==='Enter')addWorkerPage()">
       <button class="btn btn-primary" onclick="addWorkerPage()">+ Agregar</button>
     </div>
   </div>
@@ -995,7 +997,7 @@ tr:hover td{background:rgba(255,255,255,.02);}
     <div class="card-title">Nuevo SKU</div>
     <div class="form-row">
       <div><label>SKU / ID</label><input type="text" id="u-np-id" placeholder="PAI-B"></div>
-      <div><label>Nombre</label><input type="text" id="u-np-name" placeholder="ej: Paisley Roble"></div>
+      <div><label>Nombre</label><input type="text" id="u-np-name" placeholder="ej: Paisley Roble" required maxlength="100"></div>
     </div>
     <div style="margin-top:11px;">
       <label>Categoría</label>
@@ -1564,6 +1566,14 @@ async function fbSaveMat() {
     );
   } catch(e) { console.warn('Firestore save error (mat):', e); }
 }
+// Genera un ID único combinando timestamp + aleatoriedad.
+// Reemplaza la generación basada en movements.length que causaba
+// colisiones cuando dos usuarios registraban al mismo tiempo.
+function _genId(prefix) {
+  return prefix + Date.now().toString(36).toUpperCase() +
+         Math.random().toString(36).slice(2, 6).toUpperCase();
+}
+
 function lsCargar() {
   try {
     const p = localStorage.getItem(LS_PRODUCTS);
@@ -2389,7 +2399,7 @@ function registerMovement() {
   const batchId = 'BATCH-' + Date.now();
   items.forEach(item => {
     const p     = products.find(x => x.id === item.prodId);
-    const movId = 'MOV-'+String(movements.length+1).padStart(3,'0');
+    const movId = _genId('MOV-');
     const unidad = p.unidad || 'u';
     const baseU = p.unidad === 'L' ? 'ml' : p.unidad === 'kg' ? 'gr' : p.unidad;
     const qtyLabel = item.qtyBase !== null
@@ -2982,12 +2992,15 @@ function guardarEdicionUrna(i){
 
 function removeProduct(idx){
   const p = products[idx];
-  if(!confirm('¿Eliminar "'+p.name+'" ('+p.id+')?\n\nSe eliminarán también todos sus movimientos.\nEsta acción no se puede deshacer.'))return;
+  const movCount = movements.filter(m => m.prodId === p.id).length;
+  const movMsg = movCount > 0
+    ? '\n\nTiene '+movCount+' movimiento(s) en el historial que se conservarán.'
+    : '';
+  if(!confirm('¿Eliminar "'+p.name+'" ('+p.id+') del catálogo?'+movMsg+'\n\nEsta acción no se puede deshacer.'))return;
   products.splice(idx,1);
-  movements=movements.filter(m=>m.prodId!==p.id);
   renderDeleteProducts();
   updateHeader();lsGuardar();
-  showToast('"'+p.name+'" eliminado','error');
+  showToast('"'+p.name+'" eliminado del catálogo','error');
 }
 function renderDeleteProducts(){
   const list=document.getElementById('delete-products-list');
@@ -3197,7 +3210,7 @@ function printAllQR(){
 function exportCSV(){
   const h=['#','Fecha','ID','Producto','Tipo','Cantidad','Entregado a','Costo Unit.','Costo Total','Obs.'];
   const r=movements.map((m,i)=>[movements.length-i,m.date,m.prodId,m.prodName,m.type,m.qty,m.worker||'',m.type==='Ingreso'?m.cost:'',m.type==='Ingreso'?m.qty*m.cost:'',m.obs||'']);
-  const csv=[h,...r].map(row=>row.map(v=>`"${v}"`).join(',')).join('\n');
+  const csv=[h,...r].map(row=>row.map(v=>'"'+String(v===null||v===undefined?'':v).replace(/"/g,'""')+'"').join(',')).join('\n');
   dl('movimientos.csv','data:text/csv;charset=utf-8,\uFEFF'+encodeURIComponent(csv));
   showToast('CSV descargado','success');
 }
@@ -3238,12 +3251,35 @@ function importarBackup(input){
   reader.onload = function(e) {
     try {
       const data = JSON.parse(e.target.result);
-      if (!data.productos || !data.movimientos || !data.trabajadores) {
-        return showToast('Archivo inválido','error');
+
+      // ── Validación de estructura ──────────────────────
+      const errores = [];
+      if (!Array.isArray(data.productos))   errores.push('productos no es una lista válida');
+      if (!Array.isArray(data.movimientos)) errores.push('movimientos no es una lista válida');
+      if (!Array.isArray(data.trabajadores))errores.push('trabajadores no es una lista válida');
+
+      // Validar que los productos tengan los campos mínimos
+      if (Array.isArray(data.productos)) {
+        const invalidos = data.productos.filter(p => !p.id || !p.name || p.stock === undefined);
+        if (invalidos.length > 0)
+          errores.push(invalidos.length + ' producto(s) sin id/nombre/stock');
       }
-      if (!confirm('Importar backup del '+data.fecha+'? Esto reemplazará TODOS los datos actuales.')) {
-        input.value=''; return;
+
+      if (errores.length > 0) {
+        return showToast('Backup inválido: ' + errores[0], 'error');
       }
+
+      // ── Confirmación con resumen de contenido ─────────
+      const resumen =
+        'Fecha: ' + (data.fecha || 'desconocida') +
+        '\n' + data.productos.length + ' productos' +
+        '\n' + data.movimientos.length + ' movimientos' +
+        '\n' + (data.uUnidades ? data.uUnidades.length : 0) + ' unidades de urnas' +
+        '\n\n⚠ Esto reemplazará TODOS los datos actuales.\n¿Continuar?';
+
+      if (!confirm(resumen)) { input.value=''; return; }
+
+      // ── Importar ──────────────────────────────────────
       products  = data.productos;
       movements = data.movimientos;
       workers   = data.trabajadores;
@@ -3254,9 +3290,9 @@ function importarBackup(input){
       if(data.uUnidades)    uUnidades  = data.uUnidades;
       lsGuardarU();
       updateHeader();
-      showToast('✓ Backup importado — '+uUnidades.length+' unidades serializadas','success');
+      showToast('✓ Backup importado — ' + products.length + ' productos, ' + movements.length + ' movimientos', 'success');
     } catch(err) {
-      showToast('Error al leer el archivo','error');
+      showToast('Error al leer el archivo: formato JSON inválido', 'error');
     }
     input.value='';
   };
@@ -3511,7 +3547,7 @@ function uConfirmarVenta() {
   const contrato = document.getElementById('u-venta-contrato').value.trim();
   const notas    = document.getElementById('u-venta-cliente').value.trim(); // campo reutilizado como Notas
   const hoy      = new Date().toISOString().split('T')[0];
-  const movId    = 'UMOV-' + String(uMovements.length + 1).padStart(4, '0');
+  const movId    = _genId('UMOV-');
   // Update unit
   u.estado      = 'Vendido';
   u.fechaSalida = hoy;
@@ -3542,9 +3578,9 @@ function uAbrirVentaModal(serial) {
   document.getElementById('u-vm-contrato').value = '';
   document.getElementById('u-vm-notas').value = '';
   document.getElementById('u-vm-info').innerHTML = `
-    <div style="font-family:'Space Mono',monospace;font-size:.85rem;color:var(--accent);font-weight:700;margin-bottom:4px;">${u.id}</div>
-    <div style="font-size:.8rem;font-weight:600;">${u.nombre}</div>
-    <div style="font-size:.72rem;color:var(--muted);margin-top:2px;">${u.terminacion||'—'} · Ingreso: ${fmtFecha(u.fechaIngreso)}</div>`;
+    <div style="font-family:'Space Mono',monospace;font-size:.85rem;color:var(--accent);font-weight:700;margin-bottom:4px;">${sanitizar(u.id)}</div>
+    <div style="font-size:.8rem;font-weight:600;">${sanitizar(u.nombre)}</div>
+    <div style="font-size:.72rem;color:var(--muted);margin-top:2px;">${sanitizar(u.terminacion||'—')} · Ingreso: ${fmtFecha(u.fechaIngreso)}</div>`;
   const overlay = document.getElementById('u-venta-modal-overlay');
   overlay.style.display = 'flex';
   setTimeout(() => document.getElementById('u-vm-contrato').focus(), 80);
@@ -3560,7 +3596,7 @@ function uConfirmarVentaModal() {
   const contrato = document.getElementById('u-vm-contrato').value.trim();
   const notas    = document.getElementById('u-vm-notas').value.trim();
   const hoy      = new Date().toISOString().split('T')[0];
-  const movId    = 'UMOV-' + String(uMovements.length + 1).padStart(4, '0');
+  const movId    = _genId('UMOV-');
   u.estado      = 'Vendido';
   u.fechaSalida = hoy;
   u.precioVenta = null;
@@ -4608,7 +4644,7 @@ function uGuardarOP() {
       u.estado      = 'En Stock';
       u.notas       = (u.notas ? u.notas+' / ' : '') + 'Terminado OP '+op.id;
       // Registrar movimiento de transformacion
-      const movId = 'UMOV-'+String(uMovements.length+1).padStart(4,'0');
+      const movId = _genId('UMOV-');
       uMovements.unshift({
         id:movId, type:'Transformacion', date:hoy,
         serial:l.serial, skuIdOrigen:l.serial, skuId:dest.id,
@@ -6357,11 +6393,11 @@ function euFiltrar() {
   container.innerHTML = lista.slice(0,80).map(u => `
     <div style="display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--border);">
       <div>
-        <span style="font-family:'Space Mono',monospace;font-size:.78rem;color:var(--accent);font-weight:700;">${u.id}</span>
-        <span style="font-size:.72rem;color:var(--muted);margin-left:8px;">${u.nombre}</span>
+        <span style="font-family:'Space Mono',monospace;font-size:.78rem;color:var(--accent);font-weight:700;">${sanitizar(u.id)}</span>
+        <span style="font-size:.72rem;color:var(--muted);margin-left:8px;">${sanitizar(u.nombre)}</span>
         <div style="margin-top:2px;display:flex;gap:6px;align-items:center;">
-          <span style="font-size:.65rem;padding:1px 5px;border-radius:4px;background:${uTermBg(u.terminacion)};color:${uTermColor(u.terminacion)};">${u.terminacion||'—'}</span>
-          <span style="font-size:.65rem;color:${ESTADO_COLORS[u.estado]||'var(--muted)'};">● ${u.estado}</span>
+          <span style="font-size:.65rem;padding:1px 5px;border-radius:4px;background:${uTermBg(u.terminacion)};color:${uTermColor(u.terminacion)};">${sanitizar(u.terminacion||'—')}</span>
+          <span style="font-size:.65rem;color:${ESTADO_COLORS[u.estado]||'var(--muted)'};">● ${sanitizar(u.estado)}</span>
         </div>
       </div>
       <button onclick="euAbrirEditar('${u.id}')" style="background:none;border:1px solid var(--accent);border-radius:6px;padding:3px 10px;cursor:pointer;font-size:.68rem;color:var(--accent);flex-shrink:0;">Editar</button>
@@ -6448,11 +6484,11 @@ function elimUFiltrar() {
   c.innerHTML = lista.slice(0,100).map(u => `
     <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border);">
       <div>
-        <span style="font-family:'Space Mono',monospace;font-size:.78rem;color:var(--accent);font-weight:700;">${u.id}</span>
-        <span style="font-size:.7rem;color:var(--muted);margin-left:7px;">${u.nombre}</span>
+        <span style="font-family:'Space Mono',monospace;font-size:.78rem;color:var(--accent);font-weight:700;">${sanitizar(u.id)}</span>
+        <span style="font-size:.7rem;color:var(--muted);margin-left:7px;">${sanitizar(u.nombre)}</span>
         <div style="margin-top:2px;display:flex;gap:6px;align-items:center;">
-          <span style="font-size:.63rem;padding:1px 5px;border-radius:4px;background:${uTermBg(u.terminacion)};color:${uTermColor(u.terminacion)};">${u.terminacion||'—'}</span>
-          <span style="font-size:.63rem;color:${ESTADO_COLORS[u.estado]||'var(--muted)'};">● ${u.estado}</span>
+          <span style="font-size:.63rem;padding:1px 5px;border-radius:4px;background:${uTermBg(u.terminacion)};color:${uTermColor(u.terminacion)};">${sanitizar(u.terminacion||'—')}</span>
+          <span style="font-size:.63rem;color:${ESTADO_COLORS[u.estado]||'var(--muted)'};">● ${sanitizar(u.estado)}</span>
           <span style="font-size:.63rem;color:var(--muted);">${fmtFecha(u.fechaIngreso)}</span>
         </div>
       </div>
@@ -7774,7 +7810,7 @@ function matConfirmarAjuste() {
     if(hasPres) qtyLabel += ' (' + signo + Math.round(diff * basePerUnit).toLocaleString('es-CL') + ' ' + baseU + ')';
 
     // Register movement
-    const movId = 'MOV-' + String(movements.length + 1).padStart(4, '0');
+    const movId = _genId('MOV-');
     movements.unshift({
       id: movId, batchId, date: hoy,
       prodId: p.id, prodName: p.name,
