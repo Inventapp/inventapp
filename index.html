@@ -1581,7 +1581,11 @@ async function fbSaveMat() {
       { products, movements, workers, proveedores, costosData, bzProductos, vehFlota,
         updatedAt: new Date().toISOString(), nonce }
     );
-  } catch(e) { console.warn('Firestore save error (mat):', e); _myMatNonces.delete(nonce); }
+  } catch(e) {
+    console.warn('Firestore save error (mat):', e);
+    _myMatNonces.delete(nonce);
+    showToast('⚠ No se pudo guardar en la nube. Verifica tu conexión.', 'error');
+  }
 }
 // Genera un ID único combinando timestamp + aleatoriedad.
 // Reemplaza la generación basada en movements.length que causaba
@@ -1614,7 +1618,10 @@ function lsCargar() {
         if(!costosData.matExtra[p.id].unidad)  costosData.matExtra[p.id].unidad  = p.unidad;
       }
     });
-  } catch(e) { console.warn('Error leyendo localStorage:', e); }
+  } catch(e) {
+    console.warn('Error leyendo localStorage (mat):', e);
+    // Continuar con arrays vacíos — datos se cargarán desde Firestore
+  }
 }
 // Helper: get worker name from object or string
 function workerName(w){ return typeof w==='object'&&w!==null ? w.name : w; }
@@ -2028,12 +2035,7 @@ function setStatus(msg, found) {
   s.textContent = msg;
   s.className = 'scanner-status'+(found?' found':'');
 }
-function handleScan(text) {
-  const cleaned = (text||'').trim().toUpperCase();
-  const prod = products.find(p => p.id.trim().toUpperCase() === cleaned);
-  if (prod) { showProduct(prod); showToast('✓ '+prod.name+' seleccionado','success'); }
-  else showToast('QR: "'+text+'" — no encontrado','error');
-}
+
 
 // ── ALT INPUT (Materiales - kept for scanner fallback) ──
 function toggleAlt(id) {
@@ -2970,9 +2972,9 @@ function _renderEditorProductos(){
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:6px;">
         <div><label style="font-size:.65rem;color:var(--muted);">Nombre</label>
-          <input id="ep-m-name-${i}" type="text" value="${p.name}" style="width:100%;padding:6px 9px;border-radius:7px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:.83rem;"></div>
+          <input id="ep-m-name-${i}" type="text" value="${sanitizar(p.name)}" style="width:100%;padding:6px 9px;border-radius:7px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:.83rem;"></div>
         <div><label style="font-size:.65rem;color:var(--muted);">Categoría</label>
-          <input id="ep-m-cat-${i}" type="text" value="${p.cat||''}" list="ep-cat-dl" placeholder="ej: Adhesivos" style="width:100%;padding:6px 9px;border-radius:7px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:.83rem;"></div>
+          <input id="ep-m-cat-${i}" type="text" value="${sanitizar(p.cat||'')}" list="ep-cat-dl" placeholder="ej: Adhesivos" style="width:100%;padding:6px 9px;border-radius:7px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:.83rem;"></div>
         <div><label style="font-size:.65rem;color:var(--muted);">Stock mínimo</label>
           <input id="ep-m-min-${i}" type="number" value="${p.min}" min="0" style="width:100%;padding:6px 9px;border-radius:7px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:.83rem;"></div>
         <div><label style="font-size:.65rem;color:var(--muted);">Costo unitario ($)</label>
@@ -3020,7 +3022,7 @@ function _renderEditorProductosUrnas(){
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:6px;">
           <div><label style="font-size:.65rem;color:var(--muted);">Nombre</label>
-            <input id="ep-u-name-${i}" type="text" value="${p.name}" style="width:100%;padding:6px 9px;border-radius:7px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:.83rem;"></div>
+            <input id="ep-u-name-${i}" type="text" value="${sanitizar(p.name)}" style="width:100%;padding:6px 9px;border-radius:7px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:.83rem;"></div>
           <div><label style="font-size:.65rem;color:var(--muted);">Terminación</label>
             <select id="ep-u-term-${i}" style="width:100%;padding:6px 9px;border-radius:7px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:.83rem;">
               ${TERMS.map(t=>`<option value="${t}" ${term===t?'selected':''}>${t}</option>`).join('')}
@@ -3435,7 +3437,11 @@ async function fbSaveUrn() {
       window._fbDoc(window._fbDb, 'inventario', 'urnas'),
       { uProducts, uMovements, uOPs, uUnidades, updatedAt: new Date().toISOString(), nonce }
     );
-  } catch(e) { console.warn('Firestore save error (urn):', e); _myUrnNonces.delete(nonce); }
+  } catch(e) {
+    console.warn('Firestore save error (urn):', e);
+    _myUrnNonces.delete(nonce);
+    showToast('⚠ No se pudo guardar en la nube. Verifica tu conexión.', 'error');
+  }
 }
 function lsCargarU() {
   try {
@@ -3443,7 +3449,10 @@ function lsCargarU() {
     const m=localStorage.getItem(LS_U_MOVEMENTS); if(m) uMovements=JSON.parse(m);
     const o=localStorage.getItem(LS_U_OPS);       if(o) uOPs=JSON.parse(o);
     const u=localStorage.getItem(LS_U_UNIDADES);  if(u) uUnidades=JSON.parse(u);
-  } catch(e) {}
+  } catch(e) {
+    console.warn('Error leyendo localStorage (urn):', e);
+    // Continuar con arrays vacíos — datos se cargarán desde Firestore
+  }
 }
 
 // ── SERIAL GENERATION ─────────────────────────────────
@@ -3831,9 +3840,16 @@ function uSetEstadoFiltro(estado) {
   uRenderUnidades();
 }
 function uRenderInventory() {
-  const sinStock  = uProducts.filter(p => uStockDe(p.id) === 0).length;
-  const stockBajo = uProducts.filter(p => { const s=uStockDe(p.id); return s>0 && s<=(p.min||0); }).length;
-  const valorTotal = uProducts.reduce((s, p) => s + uStockDe(p.id)*(p.cost||0), 0);
+  // Pre-compute stock counts in O(n) instead of O(n*m) N+1 calls
+  const _stockMap = new Map();
+  uUnidades.forEach(u => {
+    if(u.estado === 'En Stock') _stockMap.set(u.skuId, (_stockMap.get(u.skuId) || 0) + 1);
+  });
+  const _stock = skuId => _stockMap.get(skuId) || 0;
+
+  const sinStock  = uProducts.filter(p => _stock(p.id) === 0).length;
+  const stockBajo = uProducts.filter(p => { const s=_stock(p.id); return s>0 && s<=(p.min||0); }).length;
+  const valorTotal = uProducts.reduce((s, p) => s + _stock(p.id)*(p.cost||0), 0);
   document.getElementById('u-inv-summary').innerHTML = `
     <div class="sum-card accent"><div class="sum-val">${uProducts.length}</div><div class="sum-lbl">Productos</div></div>
     <div class="sum-card danger"><div class="sum-val">${sinStock}</div><div class="sum-lbl">Sin stock</div></div>
@@ -3858,8 +3874,8 @@ function uRenderInventory() {
     if(secId) {
       const kpiEl = document.getElementById(secId+'-kpi');
       if(kpiEl) {
-        const totalS = prods.reduce((s,p)=>s+uStockDe(p.id),0);
-        const sinS   = prods.filter(p=>uStockDe(p.id)===0).length;
+        const totalS = prods.reduce((s,p)=>s+_stock(p.id),0);
+        const sinS   = prods.filter(p=>_stock(p.id)===0).length;
         kpiEl.textContent = prods.length+' SKUs · '+totalS+' uds'+(sinS>0?' · '+sinS+' sin stock':'');
         kpiEl.style.color = sinS>0?'var(--danger)':'var(--muted)';
       }
@@ -3875,10 +3891,10 @@ function uRenderInventory() {
     prods.forEach(p => { if(!byName[p.name]) byName[p.name]=[]; byName[p.name].push(p); });
 
     Object.entries(byName).forEach(([nombre, skus], gi) => {
-      const totalStock = skus.reduce((s,p) => s+uStockDe(p.id), 0);
+      const totalStock = skus.reduce((s,p) => s+_stock(p.id), 0);
       const totalMin   = skus.reduce((s,p) => s+(p.min||0), 0);
       const totalCosto = skus.length ? skus.reduce((s,p)=>s+(p.cost||0),0)/skus.length : 0;
-      const totalVal   = skus.reduce((s,p) => s+uStockDe(p.id)*(p.cost||0), 0);
+      const totalVal   = skus.reduce((s,p) => s+_stock(p.id)*(p.cost||0), 0);
       const bc  = totalStock===0?'var(--danger)':totalStock<=totalMin?'var(--warn)':'var(--accent)';
       const pct = totalMin>0?Math.min(100,(totalStock/totalMin)*100):(totalStock>0?100:0);
       const grpId = 'ugrp-'+key+'-'+gi;
@@ -3903,7 +3919,7 @@ function uRenderInventory() {
         return aB - bB;
       });
       const innerRows = skusSorted.map(p => {
-        const s   = uStockDe(p.id);
+        const s   = _stock(p.id);
         const bc2 = s===0?'var(--danger)':s<=(p.min||0)?'var(--warn)':'var(--accent)';
         const pct2 = (p.min||0)>0?Math.min(100,(s/(p.min||1))*100):(s>0?100:0);
         return `<tr style="background:var(--surface2);">
@@ -7522,14 +7538,18 @@ function adminRenderUsers(users) {
     <div style="padding:12px 0;border-bottom:1px solid var(--border);">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:8px;">
         <div style="min-width:0;">
-          <div style="font-weight:700;font-size:.88rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${u.nombre||u.email}</div>
-          <div style="font-size:.65rem;color:var(--muted);margin-top:1px;">${u.email}</div>
+          <div style="font-weight:700;font-size:.88rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${sanitizar(u.nombre||u.email)}</div>
+          <div style="font-size:.65rem;color:var(--muted);margin-top:1px;">${sanitizar(u.email)}</div>
         </div>
         <div style="display:flex;gap:5px;flex-shrink:0;">
-          <button onclick="adminToggleActivo('${u.uid}',${u.activo})" style="background:none;border:1px solid ${u.activo?'var(--accent)':'var(--danger)'};border-radius:6px;padding:3px 9px;cursor:pointer;font-size:.62rem;color:${u.activo?'var(--accent)':'var(--danger)'};">
+          <button data-uid="${sanitizar(u.uid)}" data-activo="${u.activo?'1':'0'}"
+            onclick="adminToggleActivo(this.dataset.uid, this.dataset.activo==='1')"
+            style="background:none;border:1px solid ${u.activo?'var(--accent)':'var(--danger)'};border-radius:6px;padding:3px 9px;cursor:pointer;font-size:.62rem;color:${u.activo?'var(--accent)':'var(--danger)'};">
             ${u.activo?'Activo':'Inactivo'}
           </button>
-          <button onclick="adminEliminarUsuario('${u.uid}','${u.nombre||u.email}')" style="background:none;border:1px solid var(--danger);border-radius:6px;padding:3px 9px;cursor:pointer;font-size:.62rem;color:var(--danger);">
+          <button data-uid="${sanitizar(u.uid)}" data-nombre="${sanitizar(u.nombre||u.email)}"
+            onclick="adminEliminarUsuario(this.dataset.uid, this.dataset.nombre)"
+            style="background:none;border:1px solid var(--danger);border-radius:6px;padding:3px 9px;cursor:pointer;font-size:.62rem;color:var(--danger);">
             🗑
           </button>
         </div>
@@ -7537,12 +7557,13 @@ function adminRenderUsers(users) {
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
         <div>
           <div style="font-size:.6rem;color:var(--muted);margin-bottom:3px;">NOMBRE</div>
-          <input value="${u.nombre||''}" placeholder="Nombre" onblur="adminCambiarNombre('${u.uid}',this.value)"
+          <input value="${sanitizar(u.nombre||'')}" placeholder="Nombre"
+            data-uid="${sanitizar(u.uid)}" onblur="adminCambiarNombre(this.dataset.uid, this.value)"
             style="width:100%;padding:6px 8px;border-radius:7px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:.78rem;">
         </div>
         <div>
           <div style="font-size:.6rem;color:var(--muted);margin-bottom:3px;">ROL</div>
-          <select onchange="adminCambiarRol('${u.uid}',this.value)"
+          <select data-uid="${sanitizar(u.uid)}" onchange="adminCambiarRol(this.dataset.uid, this.value)"
             style="width:100%;padding:6px 8px;border-radius:7px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:.78rem;">
             ${ROLES.map(r=>`<option value="${r}" ${r===u.rol?'selected':''}>${r==='admin'?'Admin':r==='instalacion'?'Instalacion':r==='ventas'?'Ventas':'Solo lectura'}</option>`).join('')}
           </select>
@@ -7630,9 +7651,9 @@ function _renderEditorProductosConEliminar() {
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:6px;">
         <div><label style="font-size:.65rem;color:var(--muted);">Nombre</label>
-          <input id="ep-m-name-${i}" type="text" value="${p.name.replace(/"/g,'&quot;')}" style="width:100%;padding:6px 9px;border-radius:7px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:.83rem;"></div>
+          <input id="ep-m-name-${i}" type="text" value="${sanitizar(p.name)}" style="width:100%;padding:6px 9px;border-radius:7px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:.83rem;"></div>
         <div><label style="font-size:.65rem;color:var(--muted);">Categoría</label>
-          <input id="ep-m-cat-${i}" type="text" value="${p.cat||''}" list="ep-cat-dl2" placeholder="ej: Adhesivos" style="width:100%;padding:6px 9px;border-radius:7px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:.83rem;"></div>
+          <input id="ep-m-cat-${i}" type="text" value="${sanitizar(p.cat||'')}" list="ep-cat-dl2" placeholder="ej: Adhesivos" style="width:100%;padding:6px 9px;border-radius:7px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:.83rem;"></div>
         <div><label style="font-size:.65rem;color:var(--muted);">Stock mínimo</label>
           <input id="ep-m-min-${i}" type="number" value="${p.min}" min="0" style="width:100%;padding:6px 9px;border-radius:7px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:.83rem;"></div>
         <div><label style="font-size:.65rem;color:var(--muted);">Costo unitario ($)</label>
@@ -7936,7 +7957,7 @@ function _renderEditorInventarioUrnas() {
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:6px;">
           <div><label style="font-size:.65rem;color:var(--muted);">Nombre</label>
-            <input id="epu-name-${i}" type="text" value="${p.name.replace(/"/g,'&quot;')}" style="width:100%;padding:6px 9px;border-radius:7px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:.83rem;"></div>
+            <input id="epu-name-${i}" type="text" value="${sanitizar(p.name)}" style="width:100%;padding:6px 9px;border-radius:7px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:.83rem;"></div>
           <div><label style="font-size:.65rem;color:var(--muted);">Terminación</label>
             <select id="epu-term-${i}" style="width:100%;padding:6px 9px;border-radius:7px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:.83rem;">
               ${TERMS_P.map(t=>`<option value="${t}" ${term===t?'selected':''}>${t}</option>`).join('')}

@@ -1,0 +1,109 @@
+rules_version = '2';
+
+// ════════════════════════════════════════════════════════
+// INVENTAPP — Firestore Security Rules
+// Actualizar en: Firebase Console → Firestore → Rules
+// ════════════════════════════════════════════════════════
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ── Helpers ────────────────────────────────────────
+    function autenticado() {
+      return request.auth != null;
+    }
+
+    function miPerfil() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function esAdmin() {
+      return autenticado()
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        && miPerfil().rol == 'admin'
+        && miPerfil().activo == true;
+    }
+
+    function esUsuarioActivo() {
+      return autenticado()
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        && miPerfil().activo == true;
+    }
+
+    function rolPermitido(roles) {
+      return autenticado()
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        && miPerfil().activo == true
+        && miPerfil().rol in roles;
+    }
+
+    // ── Colección: users ────────────────────────────────
+    // Cada usuario sólo puede leer/editar su propio perfil.
+    // Sólo el admin puede leer otros perfiles o cambiar roles.
+    match /users/{uid} {
+      // Lectura: el propio usuario o un admin
+      allow read: if autenticado() && (request.auth.uid == uid || esAdmin());
+
+      // Crear perfil: solo el propio usuario (registro inicial)
+      // y sólo campos permitidos (sin poder auto-asignarse admin)
+      allow create: if autenticado()
+        && request.auth.uid == uid
+        && request.resource.data.keys().hasAll(['email', 'rol', 'activo'])
+        && request.resource.data.rol in ['viewer', 'ventas', 'instalacion']
+        && request.resource.data.activo == true;
+
+      // Actualizar: el propio usuario (solo nombre) o admin (cualquier campo)
+      allow update: if autenticado() && (
+        (request.auth.uid == uid
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['nombre']))
+        || esAdmin()
+      );
+
+      // Eliminar: solo admin
+      allow delete: if esAdmin();
+    }
+
+    // ── Colección: meta ────────────────────────────────
+    // meta/stats → registro del primer usuario (usado en onboarding)
+    // meta/userList → lista de UIDs conocidos
+    match /meta/{doc} {
+      // Cualquier usuario autenticado puede leer (necesario para onboarding)
+      allow read: if autenticado();
+      // Solo admin puede escribir (excepto stats que lo escribe el primer usuario)
+      allow write: if esAdmin()
+        || (doc == 'stats' && autenticado()
+            && !exists(/databases/$(database)/documents/meta/stats));
+    }
+
+    // ── Colección: inventario ──────────────────────────
+    // inventario/materiales → products, movements, workers, etc.
+    // inventario/urnas      → uProducts, uMovements, uOPs, uUnidades
+    match /inventario/{seccion} {
+      // Lectura: cualquier usuario activo
+      allow read: if esUsuarioActivo();
+
+      // Escritura (create/update): usuarios con rol que puede registrar movimientos
+      // viewer solo puede leer, nunca escribir
+      allow write: if rolPermitido(['admin', 'ventas', 'instalacion']);
+    }
+
+    // ── Colección: auditoria ───────────────────────────
+    // Solo lectura para admins. Escritura para cualquier usuario activo
+    // (los logs los generan las acciones de usuarios legítimos).
+    match /auditoria/{logId} {
+      allow read: if esAdmin();
+      allow create: if esUsuarioActivo()
+        // Validar estructura mínima del log
+        && request.resource.data.keys().hasAll(['accion', 'usuario', 'timestamp'])
+        // El uid del log debe coincidir con el usuario autenticado
+        && request.resource.data.usuario == request.auth.uid;
+      // Nadie puede editar ni borrar logs de auditoría
+      allow update, delete: if false;
+    }
+
+    // ── Denegar todo lo demás ──────────────────────────
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
