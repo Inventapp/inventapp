@@ -1635,7 +1635,27 @@ function sanitizar(str) {
 // Cargar datos guardados al iniciar
 lsCargar();
 
-// ── HOME ──
+// ════════════════════════════════════════════════════
+// LOG DE AUDITORÍA
+// ════════════════════════════════════════════════════
+function registrarAuditoria(accion, datos) {
+  if (!window._fbDb || !window._currentUser) return;
+  const u = window._currentUser;
+  const registro = {
+    accion,
+    usuario: u.email,
+    usuarioNombre: u.nombre || u.email,
+    rol: u.rol,
+    timestamp: new Date().toISOString(),
+    datos: datos || {}
+  };
+  // Fire-and-forget: no bloquea la UI
+  window._fbSetDoc(
+    window._fbDoc(window._fbDb, 'auditoria', Date.now() + '-' + Math.random().toString(36).slice(2)),
+    registro
+  ).catch(() => {});
+}
+// ════════════════════════════════════════════════════
 function setSeccionHeader(nombre, color){
   document.getElementById('header-logo').style.display='none';
   document.getElementById('header-seccion').style.display='block';
@@ -2387,6 +2407,12 @@ function registerMovement() {
     ? (() => { const p=products.find(x=>x.id===items[0].prodId); return p?.unidad&&p.unidad!=='u'?' ('+items[0].qty+' '+p.unidad+')':''; })()
     : '';
   showToast('✓ '+movCurrentType+' registrado — '+items.length+' producto(s)'+uLabel,'success');
+  registrarAuditoria('MOVIMIENTO_MATERIALES', {
+    tipo: movCurrentType,
+    productos: items.map(i => ({ prodId: i.prodId, qty: i.qty })),
+    trabajador: worker,
+    batchId
+  });
   updateHeader(); lsGuardar();
   cancelarMovimiento();
 }
@@ -2713,6 +2739,7 @@ function addProduct(){
   if(document.getElementById('np-conversion-wrap')) document.getElementById('np-conversion-wrap').style.display='none';
   if(document.getElementById('np-costo-base')) document.getElementById('np-costo-base').textContent='';
   renderInventory();updateHeader();
+  registrarAuditoria('PRODUCTO_CREADO', { id, name, cat, stock, min, cost });
   lsGuardar();
   showToast('✓ '+name+' ('+id+') agregado','success');
 }
@@ -3494,6 +3521,7 @@ function uConfirmarVenta() {
     serial, skuId: u.skuId, nombre: u.nombre, terminacion: u.terminacion,
     precio: 0, cliente: notas || null, contrato: contrato || null,
   });
+  registrarAuditoria('URNA_VENDIDA', { serial, skuId: u.skuId, nombre: u.nombre, contrato: contrato || null });
   lsGuardarU();
   document.getElementById('u-ficha-serial').style.display = 'none';
   document.getElementById('u-manual-id').value = '';
@@ -3540,6 +3568,7 @@ function uConfirmarVentaModal() {
     serial, skuId: u.skuId, nombre: u.nombre, terminacion: u.terminacion,
     precio: 0, cliente: notas || null, contrato: contrato || null,
   });
+  registrarAuditoria('URNA_VENDIDA', { serial, skuId: u.skuId, nombre: u.nombre, contrato: contrato || null });
   lsGuardarU();
   uCerrarVentaModal();
   showToast('✓ Vendido: ' + serial + (contrato ? ' · N°' + contrato : ''), 'success');
@@ -3665,6 +3694,7 @@ function uConfirmarIngreso() {
   // Update product cost reference
   const p = uProducts.find(x => x.id === uCurrentSKU.id);
   if(p && costo > 0) p.cost = costo;
+  registrarAuditoria('URNAS_INGRESADAS', { skuId: uCurrentSKU.id, nombre: uCurrentSKU.name, qty, seriales });
   lsGuardarU();
   const first = seriales[0], last = seriales[seriales.length - 1];
   showToast('✓ ' + qty + ' unidades ingresadas: ' + first + (qty > 1 ? ' … ' + last : ''), 'success');
