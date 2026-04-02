@@ -1627,9 +1627,12 @@ let _vevTipo   = null; // tipo de evento seleccionado en modal
 
 function sanitizar(str) {
   if (!str) return "";
-  var div = document.createElement("div");
-  div.textContent = str;
-  return div.innerHTML;
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#x27;');
 }
 
 // Cargar datos guardados al iniciar
