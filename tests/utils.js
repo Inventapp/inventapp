@@ -3,6 +3,11 @@
  * Deben mantenerse sincronizadas con sus equivalentes en index.html.
  */
 
+export function _genId(prefix) {
+  return prefix + Date.now().toString(36).toUpperCase() +
+         Math.random().toString(36).slice(2, 6).toUpperCase();
+}
+
 export function workerName(w) {
   return typeof w === 'object' && w !== null ? w.name : w;
 }

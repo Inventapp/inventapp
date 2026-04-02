@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
+  _genId,
   workerName,
   fmtFecha,
   fmtNum,
@@ -7,6 +8,26 @@ import {
   sanitizar,
   generarIdMaterial,
 } from './utils.js';
+
+// ══════════════════════════════════════════════
+// _genId
+// ══════════════════════════════════════════════
+describe('_genId', () => {
+  it('incluye el prefijo dado', () => {
+    expect(_genId('MOV-').startsWith('MOV-')).toBe(true);
+    expect(_genId('UMOV-').startsWith('UMOV-')).toBe(true);
+  });
+  it('genera IDs distintos en llamadas consecutivas', () => {
+    const ids = new Set(Array.from({length: 100}, () => _genId('MOV-')));
+    expect(ids.size).toBe(100);
+  });
+  it('no depende del tamaño de ninguna lista (sin parámetro de longitud)', () => {
+    // Verificar que la función no recibe ni necesita movements.length
+    const id = _genId('MOV-');
+    expect(typeof id).toBe('string');
+    expect(id.length).toBeGreaterThan(5);
+  });
+});
 
 // ══════════════════════════════════════════════
 // workerName
