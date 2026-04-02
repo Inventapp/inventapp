@@ -8,6 +8,8 @@ import {
   uEnProcesoDe,
   paginar,
   validarBackup,
+  sanitizar,
+  workerName,
 } from './business.js';
 
 // ══════════════════════════════════════════════
@@ -160,6 +162,60 @@ describe('paginar', () => {
     const { items, totalPages } = paginar([], 0);
     expect(totalPages).toBe(1);
     expect(items.length).toBe(0);
+  });
+});
+
+// ══════════════════════════════════════════════
+// sanitizar
+// ══════════════════════════════════════════════
+describe('sanitizar', () => {
+  it('escapa &', () => {
+    expect(sanitizar('Precio & Calidad')).toBe('Precio &amp; Calidad');
+  });
+  it('escapa < y >', () => {
+    expect(sanitizar('<script>alert(1)</script>')).toBe('&lt;script&gt;alert(1)&lt;/script&gt;');
+  });
+  it('escapa comillas dobles', () => {
+    expect(sanitizar('onclick="malo()"')).toBe('onclick=&quot;malo()&quot;');
+  });
+  it("escapa comillas simples", () => {
+    expect(sanitizar("Juan O'Brien")).toBe('Juan O&#x27;Brien');
+  });
+  it('retorna "" para null', () => {
+    expect(sanitizar(null)).toBe('');
+  });
+  it('retorna "" para undefined', () => {
+    expect(sanitizar(undefined)).toBe('');
+  });
+  it('retorna "" para string vacío', () => {
+    expect(sanitizar('')).toBe('');
+  });
+  it('convierte números a string sin modificar', () => {
+    expect(sanitizar(42)).toBe('42');
+  });
+  it('no modifica texto sin caracteres especiales', () => {
+    expect(sanitizar('Adhesivo PVC')).toBe('Adhesivo PVC');
+  });
+  it('escapa múltiples caracteres en un mismo string', () => {
+    expect(sanitizar('<b>Hola & "mundo"</b>')).toBe('&lt;b&gt;Hola &amp; &quot;mundo&quot;&lt;/b&gt;');
+  });
+});
+
+// ══════════════════════════════════════════════
+// workerName
+// ══════════════════════════════════════════════
+describe('workerName', () => {
+  it('extrae nombre de objeto trabajador', () => {
+    expect(workerName({ name: 'Juan', area: 'Bodega' })).toBe('Juan');
+  });
+  it('retorna string legado directamente', () => {
+    expect(workerName('Pedro')).toBe('Pedro');
+  });
+  it('retorna null para null (formato inesperado)', () => {
+    expect(workerName(null)).toBe(null);
+  });
+  it('retorna undefined si el objeto no tiene campo name', () => {
+    expect(workerName({ area: 'Taller' })).toBeUndefined();
   });
 });
 
