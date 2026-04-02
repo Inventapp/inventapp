@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://www.gstatic.com https://cdnjs.cloudflare.com https://unpkg.com; style-src 'self' 'unsafe-inline'; connect-src 'self' https://*.googleapis.com https://*.firebase.io https://*.firebaseio.com wss://*.firebaseio.com https://*.firebaseapp.com; img-src 'self' data: blob:; font-src 'self' data: https://fonts.gstatic.com; worker-src 'self'; object-src 'none'; base-uri 'self';">
 <title>InventApp · FAZOCAR</title>
 <!-- PWA -->
 <link rel="manifest" href="manifest.json">
@@ -1554,19 +1555,73 @@ const DEFAULT_WORKERS   = [];
 // Nonce sets: track our own writes so we can skip the echo snapshot
 const _myMatNonces = new Set();
 const _myUrnNonces = new Set();
+
+// ── IndexedDB: caché de respaldo (soporta >5 MB) ─────
+// Complementa localStorage. Se usa como fallback si la cuota de 5 MB
+// es excedida, y como copia de seguridad contra borrado del navegador.
+const _IDB = (() => {
+  let _db = null;
+  function _open() {
+    if (_db) return Promise.resolve(_db);
+    return new Promise((ok, fail) => {
+      const req = indexedDB.open('inventapp', 1);
+      req.onupgradeneeded = e => e.target.result.createObjectStore('kv');
+      req.onsuccess  = e => { _db = e.target.result; ok(_db); };
+      req.onerror    = e => fail(e.target.error);
+    });
+  }
+  return {
+    async set(key, val) {
+      try {
+        const db = await _open();
+        await new Promise((ok, fail) => {
+          const tx = db.transaction('kv', 'readwrite');
+          tx.objectStore('kv').put(val, key);
+          tx.oncomplete = ok;
+          tx.onerror    = e => fail(e.target.error);
+        });
+      } catch(e) { /* best-effort */ }
+    },
+    async get(key) {
+      try {
+        const db = await _open();
+        return new Promise((ok, fail) => {
+          const tx  = db.transaction('kv', 'readonly');
+          const req = tx.objectStore('kv').get(key);
+          req.onsuccess = e => ok(e.target.result ?? null);
+          req.onerror   = e => fail(e.target.error);
+        });
+      } catch(e) { return null; }
+    }
+  };
+})();
+
+function _idbBackupMat() {
+  _IDB.set(LS_PRODUCTS,    products);
+  _IDB.set(LS_MOVEMENTS,   movements);
+  _IDB.set(LS_WORKERS,     workers);
+  _IDB.set(LS_PROVEEDORES, proveedores);
+  _IDB.set(LS_COSTOS,      costosData);
+  _IDB.set(LS_BEZANILLA,   bzProductos);
+  _IDB.set(LS_VEHICULOS,   vehFlota);
+}
+
 // Debounce: avoid writing on every keystroke
 let _saveMatTimer = null;
 function lsGuardar() {
   // Keep localStorage as fast local cache
   try {
     localStorage.setItem(LS_PRODUCTS,    JSON.stringify(products));
-    localStorage.setItem(LS_MOVEMENTS,  JSON.stringify(movements));
+    localStorage.setItem(LS_MOVEMENTS,   JSON.stringify(movements));
     localStorage.setItem(LS_WORKERS,     JSON.stringify(workers));
     localStorage.setItem(LS_PROVEEDORES, JSON.stringify(proveedores));
     localStorage.setItem(LS_COSTOS,      JSON.stringify(costosData));
     localStorage.setItem(LS_BEZANILLA,   JSON.stringify(bzProductos));
     localStorage.setItem(LS_VEHICULOS,   JSON.stringify(vehFlota));
-  } catch(e) {}
+  } catch(e) {
+    console.warn('localStorage cuota excedida — datos respaldados en IndexedDB');
+  }
+  _idbBackupMat(); // escritura en background, sin límite de 5 MB
   // Debounced Firestore write
   clearTimeout(_saveMatTimer);
   _saveMatTimer = setTimeout(() => fbSaveMat(), 800);
@@ -1596,11 +1651,12 @@ function _genId(prefix) {
 }
 
 function lsCargar() {
+  let _lsOk = false;
   try {
     const p = localStorage.getItem(LS_PRODUCTS);
     const m = localStorage.getItem(LS_MOVEMENTS);
     const w = localStorage.getItem(LS_WORKERS);
-    if (p) products  = JSON.parse(p);
+    if (p) { products  = JSON.parse(p); _lsOk = true; }
     if (m) movements = JSON.parse(m);
     if (w) {
       const parsed = JSON.parse(w);
@@ -1620,7 +1676,19 @@ function lsCargar() {
     });
   } catch(e) {
     console.warn('Error leyendo localStorage (mat):', e);
-    // Continuar con arrays vacíos — datos se cargarán desde Firestore
+    // Continuar con arrays vacíos — datos se cargarán desde Firestore o IndexedDB
+  }
+  // Fallback async: si localStorage estaba vacío, recuperar desde IndexedDB
+  // (útil cuando el navegador borró localStorage o la cuota fue excedida)
+  if (!_lsOk) {
+    (async () => {
+      const p  = await _IDB.get(LS_PRODUCTS);    if(p  && !products.length)   products   = p;
+      const m  = await _IDB.get(LS_MOVEMENTS);   if(m  && !movements.length)  movements  = m;
+      const w  = await _IDB.get(LS_WORKERS);     if(w  && !workers.length)    workers    = w.map(x => typeof x==='string'?{name:x,area:'Sin área'}:x);
+      const pv = await _IDB.get(LS_PROVEEDORES); if(pv && !proveedores.length) proveedores = pv;
+      const bz = await _IDB.get(LS_BEZANILLA);   if(bz && !bzProductos.length) bzProductos = bz;
+      const vf = await _IDB.get(LS_VEHICULOS);   if(vf && !vehFlota.length)    vehFlota    = vf;
+    })();
   }
 }
 // Helper: get worker name from object or string
@@ -1989,54 +2057,75 @@ function rstGuardar(){
 function uToggleMenu(){ toggleMenu(); }
 function uCloseMenu(){ closeMenu(); }
 
-// ── SCANNER ──
-let zxingReader = null;
-let scannerActive = false;
-function toggleScanner() { scannerActive ? stopScanner() : startScanner(); }
-function startScanner() {
-  setScannerUI(true);
-  setStatus('Iniciando cámara…', false);
-  zxingReader = new ZXing.BrowserQRCodeReader();
-  zxingReader.listVideoInputDevices().then(devices => {
-    let deviceId;
-    if (devices.length > 1) {
-      const rear = devices.find(d => /back|rear|environment/i.test(d.label));
-      deviceId = rear ? rear.deviceId : devices[devices.length-1].deviceId;
-    }
-    return zxingReader.decodeFromVideoDevice(deviceId, 'live-video', (result) => {
-      if (result) {
-        if (navigator.vibrate) navigator.vibrate([80]);
-        setStatus('✓ '+result.getText(), true);
-        handleScan(result.getText());
-        stopScanner();
+// ── SCANNER (fábrica compartida por Materiales y Urnas) ──
+/**
+ * Crea una instancia de escáner QR reutilizable.
+ * cfg: { videoId, wrapId, btnId, lblId, hintId, statusId, onResult, onError }
+ */
+function _makeScanner(cfg) {
+  let _reader = null;
+  let _active = false;
+
+  function _setUI(on) {
+    document.getElementById(cfg.wrapId).classList.toggle('active', on);
+    document.getElementById(cfg.btnId).classList.toggle('scanning', on);
+    document.getElementById(cfg.lblId).textContent  = on ? 'DETENER'  : 'ESCANEAR';
+    document.getElementById(cfg.hintId).textContent = on
+      ? 'Cámara activa — acerca el QR al recuadro'
+      : 'Toca para activar la cámara';
+  }
+  function _setStatus(msg, found) {
+    if (!cfg.statusId) return;
+    const s = document.getElementById(cfg.statusId);
+    if (s) { s.textContent = msg; s.className = 'scanner-status' + (found ? ' found' : ''); }
+  }
+  function stop() {
+    if (_reader) { try { _reader.reset(); } catch(e) {} _reader = null; }
+    _active = false;
+    _setUI(false);
+    _setStatus('Apunta al código QR…', false);
+  }
+  function start() {
+    _setUI(true);
+    _setStatus('Iniciando cámara…', false);
+    _reader = new ZXing.BrowserQRCodeReader();
+    _reader.listVideoInputDevices().then(devices => {
+      let deviceId;
+      if (devices.length > 1) {
+        const rear = devices.find(d => /back|rear|environment/i.test(d.label));
+        deviceId = rear ? rear.deviceId : devices[devices.length-1].deviceId;
       }
+      return _reader.decodeFromVideoDevice(deviceId, cfg.videoId, result => {
+        if (result) {
+          if (navigator.vibrate) navigator.vibrate([80]);
+          _setStatus('✓ ' + result.getText(), true);
+          cfg.onResult(result.getText());
+          stop();
+        }
+      });
+    }).then(() => {
+      _active = true;
+      _setStatus('Apunta al código QR…', false);
+    }).catch(() => {
+      _setUI(false);
+      if (cfg.onError) cfg.onError();
+      else showToast('Cámara no disponible', 'error');
     });
-  }).then(() => {
-    scannerActive = true;
-    setStatus('Apunta al código QR…', false);
-  }).catch(() => {
-    setScannerUI(false);
-    showToast('Cámara no disponible — usa la lista','error');
-    toggleAlt('dropdown-input');
-  });
+  }
+  return { toggle: () => _active ? stop() : start(), start, stop };
 }
-function stopScanner() {
-  if (zxingReader) { zxingReader.reset(); zxingReader = null; }
-  scannerActive = false;
-  setScannerUI(false);
-}
-function setScannerUI(active) {
-  document.getElementById('scanner-wrap').classList.toggle('active', active);
-  document.getElementById('scan-toggle-btn').classList.toggle('scanning', active);
-  document.getElementById('scan-btn-lbl').textContent = active ? 'DETENER' : 'ESCANEAR';
-  document.getElementById('scan-hint-txt').textContent = active ? 'Cámara activa — acerca el QR al recuadro' : 'Toca para activar la cámara';
-  if (!active) setStatus('Apunta al código QR…', false);
-}
-function setStatus(msg, found) {
-  const s = document.getElementById('scanner-status');
-  s.textContent = msg;
-  s.className = 'scanner-status'+(found?' found':'');
-}
+
+// ── SCANNER — Materiales ──
+const _matScanner = _makeScanner({
+  videoId: 'live-video',      wrapId: 'scanner-wrap',
+  btnId:   'scan-toggle-btn', lblId:  'scan-btn-lbl',
+  statusId:'scanner-status',  hintId: 'scan-hint-txt',
+  onResult: text => handleScan(text),
+  onError:  () => { showToast('Cámara no disponible — usa la lista','error'); toggleAlt('dropdown-input'); }
+});
+function toggleScanner() { _matScanner.toggle(); }
+function startScanner()  { _matScanner.start();  }
+function stopScanner()   { _matScanner.stop();   }
 
 
 // ── ALT INPUT (Materiales - kept for scanner fallback) ──
@@ -3435,6 +3524,13 @@ let uCurrentTerm = null;  // terminación activa en ingreso
 let uCurrentSerial = null; // serial activo en ficha
 let _uEstadoFiltro = null;
 
+function _idbBackupUrn() {
+  _IDB.set(LS_U_PRODUCTS,  uProducts);
+  _IDB.set(LS_U_MOVEMENTS, uMovements);
+  _IDB.set(LS_U_OPS,       uOPs);
+  _IDB.set(LS_U_UNIDADES,  uUnidades);
+}
+
 let _saveUrnTimer = null;
 function lsGuardarU() {
   try {
@@ -3442,7 +3538,10 @@ function lsGuardarU() {
     localStorage.setItem(LS_U_MOVEMENTS, JSON.stringify(uMovements));
     localStorage.setItem(LS_U_OPS,       JSON.stringify(uOPs));
     localStorage.setItem(LS_U_UNIDADES,  JSON.stringify(uUnidades));
-  } catch(e) {}
+  } catch(e) {
+    console.warn('localStorage cuota excedida — datos urnas respaldados en IndexedDB');
+  }
+  _idbBackupUrn(); // escritura en background, sin límite de 5 MB
   clearTimeout(_saveUrnTimer);
   _saveUrnTimer = setTimeout(() => fbSaveUrn(), 800);
 }
@@ -3462,14 +3561,24 @@ async function fbSaveUrn() {
   }
 }
 function lsCargarU() {
+  let _lsOk = false;
   try {
-    const p=localStorage.getItem(LS_U_PRODUCTS);  if(p) uProducts=JSON.parse(p);
+    const p=localStorage.getItem(LS_U_PRODUCTS);  if(p) { uProducts=JSON.parse(p); _lsOk = true; }
     const m=localStorage.getItem(LS_U_MOVEMENTS); if(m) uMovements=JSON.parse(m);
     const o=localStorage.getItem(LS_U_OPS);       if(o) uOPs=JSON.parse(o);
     const u=localStorage.getItem(LS_U_UNIDADES);  if(u) uUnidades=JSON.parse(u);
   } catch(e) {
     console.warn('Error leyendo localStorage (urn):', e);
-    // Continuar con arrays vacíos — datos se cargarán desde Firestore
+    // Continuar con arrays vacíos — datos se cargarán desde Firestore o IndexedDB
+  }
+  // Fallback async desde IndexedDB si localStorage estaba vacío
+  if (!_lsOk) {
+    (async () => {
+      const p = await _IDB.get(LS_U_PRODUCTS);  if(p && !uProducts.length)  uProducts  = p;
+      const m = await _IDB.get(LS_U_MOVEMENTS); if(m && !uMovements.length) uMovements = m;
+      const o = await _IDB.get(LS_U_OPS);       if(o && !uOPs.length)       uOPs       = o;
+      const u = await _IDB.get(LS_U_UNIDADES);  if(u && !uUnidades.length)  uUnidades  = u;
+    })();
   }
 }
 
@@ -3529,26 +3638,17 @@ function uNavTo(name) {
 }
 
 // ── SCANNER ───────────────────────────────────────────
-let uZxingReader = null; let uScannerActive = false;
-function uToggleScanner() { uScannerActive ? uStopScanner() : uStartScanner(); }
-function uStartScanner() {
-  uSetScannerUI(true);
-  uZxingReader = new ZXing.BrowserQRCodeReader();
-  uZxingReader.listVideoInputDevices().then(devices => {
-    let deviceId;
-    if(devices.length > 1) { const r = devices.find(d => /back|rear|environment/i.test(d.label)); deviceId = r ? r.deviceId : devices[devices.length-1].deviceId; }
-    return uZxingReader.decodeFromVideoDevice(deviceId, 'u-live-video', result => {
-      if(result) { if(navigator.vibrate) navigator.vibrate([80]); uHandleScan(result.getText()); uStopScanner(); }
-    });
-  }).then(() => { uScannerActive = true; }).catch(() => { uSetScannerUI(false); showToast('Cámara no disponible','error'); });
-}
-function uStopScanner() { if(uZxingReader){try{uZxingReader.reset();}catch(e){} uZxingReader=null;} uScannerActive=false; uSetScannerUI(false); }
-function uSetScannerUI(active) {
-  document.getElementById('u-scanner-wrap').classList.toggle('active', active);
-  document.getElementById('u-scan-toggle-btn').classList.toggle('scanning', active);
-  document.getElementById('u-scan-btn-lbl').textContent = active ? 'DETENER' : 'ESCANEAR';
-  document.getElementById('u-scan-hint-txt').textContent = active ? 'Cámara activa — acerca el QR al recuadro' : 'Toca para activar la cámara';
-}
+// ── SCANNER — Urnas ──
+const _urnScanner = _makeScanner({
+  videoId: 'u-live-video',      wrapId: 'u-scanner-wrap',
+  btnId:   'u-scan-toggle-btn', lblId:  'u-scan-btn-lbl',
+  statusId: null,               hintId: 'u-scan-hint-txt',
+  onResult: text => uHandleScan(text),
+  onError:  () => showToast('Cámara no disponible', 'error')
+});
+function uToggleScanner() { _urnScanner.toggle(); }
+function uStartScanner()  { _urnScanner.start();  }
+function uStopScanner()   { _urnScanner.stop();   }
 function uHandleScan(text) {
   const serial = (text || '').trim().toUpperCase();
   // Try to find as existing unit serial

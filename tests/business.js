@@ -66,6 +66,29 @@ export function paginar(lista, page) {
   return { items, safePage, totalPages, hasPrev: safePage > 0, hasNext: safePage < totalPages - 1 };
 }
 
+// ── Sanitización XSS ─────────────────────────────────
+/**
+ * Escapa caracteres especiales HTML para prevenir XSS.
+ * Debe mantenerse sincronizada con sanitizar() en index.html.
+ */
+export function sanitizar(str) {
+  if (!str) return "";
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#x27;');
+}
+
+// ── Trabajadores: nombre normalizado ─────────────────
+/**
+ * Retorna el nombre de un trabajador ya sea objeto o string legado.
+ */
+export function workerName(w) {
+  return typeof w === 'object' && w !== null ? w.name : w;
+}
+
 // ── Backup: validación ────────────────────────────────
 /**
  * Valida la estructura básica de un backup antes de importarlo.
