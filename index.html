@@ -147,6 +147,20 @@ header{position:sticky;top:0;z-index:100;background:rgba(13,15,20,.94);backdrop-
 .dropdown-menu a:hover{background:var(--surface2);color:var(--accent);}
 .dropdown-overlay{display:none;position:fixed;inset:0;z-index:150;}
 .dropdown-overlay.open{display:block;}
+/* MENU SECTION LABELS */
+.menu-label{font-family:'Space Mono',monospace;font-size:.58rem;color:var(--muted);padding:10px 18px 4px;letter-spacing:.08em;display:block;}
+/* GEAR BUTTON (contextual per section) */
+.gear-btn{background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:5px 10px;cursor:pointer;color:var(--muted);font-size:.72rem;display:flex;align-items:center;gap:5px;transition:all .15s;white-space:nowrap;font-family:'Space Mono',monospace;}
+.gear-btn:hover{border-color:var(--accent);color:var(--accent);}
+.gear-wrap{position:relative;margin-left:auto;margin-bottom:2px;flex-shrink:0;}
+.gear-dropdown{position:absolute;top:calc(100% + 6px);right:0;min-width:210px;background:var(--surface);border:1px solid var(--border);border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.4);z-index:300;display:none;overflow:hidden;}
+.gear-dropdown.open{display:block;animation:fadeIn .15s ease;}
+.gear-dropdown a{display:flex;align-items:center;gap:10px;padding:12px 16px;font-family:'Space Mono',monospace;font-size:.74rem;color:var(--muted);text-decoration:none;border-bottom:1px solid var(--border);cursor:pointer;transition:all .15s;}
+.gear-dropdown a:last-child{border-bottom:none;}
+.gear-dropdown a:hover{background:var(--surface2);color:var(--accent);}
+.gear-dropdown a{display:flex;align-items:center;gap:10px;padding:11px 16px;font-family:'Space Mono',monospace;font-size:.73rem;color:var(--muted);cursor:pointer;transition:all .15s;border-bottom:1px solid var(--border);}
+.gear-dropdown a:last-child{border-bottom:none;}
+.gear-dropdown a:hover{background:var(--surface2);color:var(--accent);}
 
 /* NAV */
 nav{position:relative;z-index:1;display:flex;gap:4px;padding:14px 18px 0;border-bottom:1px solid var(--border);}
@@ -448,59 +462,34 @@ tr:hover td{background:rgba(255,255,255,.02);}
     <button onclick="cerrarSesion()" style="background:none;border:1px solid var(--border);border-radius:6px;padding:3px 8px;cursor:pointer;color:var(--muted);font-size:.62rem;flex-shrink:0;">↩ Salir</button>
   </div>
 
-  <!-- NAVEGACION -->
-  <div style="padding:6px 8px;border-bottom:1px solid var(--border);">
-    <div style="font-family:'Space Mono',monospace;font-size:.58rem;color:var(--muted);padding:6px 8px 4px;letter-spacing:.06em;">NAVEGAR</div>
-    <a id="mnav-materiales" onclick="entrarSeccionMenu('materiales')" style="border-radius:7px;margin-bottom:2px;">📦 Materiales</a>
-    <a id="mnav-urnas" onclick="entrarSeccionMenu('urnas')" style="border-radius:7px;margin-bottom:2px;">🪦 Urnas</a>
-    <a id="mnav-trabajadores" onclick="entrarSeccionMenu('trabajadores')" style="border-radius:7px;margin-bottom:2px;">👷 Trabajadores</a>
-    <a id="mnav-costos" onclick="entrarSeccionMenu('costos')" style="border-radius:7px;margin-bottom:2px;">💰 Costos</a>
-    <a id="mnav-bezanilla" onclick="entrarSeccionMenu('bezanilla')" style="border-radius:7px;margin-bottom:2px;">🛒 Bezanilla</a>
-    <a id="mnav-vehiculos" onclick="entrarSeccionMenu('vehiculos')" style="border-radius:7px;margin-bottom:2px;">🚗 Vehículos</a>
+  <!-- MÓDULOS -->
+  <span class="menu-label">MÓDULOS</span>
+  <a id="mnav-materiales" onclick="entrarSeccionMenu('materiales')">📦 Materiales</a>
+  <a id="mnav-urnas"      onclick="entrarSeccionMenu('urnas')">🪦 Urnas</a>
+  <a id="mnav-trabajadores" onclick="entrarSeccionMenu('trabajadores')">👷 Trabajadores</a>
+  <a id="mnav-costos"     onclick="entrarSeccionMenu('costos')">💰 Costos</a>
+  <a id="mnav-bezanilla"  onclick="entrarSeccionMenu('bezanilla')">🛒 Bezanilla</a>
+  <a id="mnav-vehiculos"  onclick="entrarSeccionMenu('vehiculos')">🚗 Vehículos</a>
 
-    <a onclick="irQRsMenu()" style="border-radius:7px;">🔲 Mis QRs</a>
+  <!-- HERRAMIENTAS -->
+  <div style="border-top:1px solid var(--border);">
+    <span class="menu-label">HERRAMIENTAS</span>
+    <a onclick="irQRsMenu()">🔲 Mis QRs</a>
+    <a onclick="closeMenu();exportExcel()">📊 Exportar Excel</a>
+    <a onclick="closeMenu();exportCSV()">📋 Exportar CSV</a>
   </div>
 
   <!-- DATOS -->
-  <div style="padding:6px 8px;border-bottom:1px solid var(--border);">
-    <div style="font-family:'Space Mono',monospace;font-size:.58rem;color:var(--muted);padding:6px 8px 4px;letter-spacing:.06em;">DATOS</div>
-    <a onclick="exportarBackup()" style="border-radius:7px;margin-bottom:2px;">💾 Exportar backup</a>
-    <a onclick="document.getElementById('import-file').click()" style="border-radius:7px;">📂 Importar backup</a>
-  </div>
-
-  <!-- OPCIONES MATERIALES -->
-  <div style="padding:6px 8px;border-bottom:1px solid var(--border);">
-    <a onclick="toggleOpciones('menu-sec-mat')" style="border-radius:7px;color:var(--warn);display:flex;justify-content:space-between;align-items:center;">
-      <span>📦 Materiales · Opciones</span>
-      <span id="menu-sec-mat-arrow" style="font-size:.7rem;">▼</span>
-    </a>
-    <div id="menu-sec-mat" style="display:none;padding:8px 4px 4px;display:flex;flex-direction:column;gap:5px;">
-      <div style="font-family:'Space Mono',monospace;font-size:.58rem;color:var(--muted);padding:2px 4px 4px;letter-spacing:.06em;">GESTIÓN</div>
-      <button class="btn btn-secondary" style="width:100%;justify-content:flex-start;font-size:.75rem;gap:7px;" onclick="menuMatEditarInventario()">📋 Editar inventario</button>
-      <button class="btn btn-secondary" style="width:100%;justify-content:flex-start;font-size:.75rem;gap:7px;" onclick="menuMatAjustarStock()">📦 Ajustar stock</button>
-      <button class="btn btn-secondary" style="width:100%;justify-content:flex-start;font-size:.75rem;gap:7px;" onclick="menuMatEditarMovimientos()">🔄 Editar movimientos</button>
-    </div>
-  </div>
-
-  <!-- OPCIONES URNAS -->
-  <div style="padding:6px 8px;">
-    <a onclick="toggleOpciones('menu-sec-urn')" style="border-radius:7px;color:var(--warn);display:flex;justify-content:space-between;align-items:center;">
-      <span>🪦 Urnas · Opciones</span>
-      <span id="menu-sec-urn-arrow" style="font-size:.7rem;">▼</span>
-    </a>
-    <div id="menu-sec-urn" style="display:none;padding:8px 4px 4px;display:flex;flex-direction:column;gap:5px;">
-      <div style="font-family:'Space Mono',monospace;font-size:.58rem;color:var(--muted);padding:2px 4px 4px;letter-spacing:.06em;">GESTIÓN</div>
-      <button class="btn btn-secondary" style="width:100%;justify-content:flex-start;font-size:.75rem;gap:7px;" onclick="menuUrnEditarInventario()">📋 Editar inventario</button>
-      <button class="btn btn-secondary" style="width:100%;justify-content:flex-start;font-size:.75rem;gap:7px;" onclick="menuUrnEditarUnidades()">🔢 Editar unidades</button>
-      <button class="btn btn-secondary" style="width:100%;justify-content:flex-start;font-size:.75rem;gap:7px;" onclick="menuUrnEditarVentas()">💰 Editar ventas</button>
-      <button class="btn btn-secondary" style="width:100%;justify-content:flex-start;font-size:.75rem;gap:7px;" onclick="menuUrnEditarOPs()">🗂 Editar OPs</button>
-    </div>
+  <div style="border-top:1px solid var(--border);">
+    <span class="menu-label">DATOS</span>
+    <a onclick="exportarBackup()">💾 Exportar backup</a>
+    <a onclick="document.getElementById('import-file').click()">📂 Importar backup</a>
   </div>
 
   <!-- ADMIN -->
-  <div id="menu-admin-section" style="display:none;padding:6px 8px;border-top:1px solid var(--border);">
-    <div style="font-family:'Space Mono',monospace;font-size:.58rem;color:var(--muted);padding:6px 8px 4px;letter-spacing:.06em;">ADMIN</div>
-    <a onclick="abrirAdminUsuarios()" style="border-radius:7px;">👥 Gestionar usuarios</a>
+  <div id="menu-admin-section" style="display:none;border-top:1px solid var(--border);">
+    <span class="menu-label">ADMIN</span>
+    <a onclick="abrirAdminUsuarios()">👥 Gestionar usuarios</a>
   </div>
 
   <input type="file" id="import-file" accept=".json" style="display:none" onchange="importarBackup(this)">
@@ -569,6 +558,14 @@ tr:hover td{background:rgba(255,255,255,.02);}
   <button class="tab"        id="tab-movements"  onclick="navTo('movements')">📋 Movimientos</button>
   <button class="tab"        id="tab-resumen"    onclick="navTo('resumen')">📊 Resumen</button>
   <button class="tab"        id="tab-proveedores" onclick="navTo('proveedores')">🏭 Proveedores</button>
+  <div class="gear-wrap" id="gear-mat-wrap" style="display:none">
+    <button class="gear-btn" onclick="toggleGear('gear-mat')">⚙ Gestión ▾</button>
+    <div class="gear-dropdown" id="gear-mat">
+      <a class="dropdown-item" onclick="closeGear('gear-mat');menuMatEditarInventario()">✏️ Editar inventario</a>
+      <a class="dropdown-item" onclick="closeGear('gear-mat');menuMatEditarMovimientos()">🔄 Editar movimientos</a>
+      <a class="dropdown-item" onclick="closeGear('gear-mat');navTo('delete-products')">🗑️ Eliminar productos</a>
+    </div>
+  </div>
 </nav>
 
 <main>
@@ -862,6 +859,14 @@ tr:hover td{background:rgba(255,255,255,.02);}
   <button class="tab"        id="utab-umovements" onclick="uNavTo('umovements')">💰 Ventas</button>
   <button class="tab"        id="utab-op"         onclick="uNavTo('uop')">🗂 Orden Prod.</button>
   <button class="tab"        id="utab-resumen"    onclick="uNavTo('uresumen')">📊 Resumen</button>
+  <div class="gear-wrap" id="gear-urn-wrap" style="display:none">
+    <button class="gear-btn" onclick="toggleGear('gear-urn')">⚙ Gestión ▾</button>
+    <div class="gear-dropdown" id="gear-urn">
+      <a class="dropdown-item" onclick="closeGear('gear-urn');menuUrnEditarInventario()">✏️ Editar inventario</a>
+      <a class="dropdown-item" onclick="closeGear('gear-urn');abrirEditarUnidades()">🔢 Editar unidades</a>
+      <a class="dropdown-item" onclick="closeGear('gear-urn');abrirEliminarVentas()">🗑️ Editar ventas</a>
+    </div>
+  </div>
 </nav>
 <main>
 
@@ -1755,6 +1760,8 @@ function entrarSeccion(nombre) {
     document.getElementById('hdr-chip').style.display = 'flex';
     setSeccionHeader('Materiales','var(--accent)');
     navTo('scan');
+    const _isAdmin = window._currentUser && window._currentUser.rol === 'admin';
+    document.getElementById('gear-mat-wrap').style.display = _isAdmin ? 'flex' : 'none';
   } else if (nombre === 'urnas') {
     if(!rolPuedeVer('urnas')){ volverHome(); return; }
     document.getElementById('seccion-urnas').style.display = 'block';
@@ -1762,6 +1769,7 @@ function entrarSeccion(nombre) {
     setSeccionHeader('Urnas','var(--accent)');
     const _r = window._currentUser ? window._currentUser.rol : '';
     uNavTo(_r === 'instalacion' ? 'uinventory' : 'uscan');
+    document.getElementById('gear-urn-wrap').style.display = _r === 'admin' ? 'flex' : 'none';
   } else if (nombre === 'trabajadores') {
     if(!rolPuedeVer('trabajadores')){ volverHome(); return; }
     document.getElementById('seccion-trabajadores').style.display = 'block';
@@ -1773,7 +1781,7 @@ function entrarSeccion(nombre) {
   }
 }
 function volverHome() {
-  closeMenu(); stopScanner(); uStopScanner();
+  closeMenu(); closeGear(); stopScanner(); uStopScanner();
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.getElementById('page-home').classList.add('active');
   ['seccion-materiales','seccion-urnas','seccion-trabajadores','seccion-costos','seccion-bezanilla','seccion-vehiculos'].forEach(s=>{
@@ -1830,9 +1838,22 @@ function closeMenu() {
   document.getElementById('hamburger-btn').classList.remove('open');
   document.getElementById('dropdown-menu').classList.remove('open');
   document.getElementById('menu-overlay').classList.remove('open');
-  // Reset opciones accordion
-  const op=document.getElementById('opciones-mat');
-  if(op) op.style.display='none';
+  closeGear();
+}
+function toggleGear(id) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const isOpen = el.classList.contains('open');
+  closeGear();
+  if (!isOpen) el.classList.add('open');
+}
+function closeGear(id) {
+  if (id) {
+    const el = document.getElementById(id);
+    if (el) el.classList.remove('open');
+  } else {
+    document.querySelectorAll('.gear-dropdown.open').forEach(d => d.classList.remove('open'));
+  }
 }
 // Helpers para el menú unificado (detecta sección activa)
 function _seccionActual(){
