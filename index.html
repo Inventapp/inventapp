@@ -7303,6 +7303,7 @@ window._fbSubscribe = function() {
         if(data.bzPedidos)   { bzPedidos   = data.bzPedidos;   localStorage.setItem(LS_BZ_PEDIDOS, JSON.stringify(bzPedidos)); }
         if(data.vehFlota) { vehFlota = data.vehFlota; localStorage.setItem(LS_VEHICULOS, JSON.stringify(vehFlota)); }
       updateHeader();
+      // Refresh active materiales views
       const active = document.querySelector('#seccion-materiales .page.active');
       if(active) {
         const id = active.id.replace('page-','');
@@ -7310,6 +7311,23 @@ window._fbSubscribe = function() {
         if(id === 'movements')   renderMovements();
         if(id === 'resumen')     renderResumenMat();
         if(id === 'workers')     renderWorkers();
+      }
+      // Refresh active vehiculos views (vehFlota lives in inventario/materiales doc)
+      if(data.vehFlota) {
+        const activeV = document.querySelector('#seccion-vehiculos .page.active');
+        if(activeV) {
+          const vid = activeV.id.replace('vpage-','');
+          if(vid === 'flota')   vRenderFlota();
+          if(vid === 'resumen') vRenderResumen();
+        }
+      }
+      // Refresh trabajadores section if active (workers comes from materiales doc)
+      if(data.workers && document.getElementById('seccion-trabajadores').style.display !== 'none') {
+        renderTrabajadoresGlobal();
+      }
+      // Refresh costos section if active (costosData comes from materiales doc)
+      if(data.costosData && document.getElementById('seccion-costos').style.display !== 'none') {
+        cRenderWizard();
       }
     }
   );
