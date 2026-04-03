@@ -705,8 +705,21 @@ tr:hover td{background:rgba(255,255,255,.02);}
       <div><label for="np-cat">Categoría</label><input type="text" id="np-cat" placeholder="ej: Adhesivos" list="cat-datalist"></div>
       <div><label for="np-cost">Costo unitario ($)</label><input type="number" id="np-cost" value="0" min="0" step="0.01" oninput="npCalcCostoBase()"></div>
     </div>
-    <!-- Presentación / formato -->
-    <div style="background:var(--surface2);border-radius:9px;padding:10px 12px;margin-top:2px;margin-bottom:2px;">
+    <!-- Modo de producto -->
+    <div style="display:flex;align-items:center;gap:14px;margin:8px 0 4px;padding:8px 10px;background:var(--surface2);border-radius:8px;">
+      <span style="font-size:.68rem;color:var(--muted);font-family:'Space Mono',monospace;letter-spacing:.05em;flex-shrink:0;">MODO:</span>
+      <label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:.8rem;font-weight:600;">
+        <input type="radio" name="np-modo" id="np-modo-simple" value="simple" onchange="npToggleModo()" checked>
+        Simple
+      </label>
+      <label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:.8rem;">
+        <input type="radio" name="np-modo" id="np-modo-frac" value="fraccionado" onchange="npToggleModo()">
+        Fraccionado
+        <span style="font-size:.65rem;color:var(--muted);">(viene por kg, L, gr…)</span>
+      </label>
+    </div>
+    <!-- Presentación / formato (solo modo Fraccionado) -->
+    <div id="np-pres-section" style="display:none;background:var(--surface2);border-radius:9px;padding:10px 12px;margin-top:2px;margin-bottom:2px;">
       <div style="font-family:'Space Mono',monospace;font-size:.58rem;color:var(--muted);letter-spacing:.08em;margin-bottom:8px;">PRESENTACIÓN</div>
       <div class="form-row" style="margin-bottom:6px;">
         <div>
@@ -866,6 +879,7 @@ tr:hover td{background:rgba(255,255,255,.02);}
   <button class="tab"        id="utab-umovements" onclick="uNavTo('umovements')"  aria-label="Ver ventas">💰 Ventas</button>
   <button class="tab"        id="utab-op"         onclick="uNavTo('uop')"         aria-label="Ver órdenes de producción">🗂 Orden Prod.</button>
   <button class="tab"        id="utab-resumen"    onclick="uNavTo('uresumen')"    aria-label="Ver resumen urnas">📊 Resumen</button>
+  <button class="tab"        id="utab-costeo"     onclick="uNavTo('ucosteo')"     aria-label="Costeo de urnas">💸 Costeo</button>
   <div class="gear-wrap" id="gear-urn-wrap" style="display:none">
     <button class="gear-btn" onclick="toggleGear('gear-urn')" aria-label="Gestión de urnas" aria-expanded="false" aria-controls="gear-urn">⚙ Gestión ▾</button>
     <div class="gear-dropdown" id="gear-urn">
@@ -1276,117 +1290,113 @@ tr:hover td{background:rgba(255,255,255,.02);}
 
 </div><!-- fin seccion-trabajadores -->
 
-<!-- SECCION COSTOS -->
+<!-- SECCION COSTOS — wizard vertical -->
 <div id="seccion-costos" style="display:none">
-<nav id="c-nav" style="overflow-x:auto;display:flex;gap:4px;padding:0 8px;flex-wrap:nowrap;">
-  <button class="tab active" id="ctab-productos"   onclick="cNavTo('productos')">📋 Productos</button>
-  <button class="tab"        id="ctab-catalogo"    onclick="cNavTo('catalogo')">📦 Catálogo</button>
-  <button class="tab"        id="ctab-barniz"      onclick="cNavTo('barniz')">🎨 Barniz</button>
-  <button class="tab"        id="ctab-enzincado"   onclick="cNavTo('enzincado')">⚡ Enzincado</button>
-  <button class="tab"        id="ctab-telas"       onclick="cNavTo('telas')">🧵 Telas</button>
-  <button class="tab"        id="ctab-terminacion" onclick="cNavTo('terminacion')">✨ Terminación</button>
-  <button class="tab"        id="ctab-resultados"  onclick="cNavTo('resultados')">📊 Resultados</button>
-</nav>
 <main>
+<div id="c-wizard" style="max-width:780px;margin:0 auto;">
 
-<!-- C: PRODUCTOS -->
-<div class="page active" id="cpage-productos">
-  <div class="card" style="border-color:var(--accent);margin-bottom:12px;">
-    <div style="font-size:.72rem;color:var(--muted);margin-bottom:8px;">Selecciona un producto para configurar sus procesos de costeo</div>
-    <div id="c-prod-lista" style="display:flex;flex-direction:column;gap:8px;"></div>
-  </div>
-</div>
-
-<!-- C: CATÁLOGO -->
-<div class="page" id="cpage-catalogo">
-  <div class="card" style="padding:0;overflow:hidden;">
-    <div style="padding:12px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">
-      <div class="card-title" style="margin:0;">Catálogo de Materiales</div>
-      <span style="font-size:.68rem;color:var(--muted);">Edita Formato y Unidad para el cálculo de costos</span>
-    </div>
-    <div class="table-wrap" style="border:none;border-radius:0;">
-      <table>
-        <thead><tr>
-          <th>ID</th><th>Material</th><th>Categoría</th>
-          <th style="width:90px;">Formato</th>
-          <th style="width:90px;">Unidad</th>
-          <th style="width:110px;">Precio ($)</th>
-          <th style="width:110px;">Costo/Unidad base</th>
-        </tr></thead>
-        <tbody id="c-cat-tbody"></tbody>
-      </table>
+  <!-- Selector de producto (sticky) -->
+  <div style="position:sticky;top:0;z-index:10;background:var(--bg);padding:8px 0 6px;border-bottom:1px solid var(--border);margin-bottom:14px;">
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+      <span style="font-family:'Space Mono',monospace;font-size:.62rem;color:var(--muted);letter-spacing:.06em;flex-shrink:0;">PRODUCTO:</span>
+      <select id="c-prod-select" onchange="cSelProdWizard(this.value)"
+        style="flex:1;min-width:0;font-size:.85rem;font-weight:700;color:var(--accent);">
+        <option value="">— selecciona una urna —</option>
+      </select>
     </div>
   </div>
-</div>
 
-<!-- C: BARNIZ -->
-<div class="page" id="cpage-barniz">
-  <div style="font-family:'Space Mono',monospace;font-size:.6rem;color:var(--muted);padding:4px 0 8px;letter-spacing:.08em;">PRODUCTO: <span id="c-prod-lbl-barniz" style="color:var(--accent);">—</span></div>
-  <div class="card" style="padding:0;overflow:hidden;margin-bottom:12px;">
-    <div style="padding:11px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">
-      <div class="card-title" style="margin:0;">🎨 Materiales — Barniz</div>
-      <button class="btn btn-primary" style="font-size:.7rem;padding:5px 11px;" onclick="cAgregarMat('barniz')">+ Agregar</button>
+  <!-- Proceso: BARNIZ -->
+  <div class="card" style="padding:0;overflow:hidden;margin-bottom:10px;" id="c-acc-barniz">
+    <div onclick="cToggleProceso('barniz')" style="padding:11px 16px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;user-select:none;">
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span style="font-size:1rem;">🎨</span>
+        <span style="font-weight:700;font-size:.88rem;">Barniz</span>
+        <span id="c-total-barniz" style="font-size:.72rem;color:var(--muted);font-family:'Space Mono',monospace;"></span>
+      </div>
+      <span id="c-arrow-barniz" style="font-size:.8rem;color:var(--muted);">▼</span>
     </div>
-    <div class="table-wrap" style="border:none;border-radius:0;">
-      <table><thead><tr><th>Material</th><th style="width:90px;">Cant.</th><th style="width:80px;">Unidad</th><th style="width:100px;">Costo unit.</th><th style="width:100px;">Total</th><th style="width:40px;"></th></tr></thead>
-      <tbody id="c-mat-barniz"></tbody></table>
+    <div id="c-body-barniz" style="display:none;border-top:1px solid var(--border);">
+      <div style="padding:10px 16px 6px;display:flex;justify-content:flex-end;">
+        <button class="btn btn-primary" style="font-size:.7rem;padding:5px 11px;" onclick="cAgregarMat('barniz')">+ Material</button>
+      </div>
+      <div class="table-wrap" style="border:none;border-radius:0;">
+        <table><thead><tr><th>Material</th><th style="width:90px;">Cant.</th><th style="width:80px;">Unidad</th><th style="width:100px;">Costo unit.</th><th style="width:100px;">Total</th><th style="width:40px;"></th></tr></thead>
+        <tbody id="c-mat-barniz"></tbody></table>
+      </div>
+      <div id="c-mod-barniz" style="padding:0 12px 12px;"></div>
     </div>
   </div>
-  <div id="c-mod-barniz"></div>
-</div>
 
-<!-- C: ENZINCADO -->
-<div class="page" id="cpage-enzincado">
-  <div style="font-family:'Space Mono',monospace;font-size:.6rem;color:var(--muted);padding:4px 0 8px;letter-spacing:.08em;">PRODUCTO: <span id="c-prod-lbl-enzincado" style="color:var(--accent);">—</span></div>
-  <div class="card" style="padding:0;overflow:hidden;margin-bottom:12px;">
-    <div style="padding:11px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">
-      <div class="card-title" style="margin:0;">⚡ Materiales — Enzincado</div>
-      <button class="btn btn-primary" style="font-size:.7rem;padding:5px 11px;" onclick="cAgregarMat('enzincado')">+ Agregar</button>
+  <!-- Proceso: ENZINCADO -->
+  <div class="card" style="padding:0;overflow:hidden;margin-bottom:10px;" id="c-acc-enzincado">
+    <div onclick="cToggleProceso('enzincado')" style="padding:11px 16px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;user-select:none;">
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span style="font-size:1rem;">⚡</span>
+        <span style="font-weight:700;font-size:.88rem;">Enzincado</span>
+        <span id="c-total-enzincado" style="font-size:.72rem;color:var(--muted);font-family:'Space Mono',monospace;"></span>
+      </div>
+      <span id="c-arrow-enzincado" style="font-size:.8rem;color:var(--muted);">▼</span>
     </div>
-    <div class="table-wrap" style="border:none;border-radius:0;">
-      <table><thead><tr><th>Material</th><th style="width:90px;">Cant.</th><th style="width:80px;">Unidad</th><th style="width:100px;">Costo unit.</th><th style="width:100px;">Total</th><th style="width:40px;"></th></tr></thead>
-      <tbody id="c-mat-enzincado"></tbody></table>
+    <div id="c-body-enzincado" style="display:none;border-top:1px solid var(--border);">
+      <div style="padding:10px 16px 6px;display:flex;justify-content:flex-end;">
+        <button class="btn btn-primary" style="font-size:.7rem;padding:5px 11px;" onclick="cAgregarMat('enzincado')">+ Material</button>
+      </div>
+      <div class="table-wrap" style="border:none;border-radius:0;">
+        <table><thead><tr><th>Material</th><th style="width:90px;">Cant.</th><th style="width:80px;">Unidad</th><th style="width:100px;">Costo unit.</th><th style="width:100px;">Total</th><th style="width:40px;"></th></tr></thead>
+        <tbody id="c-mat-enzincado"></tbody></table>
+      </div>
+      <div id="c-mod-enzincado" style="padding:0 12px 12px;"></div>
     </div>
   </div>
-  <div id="c-mod-enzincado"></div>
-</div>
 
-<!-- C: TELAS -->
-<div class="page" id="cpage-telas">
-  <div style="font-family:'Space Mono',monospace;font-size:.6rem;color:var(--muted);padding:4px 0 8px;letter-spacing:.08em;">PRODUCTO: <span id="c-prod-lbl-telas" style="color:var(--accent);">—</span></div>
-  <div class="card" style="padding:0;overflow:hidden;margin-bottom:12px;">
-    <div style="padding:11px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">
-      <div class="card-title" style="margin:0;">🧵 Materiales — Telas</div>
-      <button class="btn btn-primary" style="font-size:.7rem;padding:5px 11px;" onclick="cAgregarMat('telas')">+ Agregar</button>
+  <!-- Proceso: TELAS -->
+  <div class="card" style="padding:0;overflow:hidden;margin-bottom:10px;" id="c-acc-telas">
+    <div onclick="cToggleProceso('telas')" style="padding:11px 16px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;user-select:none;">
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span style="font-size:1rem;">🧵</span>
+        <span style="font-weight:700;font-size:.88rem;">Telas</span>
+        <span id="c-total-telas" style="font-size:.72rem;color:var(--muted);font-family:'Space Mono',monospace;"></span>
+      </div>
+      <span id="c-arrow-telas" style="font-size:.8rem;color:var(--muted);">▼</span>
     </div>
-    <div class="table-wrap" style="border:none;border-radius:0;">
-      <table><thead><tr><th>Material</th><th style="width:90px;">Cant.</th><th style="width:80px;">Unidad</th><th style="width:100px;">Costo unit.</th><th style="width:100px;">Total</th><th style="width:40px;"></th></tr></thead>
-      <tbody id="c-mat-telas"></tbody></table>
+    <div id="c-body-telas" style="display:none;border-top:1px solid var(--border);">
+      <div style="padding:10px 16px 6px;display:flex;justify-content:flex-end;">
+        <button class="btn btn-primary" style="font-size:.7rem;padding:5px 11px;" onclick="cAgregarMat('telas')">+ Material</button>
+      </div>
+      <div class="table-wrap" style="border:none;border-radius:0;">
+        <table><thead><tr><th>Material</th><th style="width:90px;">Cant.</th><th style="width:80px;">Unidad</th><th style="width:100px;">Costo unit.</th><th style="width:100px;">Total</th><th style="width:40px;"></th></tr></thead>
+        <tbody id="c-mat-telas"></tbody></table>
+      </div>
+      <div id="c-mod-telas" style="padding:0 12px 12px;"></div>
     </div>
   </div>
-  <div id="c-mod-telas"></div>
-</div>
 
-<!-- C: TERMINACIÓN -->
-<div class="page" id="cpage-terminacion">
-  <div style="font-family:'Space Mono',monospace;font-size:.6rem;color:var(--muted);padding:4px 0 8px;letter-spacing:.08em;">PRODUCTO: <span id="c-prod-lbl-terminacion" style="color:var(--accent);">—</span></div>
-  <div class="card" style="padding:0;overflow:hidden;margin-bottom:12px;">
-    <div style="padding:11px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">
-      <div class="card-title" style="margin:0;">✨ Materiales — Terminación</div>
-      <button class="btn btn-primary" style="font-size:.7rem;padding:5px 11px;" onclick="cAgregarMat('terminacion')">+ Agregar</button>
+  <!-- Proceso: TERMINACIÓN -->
+  <div class="card" style="padding:0;overflow:hidden;margin-bottom:10px;" id="c-acc-terminacion">
+    <div onclick="cToggleProceso('terminacion')" style="padding:11px 16px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;user-select:none;">
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span style="font-size:1rem;">✨</span>
+        <span style="font-weight:700;font-size:.88rem;">Terminación</span>
+        <span id="c-total-terminacion" style="font-size:.72rem;color:var(--muted);font-family:'Space Mono',monospace;"></span>
+      </div>
+      <span id="c-arrow-terminacion" style="font-size:.8rem;color:var(--muted);">▼</span>
     </div>
-    <div class="table-wrap" style="border:none;border-radius:0;">
-      <table><thead><tr><th>Material</th><th style="width:90px;">Cant.</th><th style="width:80px;">Unidad</th><th style="width:100px;">Costo unit.</th><th style="width:100px;">Total</th><th style="width:40px;"></th></tr></thead>
-      <tbody id="c-mat-terminacion"></tbody></table>
+    <div id="c-body-terminacion" style="display:none;border-top:1px solid var(--border);">
+      <div style="padding:10px 16px 6px;display:flex;justify-content:flex-end;">
+        <button class="btn btn-primary" style="font-size:.7rem;padding:5px 11px;" onclick="cAgregarMat('terminacion')">+ Material</button>
+      </div>
+      <div class="table-wrap" style="border:none;border-radius:0;">
+        <table><thead><tr><th>Material</th><th style="width:90px;">Cant.</th><th style="width:80px;">Unidad</th><th style="width:100px;">Costo unit.</th><th style="width:100px;">Total</th><th style="width:40px;"></th></tr></thead>
+        <tbody id="c-mat-terminacion"></tbody></table>
+      </div>
+      <div id="c-mod-terminacion" style="padding:0 12px 12px;"></div>
     </div>
   </div>
-  <div id="c-mod-terminacion"></div>
-</div>
 
-<!-- C: RESULTADOS -->
-<div class="page" id="cpage-resultados">
-  <div style="font-family:'Space Mono',monospace;font-size:.6rem;color:var(--muted);padding:4px 0 8px;letter-spacing:.08em;">PRODUCTO: <span id="c-prod-lbl-resultados" style="color:var(--accent);">—</span></div>
+  <!-- CIF + Resultados -->
   <div class="card" style="margin-bottom:12px;">
+    <div class="card-title" style="margin-bottom:12px;">📊 CIF y Resultados</div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">
       <div>
         <label style="font-size:.68rem;color:var(--muted);">CIF mensual ($)</label>
@@ -1422,20 +1432,29 @@ tr:hover td{background:rgba(255,255,255,.02);}
       </div>
     </div>
   </div>
-</div>
 
+</div><!-- fin c-wizard -->
 </main>
 </div><!-- fin seccion-costos -->
 
 <!-- SECCION BEZANILLA -->
 <div id="seccion-bezanilla" style="display:none">
 <nav>
-  <button class="tab active" id="bztab-productos" onclick="bzNavTo('productos')">🛒 Productos</button>
+  <button class="tab active" id="bztab-reposicion" onclick="bzNavTo('reposicion')">⚠ Reposición</button>
+  <button class="tab"        id="bztab-productos"  onclick="bzNavTo('productos')">🛒 Suministros</button>
 </nav>
 <main>
 
-<!-- BZ: PRODUCTOS -->
-<div class="page active" id="bzpage-productos">
+<!-- BZ: REPOSICIÓN (compras pendientes desde products[]) -->
+<div class="page active" id="bzpage-reposicion">
+  <div style="font-size:.72rem;color:var(--muted);margin-bottom:10px;">
+    Materiales del inventario que están en o por debajo del stock mínimo. Hace seguimiento de pedidos de reposición.
+  </div>
+  <div id="bz-repos-lista"></div>
+</div>
+
+<!-- BZ: SUMINISTROS (catálogo externo Bezanilla) -->
+<div class="page" id="bzpage-productos">
 
   <!-- Barra: buscar + filtro categoría + agregar -->
   <div style="display:flex;gap:8px;align-items:center;margin-bottom:12px;flex-wrap:wrap;">
@@ -1545,6 +1564,7 @@ const LS_WORKERS   = 'inventapp_workers';
 const LS_PROVEEDORES = 'inventapp_proveedores';
 const LS_COSTOS      = 'inventapp_costos';
 const LS_BEZANILLA   = 'inventapp_bezanilla';
+const LS_BZ_PEDIDOS  = 'inventapp_bz_pedidos';
 const LS_VEHICULOS   = 'inventapp_vehiculos';
 
 const DEFAULT_PRODUCTS  = [];
@@ -1603,6 +1623,7 @@ function _idbBackupMat() {
   _IDB.set(LS_PROVEEDORES, proveedores);
   _IDB.set(LS_COSTOS,      costosData);
   _IDB.set(LS_BEZANILLA,   bzProductos);
+  _IDB.set(LS_BZ_PEDIDOS,  bzPedidos);
   _IDB.set(LS_VEHICULOS,   vehFlota);
 }
 
@@ -1617,6 +1638,7 @@ function lsGuardar() {
     localStorage.setItem(LS_PROVEEDORES, JSON.stringify(proveedores));
     localStorage.setItem(LS_COSTOS,      JSON.stringify(costosData));
     localStorage.setItem(LS_BEZANILLA,   JSON.stringify(bzProductos));
+    localStorage.setItem(LS_BZ_PEDIDOS,  JSON.stringify(bzPedidos));
     localStorage.setItem(LS_VEHICULOS,   JSON.stringify(vehFlota));
   } catch(e) {
     console.warn('localStorage cuota excedida — datos respaldados en IndexedDB');
@@ -1633,7 +1655,7 @@ async function fbSaveMat() {
   try {
     await window._fbSetDoc(
       window._fbDoc(window._fbDb, 'inventario', 'materiales'),
-      { products, movements, workers, proveedores, costosData, bzProductos, vehFlota,
+      { products, movements, workers, proveedores, costosData, bzProductos, bzPedidos, vehFlota,
         updatedAt: new Date().toISOString(), nonce }
     );
   } catch(e) {
@@ -1665,15 +1687,8 @@ function lsCargar() {
     const pv = localStorage.getItem(LS_PROVEEDORES); if(pv) proveedores = JSON.parse(pv);
     const cd = localStorage.getItem(LS_COSTOS); if(cd) { const _cd=JSON.parse(cd); costosData={...costosData,..._cd}; }
     const bz = localStorage.getItem(LS_BEZANILLA); if(bz) bzProductos = JSON.parse(bz);
+    const bzp = localStorage.getItem(LS_BZ_PEDIDOS); if(bzp) bzPedidos = JSON.parse(bzp);
     const vf = localStorage.getItem(LS_VEHICULOS); if(vf) vehFlota = JSON.parse(vf);
-    // Sync formato/unidad from products → costosData.matExtra (for products saved before this feature)
-    products.forEach(p => {
-      if(p.formato && p.unidad) {
-        if(!costosData.matExtra[p.id]) costosData.matExtra[p.id]={};
-        if(!costosData.matExtra[p.id].formato) costosData.matExtra[p.id].formato = p.formato;
-        if(!costosData.matExtra[p.id].unidad)  costosData.matExtra[p.id].unidad  = p.unidad;
-      }
-    });
   } catch(e) {
     console.warn('Error leyendo localStorage (mat):', e);
     // Continuar con arrays vacíos — datos se cargarán desde Firestore o IndexedDB
@@ -1686,8 +1701,9 @@ function lsCargar() {
       const m  = await _IDB.get(LS_MOVEMENTS);   if(m  && !movements.length)  movements  = m;
       const w  = await _IDB.get(LS_WORKERS);     if(w  && !workers.length)    workers    = w.map(x => typeof x==='string'?{name:x,area:'Sin área'}:x);
       const pv = await _IDB.get(LS_PROVEEDORES); if(pv && !proveedores.length) proveedores = pv;
-      const bz = await _IDB.get(LS_BEZANILLA);   if(bz && !bzProductos.length) bzProductos = bz;
-      const vf = await _IDB.get(LS_VEHICULOS);   if(vf && !vehFlota.length)    vehFlota    = vf;
+      const bz  = await _IDB.get(LS_BEZANILLA);   if(bz  && !bzProductos.length) bzProductos = bz;
+      const bzp = await _IDB.get(LS_BZ_PEDIDOS);  if(bzp && !Object.keys(bzPedidos).length) bzPedidos = bzp;
+      const vf  = await _IDB.get(LS_VEHICULOS);   if(vf  && !vehFlota.length)    vehFlota    = vf;
     })();
   }
 }
@@ -1721,6 +1737,7 @@ let cProdActual = null; // currently selected uProduct id
 
 // ── BEZANILLA state ──
 let bzProductos = []; // [{id, nombre, cat, proveedor, precio, unidad, stock, min, notas, fecha}]
+let bzPedidos   = {}; // {prodId: {nota, estado, fecha}} — pending reorder tracking for products[] items
 
 // ── VEHÍCULOS state ──
 let vehFlota   = []; // [{id, patente, tipo, marca, modelo, anio, color, km, conductor, revTecnica, permiso, kmAceite, estado, eventos:[]}]
@@ -1835,12 +1852,12 @@ function entrarSeccion(nombre) {
     document.getElementById('seccion-bezanilla').style.display = 'block';
     document.getElementById('hdr-chip').style.display = 'none';
     setSeccionHeader('Bezanilla','var(--accent)');
-    bzNavTo('productos');
+    bzNavTo('reposicion');
   } else if (nombre === 'costos') {
     document.getElementById('seccion-costos').style.display = 'block';
     document.getElementById('hdr-chip').style.display = 'none';
     setSeccionHeader('Costos','var(--accent)');
-    cNavTo('productos');
+    cRenderWizard();
   } else if (nombre === 'materiales') {
     if(!rolPuedeVer('materiales')){ volverHome(); return; }
     document.getElementById('seccion-materiales').style.display = 'block';
@@ -2766,8 +2783,29 @@ function showAddProduct(){
   const cats=[...new Set(products.map(p=>p.cat).filter(Boolean))];
   const dl=document.getElementById('cat-datalist');
   if(dl) dl.innerHTML=cats.map(c=>`<option value="${c}">`).join('');
+  // Reset to Simple mode
+  const simpleRadio = document.getElementById('np-modo-simple');
+  if(simpleRadio) { simpleRadio.checked = true; npToggleModo(); }
   f.style.display='block';
   f.scrollIntoView({behavior:'smooth'});
+}
+function npToggleModo() {
+  const frac = document.getElementById('np-modo-frac')?.checked;
+  const presSection = document.getElementById('np-pres-section');
+  if(presSection) presSection.style.display = frac ? 'block' : 'none';
+  const stockUnit = document.getElementById('np-stock-unit');
+  const minUnit   = document.getElementById('np-min-unit');
+  if(stockUnit) stockUnit.style.display = frac ? '' : 'none';
+  if(minUnit)   minUnit.style.display   = frac ? '' : 'none';
+  if(!frac) {
+    const fmt = document.getElementById('np-formato');
+    const und = document.getElementById('np-unidad');
+    if(fmt) fmt.value = '1';
+    if(und) und.value = 'u';
+    if(stockUnit) stockUnit.value = 'pres';
+    if(minUnit)   minUnit.value   = 'pres';
+  }
+  npCalcCostoBase();
 }
 // ── GENERADOR DE ID DE MATERIAL ──────────────────────
 // Regla:
@@ -2890,9 +2928,10 @@ function addProduct(){
   const unidad      = document.getElementById('np-unidad').value||'u';
   const nombrePres  = (document.getElementById('np-nombre-pres')?.value||'').trim().toLowerCase();
   products.push({id, name, cat, stock, min, cost, formato, unidad, nombrePres});
-  // Sync con costosData.matExtra para el módulo de Costos
-  costosData.matExtra[id] = { formato, unidad };
   document.getElementById('add-product-form').style.display='none';
+  // Reset to Simple mode after save
+  const _simpleR = document.getElementById('np-modo-simple');
+  if(_simpleR) { _simpleR.checked = true; npToggleModo(); }
   ['np-id','np-name','np-cat'].forEach(x=>document.getElementById(x).value='');
   document.getElementById('np-formato').value='1';
   document.getElementById('np-unidad').value='u';
@@ -3622,6 +3661,7 @@ function uNavTo(name) {
   uCloseMenu();
   document.querySelectorAll('#seccion-urnas .page').forEach(p => p.classList.remove('active'));
   document.getElementById('page-' + name).classList.add('active');
+  if(name === 'ucosteo') { entrarSeccion('costos'); return; }
   const tabMap = { uscan:'utab-scan', uinventory:'utab-inventory', uunidades:'utab-uunidades', umovements:'utab-umovements', uop:'utab-op', uresumen:'utab-resumen' };
   Object.values(tabMap).forEach(id => { const el = document.getElementById(id); if(el) el.classList.remove('active'); });
   const at = document.getElementById(tabMap[name]); if(at) at.classList.add('active');
@@ -4897,18 +4937,96 @@ const C_PROCESOS = ['barniz','enzincado','telas','terminacion'];
 const C_PROC_LABEL = {barniz:'🎨 Barniz', enzincado:'⚡ Enzincado', telas:'🧵 Telas', terminacion:'✨ Terminación'};
 const C_UNIDADES  = ['ml','gr','u','L','kg','Gl'];
 
-// ── Nav ───────────────────────────────────────────────
+// ── Wizard ────────────────────────────────────────────
+function cRenderWizard() {
+  // Populate product selector
+  const sel = document.getElementById('c-prod-select');
+  if(sel) {
+    const CAT_ORDER = ['estandar','especial','restos'];
+    const CAT_LABEL = {estandar:'Urnas Estándar', especial:'Especiales', restos:'Restos y Párvulo'};
+    let opts = '<option value="">— selecciona una urna —</option>';
+    CAT_ORDER.forEach(cat => {
+      const prods = uProducts.filter(p => (p.categoria||'estandar') === cat);
+      if(!prods.length) return;
+      opts += `<optgroup label="${CAT_LABEL[cat]}">`;
+      prods.forEach(p => { opts += `<option value="${p.id}" ${p.id===cProdActual?'selected':''}>${sanitizar(p.name)}</option>`; });
+      opts += '</optgroup>';
+    });
+    sel.innerHTML = opts;
+  }
+  // Restore CIF values
+  const cifEl = document.getElementById('c-cif-total');     if(cifEl) cifEl.value = costosData.cifTotal || 3000000;
+  const unEl  = document.getElementById('c-unidades-mes'); if(unEl)  unEl.value  = costosData.unidadesMes || 50;
+  const pvEl  = document.getElementById('c-precio-venta'); if(pvEl)  pvEl.value  = costosData.precioVenta || 0;
+  // Render all open accordions
+  C_PROCESOS.forEach(pr => {
+    const body = document.getElementById('c-body-'+pr);
+    if(body && body.style.display !== 'none') cRenderProceso(pr);
+    cUpdateProcTotal(pr);
+  });
+  // Restore last result
+  if(costosData.ultimoResultado && costosData.ultimoResultado.prodId === cProdActual) {
+    cMostrarResultado(costosData.ultimoResultado);
+  } else {
+    const rc = document.getElementById('c-resultados-content');
+    if(rc) rc.style.display = 'none';
+  }
+  cUpdateMargenPreview();
+}
+
+function cSelProdWizard(prodId) {
+  cProdActual = prodId || null;
+  if(prodId && !costosData.procesos[prodId]) {
+    costosData.procesos[prodId] = {barniz:[], enzincado:[], telas:[], terminacion:[]};
+  }
+  // Re-render all open proceso bodies
+  C_PROCESOS.forEach(pr => {
+    const body = document.getElementById('c-body-'+pr);
+    if(body && body.style.display !== 'none') cRenderProceso(pr);
+    cUpdateProcTotal(pr);
+  });
+  // Clear stale result when switching product
+  const rc = document.getElementById('c-resultados-content');
+  if(rc && (!costosData.ultimoResultado || costosData.ultimoResultado.prodId !== cProdActual)) {
+    rc.style.display = 'none';
+  }
+}
+
+function cToggleProceso(proceso) {
+  const body  = document.getElementById('c-body-'+proceso);
+  const arrow = document.getElementById('c-arrow-'+proceso);
+  if(!body) return;
+  const open = body.style.display === 'none';
+  body.style.display = open ? 'block' : 'none';
+  if(arrow) arrow.textContent = open ? '▲' : '▼';
+  if(open) cRenderProceso(proceso);
+}
+
+function cUpdateProcTotal(proceso) {
+  const lbl = document.getElementById('c-total-'+proceso);
+  if(!lbl) return;
+  if(!cProdActual) { lbl.textContent = ''; return; }
+  const mats = ((costosData.procesos[cProdActual]||{})[proceso]||[]);
+  const costoMats = mats.reduce((s, mat) => {
+    const p = products.find(x => x.id === mat.matId);
+    return s + (p ? mat.cantidad * cCostoUnitBase(p) : 0);
+  }, 0);
+  const mod   = costosData.mod[proceso] || {sueldo:800000, horasMes:180, horasUnidad:2, merma:0};
+  const tasa  = mod.horasMes > 0 ? mod.sueldo / mod.horasMes : 0;
+  const modV  = (mod.horasUnidad || 0) * tasa;
+  const total = costoMats * (1 + (mod.merma||0)/100) + modV;
+  lbl.textContent = total > 0 ? `$${fmtNum(Math.round(total))}` : '';
+}
+
+// Backwards-compat alias (used by entrarSeccion and any deep links)
 function cNavTo(name) {
-  document.querySelectorAll('#seccion-costos .page').forEach(p => p.classList.remove('active'));
-  document.getElementById('cpage-'+name).classList.add('active');
-  document.querySelectorAll('#c-nav .tab').forEach(t => t.classList.remove('active'));
-  const btn = document.getElementById('ctab-'+name);
-  if(btn) btn.classList.add('active');
-  setSeccionHeader('Costos','var(--accent)');
-  if(name === 'productos')   cRenderProductos();
-  if(name === 'catalogo')    cRenderCatalogo();
-  if(C_PROCESOS.includes(name)) cRenderProceso(name);
-  if(name === 'resultados')  cInitResultados();
+  if(name === 'productos' || C_PROCESOS.includes(name) || name === 'resultados') {
+    cRenderWizard();
+    if(C_PROCESOS.includes(name)) {
+      const body = document.getElementById('c-body-'+name);
+      if(body) { body.style.display='block'; const ar=document.getElementById('c-arrow-'+name); if(ar)ar.textContent='▲'; cRenderProceso(name); }
+    }
+  }
 }
 
 // ── helpers ───────────────────────────────────────────
@@ -4919,9 +5037,7 @@ function cFormatoToBase(formato, unidad) {
   return formato;
 }
 function cCostoUnitBase(prod) {
-  // prod = products item; extra = costosData.matExtra[prod.id]
-  const extra = costosData.matExtra[prod.id] || {formato:1, unidad:'u'};
-  const base  = cFormatoToBase(extra.formato || 1, extra.unidad || 'u');
+  const base = cFormatoToBase(prod.formato || 1, prod.unidad || 'u');
   return base > 0 ? (prod.cost || 0) / base : 0;
 }
 function cLabelUnidadBase(unidad) {
@@ -5030,17 +5146,12 @@ function cSetMatExtra(prodId, field, value) {
 // ── Tab: PROCESO (barniz/enzincado/telas/terminacion) ──
 function cRenderProceso(proceso) {
   if(!cProdActual) {
-    // Show prompt
     const tbody = document.getElementById('c-mat-'+proceso);
-    if(tbody) tbody.innerHTML = '<tr><td colspan="6" style="padding:12px;color:var(--muted);font-size:.78rem;">Selecciona primero un producto en la pestaña Productos</td></tr>';
-    const lbl = document.getElementById('c-prod-lbl-'+proceso);
-    if(lbl) lbl.textContent = '—';
+    if(tbody) tbody.innerHTML = '<tr><td colspan="6" style="padding:12px;color:var(--muted);font-size:.78rem;">Selecciona un producto arriba para configurar este proceso.</td></tr>';
     cRenderMOD(proceso);
+    cUpdateProcTotal(proceso);
     return;
   }
-  const prod = uProducts.find(p => p.id === cProdActual);
-  const lbl = document.getElementById('c-prod-lbl-'+proceso);
-  if(lbl) lbl.textContent = prod ? prod.name : cProdActual;
 
   const mats = (costosData.procesos[cProdActual]||{})[proceso] || [];
   const tbody = document.getElementById('c-mat-'+proceso);
@@ -5075,6 +5186,7 @@ function cRenderProceso(proceso) {
     }).join('');
   }
   cRenderMOD(proceso);
+  cUpdateProcTotal(proceso);
 }
 
 function cRenderMOD(proceso) {
@@ -5178,8 +5290,6 @@ function cUpdateMargenPreview() {
 
 // ── Tab: RESULTADOS ───────────────────────────────────
 function cInitResultados() {
-  const lbl = document.getElementById('c-prod-lbl-resultados');
-  if(lbl) lbl.textContent = cProdActual ? (uProducts.find(p=>p.id===cProdActual)?.name || cProdActual) : '—';
   const cifEl = document.getElementById('c-cif-total');
   if(cifEl) cifEl.value = costosData.cifTotal || 3000000;
   const unEl = document.getElementById('c-unidades-mes');
@@ -6091,7 +6201,64 @@ function bzNavTo(name) {
   const btn = document.getElementById('bztab-' + name);
   if(btn) btn.classList.add('active');
   setSeccionHeader('Bezanilla', 'var(--accent)');
-  if(name === 'productos') bzRenderProductos();
+  if(name === 'productos')  bzRenderProductos();
+  if(name === 'reposicion') bzRenderReposicion();
+}
+
+// ── Render: Reposición (compras pendientes) ───────────
+function bzRenderReposicion() {
+  const el = document.getElementById('bz-repos-lista');
+  if(!el) return;
+  const ESTADOS = ['Pendiente', 'Pedido', 'Recibido'];
+  const ESTADO_COLOR = { Pendiente: 'var(--danger)', Pedido: '#f5a623', Recibido: 'var(--success)' };
+
+  // Products at or below minimum (including zero)
+  const bajos = products.filter(p => p.stock <= p.min);
+
+  if(!bajos.length) {
+    el.innerHTML = '<div class="empty"><div class="empty-icon">✅</div>Todos los materiales tienen stock suficiente.</div>';
+    return;
+  }
+
+  let html = '';
+  bajos.forEach(p => {
+    const ped   = bzPedidos[p.id] || {};
+    const estado = ped.estado || 'Pendiente';
+    const nota   = ped.nota   || '';
+    const fecha  = ped.fecha  ? ped.fecha.slice(0,10) : '';
+    const sinStock = p.stock === 0;
+    const badge = sinStock ? '<span style="background:var(--danger);color:#fff;font-size:.6rem;padding:1px 6px;border-radius:10px;margin-left:6px;">SIN STOCK</span>'
+                           : '<span style="background:#f5a623;color:#fff;font-size:.6rem;padding:1px 6px;border-radius:10px;margin-left:6px;">BAJO STOCK</span>';
+    html += `<div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:10px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;">
+        <div>
+          <span style="font-weight:700;font-size:.88rem;">${sanitizar(p.name)}</span>${badge}
+          <div style="font-size:.7rem;color:var(--muted);margin-top:2px;">
+            ID: ${sanitizar(p.id)} · Stock: <strong>${p.stock}</strong> / Mín: ${p.min}
+          </div>
+        </div>
+        <select onchange="bzActualizarPedido('${p.id}','estado',this.value)"
+          style="font-size:.75rem;padding:4px 8px;border-radius:7px;border:1px solid var(--border);
+                 background:var(--surface);color:${ESTADO_COLOR[estado]||'var(--text)'};font-weight:700;">
+          ${ESTADOS.map(e => `<option value="${e}" ${e===estado?'selected':''}>${e}</option>`).join('')}
+        </select>
+      </div>
+      <div style="margin-top:8px;display:flex;gap:8px;align-items:center;">
+        <input type="text" value="${sanitizar(nota)}" placeholder="Nota del pedido (proveedor, cantidad…)"
+          style="flex:1;font-size:.78rem;"
+          onchange="bzActualizarPedido('${p.id}','nota',this.value)">
+        ${fecha ? `<span style="font-size:.65rem;color:var(--muted);white-space:nowrap;">${fecha}</span>` : ''}
+      </div>
+    </div>`;
+  });
+  el.innerHTML = html;
+}
+
+function bzActualizarPedido(prodId, campo, valor) {
+  if(!bzPedidos[prodId]) bzPedidos[prodId] = { estado: 'Pendiente', nota: '', fecha: new Date().toISOString() };
+  bzPedidos[prodId][campo] = valor;
+  if(!bzPedidos[prodId].fecha) bzPedidos[prodId].fecha = new Date().toISOString();
+  lsGuardar();
 }
 
 // ── Render lista ─────────────────────────────────────
@@ -7583,6 +7750,7 @@ window._fbSubscribe = function() {
       if(data.proveedores) { proveedores = data.proveedores; localStorage.setItem(LS_PROVEEDORES, JSON.stringify(proveedores)); }
         if(data.costosData) { costosData={...costosData,...data.costosData}; localStorage.setItem(LS_COSTOS, JSON.stringify(costosData)); }
         if(data.bzProductos) { bzProductos = data.bzProductos; localStorage.setItem(LS_BEZANILLA, JSON.stringify(bzProductos)); }
+        if(data.bzPedidos)   { bzPedidos   = data.bzPedidos;   localStorage.setItem(LS_BZ_PEDIDOS, JSON.stringify(bzPedidos)); }
         if(data.vehFlota) { vehFlota = data.vehFlota; localStorage.setItem(LS_VEHICULOS, JSON.stringify(vehFlota)); }
       updateHeader();
       const active = document.querySelector('#seccion-materiales .page.active');
