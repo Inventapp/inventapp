@@ -554,6 +554,7 @@ tr:hover td{background:rgba(255,255,255,.02);}
   <button class="tab"        id="tab-movements"  onclick="navTo('movements')"  aria-label="Ver movimientos">📋 Movimientos</button>
   <button class="tab"        id="tab-resumen"    onclick="navTo('resumen')"    aria-label="Ver resumen">📊 Resumen</button>
   <button class="tab"        id="tab-proveedores" onclick="navTo('proveedores')" aria-label="Ver proveedores">🏭 Proveedores</button>
+  <button class="tab"        id="tab-reposicion"  onclick="navTo('reposicion')"  aria-label="Ver reposición">🛒 Reposición</button>
   <div class="gear-wrap" id="gear-mat-wrap" style="display:none">
     <button class="gear-btn" onclick="toggleGear('gear-mat')" aria-label="Gestión de materiales" aria-expanded="false" aria-controls="gear-mat">⚙ Gestión ▾</button>
     <div class="gear-dropdown" id="gear-mat">
@@ -859,6 +860,14 @@ tr:hover td{background:rgba(255,255,255,.02);}
   <!-- Lista de materiales agrupados por categoría -->
   <div id="prov-lista"></div>
 
+</div>
+
+<!-- MAT: REPOSICIÓN -->
+<div class="page" id="page-reposicion">
+  <div style="font-size:.72rem;color:var(--muted);margin-bottom:10px;">
+    Materiales del inventario que están en o por debajo del stock mínimo.
+  </div>
+  <div id="mat-repos-lista"></div>
 </div>
 
 </main>
@@ -1799,11 +1808,6 @@ function entrarSeccion(nombre) {
     document.getElementById('hdr-chip').style.display = 'none';
     setSeccionHeader('Vehículos','var(--accent)');
     vNavTo('flota');
-  } else if (nombre === 'bezanilla') {
-    document.getElementById('seccion-bezanilla').style.display = 'block';
-    document.getElementById('hdr-chip').style.display = 'none';
-    setSeccionHeader('Bezanilla','var(--accent)');
-    bzNavTo('reposicion');
   } else if (nombre === 'costos') {
     document.getElementById('seccion-costos').style.display = 'block';
     document.getElementById('hdr-chip').style.display = 'none';
@@ -1851,8 +1855,8 @@ function volverHome() {
 }
 
 // ── NAV ── (sin depender de `event`)
-const MAIN_TABS = ['scan','inventory','movements','resumen','proveedores'];
-const NAV_LABELS = {scan:'Materiales',inventory:'Inventario',movements:'Movimientos',resumen:'Resumen',proveedores:'Proveedores',workers:'Trabajadores',qrcodes:'Mis QRs','delete-products':'Eliminar productos'};
+const MAIN_TABS = ['scan','inventory','movements','resumen','proveedores','reposicion'];
+const NAV_LABELS = {scan:'Materiales',inventory:'Inventario',movements:'Movimientos',resumen:'Resumen',proveedores:'Proveedores',reposicion:'Reposición',workers:'Trabajadores',qrcodes:'Mis QRs','delete-products':'Eliminar productos'};
 function navTo(name) {
   closeMenu();
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
@@ -1872,6 +1876,7 @@ function navTo(name) {
   if (name === 'delete-products') renderDeleteProducts();
   if (name === 'resumen')     renderResumenMat();
   if (name === 'proveedores') renderProveedores();
+  if (name === 'reposicion') matRenderReposicion();
 }
 
 function toggleMenu() {
@@ -4256,223 +4261,159 @@ function uPrintAllQR() { window.print(); }
 
 // ── RESUMEN ────────────────────────────────────────────
 function uRenderResumen() {
+  _uRenderResumenImpl();
+}
+function _uRenderResumenImpl() {
   const container = document.getElementById('u-resumen-content');
-  const now    = new Date();
-  const hoy    = now.toISOString().split('T')[0];
-  const inicioMes = hoy.slice(0,7)+'-01';
-  const hace30    = new Date(now-30*86400000).toISOString().split('T')[0];
+  if(!container) return;
+  const now       = new Date();
+  const hace30    = new Date(now - 30*86400000).toISOString().split('T')[0];
+  const hace7     = new Date(now - 7*86400000).toISOString().split('T')[0];
 
-  const ventas    = uMovements.filter(m => m.type === 'Salida');
-  const ingresos  = uMovements.filter(m => m.type === 'Ingreso');
-  const ventasMes = ventas.filter(m => m.date >= inicioMes);
-  const ventas30  = ventas.filter(m => m.date >= hace30);
+  const ventas   = uMovements.filter(m => m.type === 'Salida');
+  const ventas30 = ventas.filter(m => m.date >= hace30);
+  const ventas7  = ventas.filter(m => m.date >= hace7);
+  const sal30    = ventas30.length;
+  const sal7     = ventas7.length;
+  const pdv      = sal30 / 30; // promedio diario ventas
 
-  const enStock  = uUnidades.filter(u => u.estado === 'En Stock').length;
-  const vendidas = uUnidades.filter(u => u.estado === 'Vendido').length;
-  const enProc   = uUnidades.filter(u => u.estado === 'En Proceso').length;
-
-  const salMes  = ventasMes.length;
-  const sal30   = ventas30.length;
-  const tasaRot = enStock > 0 ? (sal30 / enStock).toFixed(2) : '0.00';
-  const promDia = sal30 > 0 ? (sal30 / 30).toFixed(2) : '—';
+  const enStock   = uUnidades.filter(u => u.estado === 'En Stock').length;
+  const enProc    = uUnidades.filter(u => u.estado === 'En Proceso').length;
   const opsActivas = uOPs ? uOPs.filter(o => o.estado !== 'Completada').length : 0;
 
-  // Brutos (terminacion === 'Bruto')
-  const brutos = uProducts.filter(p => (p.terminacion||'').toLowerCase() === 'bruto');
-  const stockBruto = brutos.reduce((s,p) => s+uStockDe(p.id), 0);
-  // Terminados en stock (non-bruto)
-  const terminados = uProducts.filter(p => (p.terminacion||'').toLowerCase() !== 'bruto');
-  const stockTerminados = terminados.reduce((s,p) => s+uStockDe(p.id), 0);
+  const brutos       = uProducts.filter(p => (p.terminacion||'').toLowerCase() === 'bruto');
+  const terminados   = uProducts.filter(p => (p.terminacion||'').toLowerCase() !== 'bruto');
+  const stockBruto   = brutos.reduce((s,p) => s + uStockDe(p.id), 0);
+  const stockTerm    = terminados.reduce((s,p) => s + uStockDe(p.id), 0);
+  const minTotal     = terminados.reduce((s,p) => s + (p.min||0), 0);
+  const semsEst      = pdv > 0 ? Math.round(stockTerm/pdv/7) : null;
+  const capOk        = stockBruto >= minTotal;
+  const varSinStock  = uProducts.filter(p => uStockDe(p.id) === 0);
+  const varEnReorden = uProducts.filter(p => { const s = uStockDe(p.id); return s > 0 && s <= (p.min||0); });
 
-  // Semana estimada de stock (stock terminados / promedio diario ventas)
-  const pdv = sal30/30;
-  const serrmaEst = pdv > 0 ? Math.round(stockTerminados/pdv/7) : null;
-  const sermaEstLabel = serrmaEst === null ? '—' : serrmaEst + ' sem';
-
-  // Capacidad de respuesta: brutos suficientes para mínimos totales?
-  const minTotal = terminados.reduce((s,p) => s+(p.min||0), 0);
-  const capOk    = stockBruto >= minTotal;
-
-  // Variaciones sin stock
-  const varSinStock = uProducts.filter(p => uStockDe(p.id) === 0);
-
-  // C · Detalle por producto (agrupado por nombre, mismo orden que Inventario)
-  const CAT_ORDER_RES = ['estandar','especial','restos'];
-  // Build ordered list of unique names following inventory category order
-  const _seenNames = new Set();
-  const _orderedProds = [];
-  CAT_ORDER_RES.forEach(cat => {
+  // Ordered product groups (by category → name)
+  const _seen = new Set();
+  const _nombres = [];
+  ['estandar','especial','restos'].forEach(cat => {
     uProducts.filter(p => (p.categoria||'estandar') === cat).forEach(p => {
-      if(!_seenNames.has(p.name)){ _seenNames.add(p.name); _orderedProds.push(p.name); }
+      if(!_seen.has(p.name)){ _seen.add(p.name); _nombres.push(p.name); }
     });
   });
   const byName = {};
   uProducts.forEach(p => { if(!byName[p.name]) byName[p.name]=[]; byName[p.name].push(p); });
 
-  const detCards = _orderedProds.map((nombre, gi) => {
+  // ── helpers ─────────────────────────────────────────────
+  const kpi = (label, value, sub, color='var(--text)') =>
+    `<div class="card" style="padding:12px;">
+       <div style="font-family:'Space Mono',monospace;font-size:.57rem;color:var(--muted);letter-spacing:.06em;margin-bottom:3px;">${label}</div>
+       <div style="font-family:'Space Mono',monospace;font-size:1.35rem;font-weight:700;color:${color};line-height:1.1;">${value}</div>
+       ${sub ? `<div style="font-size:.6rem;color:var(--muted);margin-top:3px;">${sub}</div>` : ''}
+     </div>`;
+
+  // ── Alertas (shown at top if any) ─────────────────────────
+  const alertas = [];
+  if(varSinStock.length)
+    alertas.push(`<div style="display:flex;align-items:center;gap:8px;padding:9px 13px;background:rgba(255,71,87,.09);border-radius:8px;border:1px solid var(--danger);">
+      <span style="font-size:1rem;">🔴</span>
+      <div><span style="font-weight:700;font-size:.82rem;color:var(--danger);">${varSinStock.length} variación${varSinStock.length>1?'es':''} sin stock</span>
+      <span style="font-size:.7rem;color:var(--muted);"> · ${varSinStock.map(p=>sanitizar(p.name)).join(', ')}</span></div>
+    </div>`);
+  if(!capOk)
+    alertas.push(`<div style="display:flex;align-items:center;gap:8px;padding:9px 13px;background:rgba(255,165,2,.09);border-radius:8px;border:1px solid var(--warn);">
+      <span style="font-size:1rem;">⚠️</span>
+      <div style="font-size:.82rem;font-weight:700;color:var(--warn);">Materia prima insuficiente</div>
+      <div style="font-size:.7rem;color:var(--muted);">Brutos: ${stockBruto} / Mínimos totales: ${minTotal}</div>
+    </div>`);
+  if(varEnReorden.length)
+    alertas.push(`<div style="display:flex;align-items:center;gap:8px;padding:9px 13px;background:rgba(255,165,2,.06);border-radius:8px;border:1px solid var(--warn);">
+      <span style="font-size:1rem;">🔔</span>
+      <div><span style="font-weight:700;font-size:.82rem;color:var(--warn);">${varEnReorden.length} en punto de reorden</span>
+      <span style="font-size:.7rem;color:var(--muted);"> · stock bajo mínimo</span></div>
+    </div>`);
+
+  // ── Detalle por producto ─────────────────────────────────
+  const detCards = _nombres.map((nombre, gi) => {
     const skus = byName[nombre] || [];
-    const stockTotal = skus.reduce((s,p)=>s+uStockDe(p.id),0);
-    const vendidas30 = ventas30.filter(m=>skus.some(p=>p.id===m.skuId)).length;
-    const sinStockCount = skus.filter(p=>uStockDe(p.id)===0).length;
-    const statusLabel = sinStockCount > 0
-      ? `<span style="color:var(--danger);font-size:.7rem;font-weight:600;">${sinStockCount} sin stock</span>` : '';
+    const stockTotal  = skus.reduce((s,p)=>s+uStockDe(p.id),0);
+    const vend30      = ventas30.filter(m=>skus.some(p=>p.id===m.skuId)).length;
+    const sinStk      = skus.filter(p=>uStockDe(p.id)===0).length;
+    const totalVentas = ventas.filter(m=>skus.some(p=>p.id===m.skuId)).length;
 
-    // Bruto row for this product group
-    const brutoSkus = skus.filter(p=>(p.terminacion||'').toLowerCase()==='bruto');
-    const stockBrutoGrp = brutoSkus.reduce((s,p)=>s+uStockDe(p.id),0);
-    const minBruto = brutoSkus.reduce((s,p)=>s+(p.min||0),0);
-    const brutoRow = brutoSkus.length > 0 ? `
-      <div style="background:var(--surface2);border-radius:8px;padding:10px 12px;margin-bottom:8px;">
-        <div style="font-family:'Space Mono',monospace;font-size:.58rem;color:var(--muted);letter-spacing:.06em;margin-bottom:3px;">MATERIA PRIMA · BRUTO</div>
-        <div style="display:flex;justify-content:space-between;align-items:center;">
-          <div style="font-family:'Space Mono',monospace;font-size:1.3rem;font-weight:700;color:${stockBrutoGrp===0?'var(--danger)':stockBrutoGrp<=minBruto?'var(--warn)':'var(--accent)'};">${stockBrutoGrp} <span style="font-size:.7rem;">uds</span></div>
-          <div style="font-size:.65rem;color:var(--muted);">Min: ${minBruto}</div>
-        </div>
-      </div>` : '';
+    const brutoSkus   = skus.filter(p=>(p.terminacion||'').toLowerCase()==='bruto');
+    const stBruto     = brutoSkus.reduce((s,p)=>s+uStockDe(p.id),0);
+    const minBruto    = brutoSkus.reduce((s,p)=>s+(p.min||0),0);
 
-    // Terminadas rows (non-bruto)
     const termSkus = skus
       .filter(p=>(p.terminacion||'').toLowerCase()!=='bruto')
-      .sort((a,b) => (a.terminacion||'').localeCompare(b.terminacion||'','es'));
+      .sort((a,b)=>(a.terminacion||'').localeCompare(b.terminacion||'','es'));
+
+    const brutoRow = brutoSkus.length ? `
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:9px 13px;background:var(--surface2);border-radius:8px;margin-bottom:8px;">
+        <div>
+          <div style="font-family:'Space Mono',monospace;font-size:.55rem;color:var(--muted);margin-bottom:2px;">BRUTO (MATERIA PRIMA)</div>
+          <div style="font-family:'Space Mono',monospace;font-size:1.1rem;font-weight:700;color:${stBruto===0?'var(--danger)':stBruto<=minBruto?'var(--warn)':'var(--accent)'};">${stBruto} <span style="font-size:.65rem;">uds</span></div>
+        </div>
+        <div style="text-align:right;font-size:.62rem;color:var(--muted);">Mín: ${minBruto}</div>
+      </div>` : '';
+
     const termRows = termSkus.map(p => {
       const s = uStockDe(p.id);
-      const bc = s===0?'var(--danger)':s<=(p.min||0)?'var(--warn)':'var(--accent)';
+      const pct = p.min > 0 ? Math.round(s/p.min*100) : 100;
+      const sc = s===0?'var(--danger)':s<=(p.min||0)?'var(--warn)':'var(--accent)';
+      const badgeTxt = s===0 ? 'SIN STOCK' : s<=(p.min||0) ? 'REORDEN' : null;
       const vendP30 = ventas30.filter(m=>m.skuId===p.id).length;
-      const badge = s===0
-        ? '<span style="font-size:.6rem;font-weight:700;color:var(--danger);">● CRÍTICO</span>'
-        : s<=(p.min||0)
-        ? '<span style="font-size:.6rem;font-weight:700;color:var(--warn);">● REORDEN</span>'
-        : '';
-      return `<div style="padding:8px 0;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;">
-        <div>
-          <span style="font-size:.72rem;padding:2px 7px;border-radius:5px;background:${uTermBg(p.terminacion)};color:${uTermColor(p.terminacion)};font-family:'Space Mono',monospace;">${p.terminacion}</span>
-          ${badge}
-          <div style="font-size:.6rem;color:var(--muted);margin-top:2px;">Min: ${p.min||0} · ${Math.round((s/Math.max(p.min||1,1))*100)}% del mínimo</div>
+      return `<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);">
+        <div style="flex:1;min-width:0;">
+          <div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;">
+            <span style="font-size:.73rem;padding:2px 7px;border-radius:5px;background:${uTermBg(p.terminacion)};color:${uTermColor(p.terminacion)};font-family:'Space Mono',monospace;">${p.terminacion}</span>
+            ${badgeTxt?`<span style="font-family:'Space Mono',monospace;font-size:.57rem;font-weight:700;color:${sc};">${badgeTxt}</span>`:''}
+          </div>
+          <div style="font-size:.6rem;color:var(--muted);margin-top:3px;">Min: ${p.min||0} · ${pct}% · ${vendP30} vendidos 30d</div>
         </div>
-        <div style="text-align:right;">
-          <div style="font-family:'Space Mono',monospace;font-size:1.05rem;font-weight:700;color:${bc};">${s}</div>
-          <div style="font-size:.6rem;color:var(--muted);">${vendP30} vendidos 30d</div>
-        </div>
+        <div style="font-family:'Space Mono',monospace;font-size:1rem;font-weight:700;color:${sc};flex-shrink:0;margin-left:10px;">${s}</div>
       </div>`;
     }).join('');
 
-    // Mini stats
-    const miniStats = `
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-top:10px;">
-        <div style="background:var(--surface2);border-radius:7px;padding:8px;text-align:center;">
-          <div style="font-family:'Space Mono',monospace;font-size:.95rem;font-weight:700;color:var(--accent2);">${ventas.filter(m=>skus.some(p=>p.id===m.skuId)).length}</div>
-          <div style="font-size:.58rem;color:var(--muted);">Total ventas</div>
-        </div>
-        <div style="background:var(--surface2);border-radius:7px;padding:8px;text-align:center;">
-          <div style="font-family:'Space Mono',monospace;font-size:.95rem;font-weight:700;">${vendidas30}</div>
-          <div style="font-size:.58rem;color:var(--muted);">Últimas 30d</div>
-        </div>
-        <div style="background:var(--surface2);border-radius:7px;padding:8px;text-align:center;">
-          <div style="font-family:'Space Mono',monospace;font-size:.95rem;font-weight:700;">${stockTotal}</div>
-          <div style="font-size:.58rem;color:var(--muted);">Este mes</div>
-        </div>
-      </div>`;
-
     const cardId = 'udet-' + gi;
-    return `<div class="card" style="padding:0;margin-bottom:10px;overflow:hidden;">
-      <div onclick="uToggleDetCard('${cardId}')" style="padding:13px 16px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;">
-        <div>
-          <div style="font-weight:700;font-size:.9rem;">🪦 ${nombre}</div>
-          <div style="font-size:.65rem;color:var(--muted);margin-top:2px;">Stock total ${stockTotal} uds · Vendidos 30d: ${vendidas30}</div>
+    const hasCrit = sinStk > 0;
+    return `<div class="card" style="padding:0;margin-bottom:8px;overflow:hidden;${hasCrit?'border-color:var(--danger)':''}">
+      <div onclick="uToggleDetCard('${cardId}')" style="padding:12px 14px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:8px;">
+        <div style="flex:1;min-width:0;">
+          <div style="font-weight:700;font-size:.88rem;">🪦 ${sanitizar(nombre)}</div>
+          <div style="font-size:.62rem;color:var(--muted);margin-top:2px;">
+            ${stockTotal} en stock
+            <span style="margin:0 4px;color:var(--border);">·</span>
+            ${vend30} vendidos 30d
+            <span style="margin:0 4px;color:var(--border);">·</span>
+            ${totalVentas} total
+            ${hasCrit?`<span style="color:var(--danger);font-weight:700;margin-left:4px;">${sinStk} sin stock</span>`:''}
+          </div>
         </div>
-        <div style="display:flex;align-items:center;gap:8px;">
-          ${statusLabel}
-          <span id="${cardId}-arrow" style="color:var(--accent);font-size:.8rem;transition:transform .2s;">▼</span>
-        </div>
+        <span id="${cardId}-arrow" style="color:var(--muted);font-size:.75rem;flex-shrink:0;">▼</span>
       </div>
-      <div id="${cardId}-body" style="display:none;padding:0 14px 14px;">
-        ${brutoRow}
-        ${termSkus.length > 0 ? `<div style="font-family:'Space Mono',monospace;font-size:.58rem;color:var(--muted);letter-spacing:.06em;margin-bottom:6px;">VARIACIONES TERMINADAS</div>${termRows}` : ''}
-        ${miniStats}
+      <div id="${cardId}-body" style="display:none;padding:0 13px 12px;border-top:1px solid var(--border);">
+        <div style="margin-top:10px;">${brutoRow}</div>
+        ${termSkus.length ? `<div style="font-family:'Space Mono',monospace;font-size:.55rem;color:var(--muted);letter-spacing:.06em;margin:0 0 4px;">TERMINADAS</div>${termRows}` : ''}
       </div>
     </div>`;
   }).join('');
 
+  // ── Render ──────────────────────────────────────────────
   container.innerHTML = `
-    <!-- A · DESEMPEÑO COMERCIAL -->
-    <div style="font-family:'Space Mono',monospace;font-size:.62rem;color:var(--muted);letter-spacing:.1em;margin-bottom:10px;">A · DESEMPEÑO COMERCIAL</div>
+    ${alertas.length ? `<div style="display:flex;flex-direction:column;gap:6px;margin-bottom:14px;">${alertas.join('')}</div>` : ''}
+
+    <!-- KPIs principales: 4 en cuadrícula 2×2 -->
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
-      <div class="card" style="padding:13px;">
-        <div style="font-family:'Space Mono',monospace;font-size:.58rem;color:var(--muted);letter-spacing:.06em;margin-bottom:4px;">VENTAS ESTE MES</div>
-        <div style="font-family:'Space Mono',monospace;font-size:1.5rem;font-weight:700;color:var(--accent);">${salMes} <span style="font-size:.7rem;">uds</span></div>
-        <div style="font-size:.62rem;color:var(--muted);margin-top:2px;">${ventasMes.length} registros</div>
-      </div>
-      <div class="card" style="padding:13px;">
-        <div style="font-family:'Space Mono',monospace;font-size:.58rem;color:var(--muted);letter-spacing:.06em;margin-bottom:4px;">TASA DE ROTACIÓN</div>
-        <div style="font-family:'Space Mono',monospace;font-size:1.5rem;font-weight:700;color:${parseFloat(tasaRot)>0.5?'var(--accent)':parseFloat(tasaRot)>0?'var(--warn)':'var(--danger)'};">${tasaRot}x</div>
-        <div style="font-size:.62rem;color:var(--muted);margin-top:2px;">ventas 30d / stock actual</div>
-      </div>
+      ${kpi('VENDIDOS 30 DÍAS', sal30+' <span style="font-size:.7rem;">uds</span>', pdv>0?'~'+pdv.toFixed(1)+' por día':'sin ventas', 'var(--accent)')}
+      ${kpi('ESTA SEMANA', sal7+' <span style="font-size:.7rem;">uds</span>', opsActivas+' OP'+(opsActivas!==1?'s':'')+' activas')}
     </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:18px;">
-      <div class="card" style="padding:13px;">
-        <div style="font-family:'Space Mono',monospace;font-size:.58rem;color:var(--muted);letter-spacing:.06em;margin-bottom:4px;">VENDIDOS 30 DÍAS</div>
-        <div style="font-family:'Space Mono',monospace;font-size:1.5rem;font-weight:700;">${sal30} <span style="font-size:.7rem;">uds</span></div>
-        <div style="font-size:.62rem;color:var(--muted);margin-top:2px;">${ventas30.length} registros</div>
-      </div>
-      <div class="card" style="padding:13px;">
-        <div style="font-family:'Space Mono',monospace;font-size:.58rem;color:var(--muted);letter-spacing:.06em;margin-bottom:4px;">PROMEDIO DIARIO VENTA</div>
-        <div style="font-family:'Space Mono',monospace;font-size:1.5rem;font-weight:700;">${promDia} <span style="font-size:.65rem;color:var(--muted);">uds/día</span></div>
-        <div style="font-size:.62rem;color:var(--muted);margin-top:2px;">base 30 días</div>
-      </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px;">
+      ${kpi('TERMINADOS EN STOCK', stockTerm+' <span style="font-size:.7rem;">uds</span>', semsEst!==null?semsEst+' sem estimadas':'sin datos', stockTerm===0?'var(--danger)':'var(--accent)')}
+      ${kpi('BRUTO DISPONIBLE', stockBruto+' <span style="font-size:.7rem;">uds</span>', enProc+' en proceso OPs', stockBruto===0?'var(--danger)':capOk?'var(--accent)':'var(--warn)')}
     </div>
 
-    <!-- B · PRODUCCIÓN -->
-    <div style="font-family:'Space Mono',monospace;font-size:.62rem;color:var(--muted);letter-spacing:.1em;margin-bottom:10px;">B · PRODUCCIÓN</div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
-      <div class="card" style="padding:13px;">
-        <div style="font-family:'Space Mono',monospace;font-size:.58rem;color:var(--muted);letter-spacing:.06em;margin-bottom:4px;">MATERIA PRIMA (BRUTO)</div>
-        <div style="font-family:'Space Mono',monospace;font-size:1.5rem;font-weight:700;color:${stockBruto===0?'var(--danger)':'var(--accent)'};">${stockBruto} <span style="font-size:.7rem;">uds</span></div>
-        <div style="font-size:.62rem;color:var(--muted);margin-top:2px;">disponibles para producir</div>
-      </div>
-      <div class="card" style="padding:13px;">
-        <div style="font-family:'Space Mono',monospace;font-size:.58rem;color:var(--muted);letter-spacing:.06em;margin-bottom:4px;">EN PROCESO (OPs)</div>
-        <div style="font-family:'Space Mono',monospace;font-size:1.5rem;font-weight:700;color:${enProc>0?'var(--warn)':'var(--muted)'};">${enProc} <span style="font-size:.7rem;">uds</span></div>
-        <div style="font-size:.62rem;color:var(--muted);margin-top:2px;">${opsActivas} OPs activas</div>
-      </div>
-    </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;">
-      <div class="card" style="padding:13px;">
-        <div style="font-family:'Space Mono',monospace;font-size:.58rem;color:var(--muted);letter-spacing:.06em;margin-bottom:4px;">TERMINADOS EN STOCK</div>
-        <div style="font-family:'Space Mono',monospace;font-size:1.5rem;font-weight:700;color:${stockTerminados===0?'var(--danger)':'var(--accent)'};">${stockTerminados} <span style="font-size:.7rem;">uds</span></div>
-        <div style="font-size:.62rem;color:var(--muted);margin-top:2px;">listos para vender</div>
-      </div>
-      <div class="card" style="padding:13px;">
-        <div style="font-family:'Space Mono',monospace;font-size:.58rem;color:var(--muted);letter-spacing:.06em;margin-bottom:4px;">SEMANA ESTIMADA</div>
-        <div style="font-family:'Space Mono',monospace;font-size:1.5rem;font-weight:700;">${sermaEstLabel}</div>
-        <div style="font-size:.62rem;color:var(--muted);margin-top:2px;">${pdv>0?'al ritmo actual':'sin datos suficientes'}</div>
-      </div>
-    </div>
-
-    <!-- Alertas -->
-    <div class="card" style="padding:12px 15px;margin-bottom:8px;border-color:${capOk?'var(--border)':'var(--warn)'};">
-      <div style="display:flex;align-items:center;gap:10px;justify-content:space-between;">
-        <div style="display:flex;align-items:center;gap:8px;">
-          <span>${capOk?'✅':'⚠️'}</span>
-          <div>
-            <div style="font-weight:700;font-size:.82rem;color:${capOk?'var(--accent)':'var(--warn)'};">Capacidad de Respuesta</div>
-            <div style="font-size:.65rem;color:var(--muted);">${capOk?'Brutos suficientes para cubrir mínimos':'Brutos insuficientes para cubrir todos los mínimos'}</div>
-          </div>
-        </div>
-      </div>
-    </div>
-    ${varSinStock.length > 0 ? `
-    <div class="card" style="padding:12px 15px;margin-bottom:18px;border-color:var(--danger);">
-      <div style="display:flex;align-items:center;gap:10px;">
-        <span style="color:var(--danger);font-size:1.1rem;">🔴</span>
-        <div style="flex:1;">
-          <div style="font-weight:700;font-size:.82rem;color:var(--danger);">${varSinStock.length} variaciones en riesgo</div>
-          <div style="font-size:.65rem;color:var(--muted);">Sin stock · Toca para ver el detalle</div>
-        </div>
-      </div>
-    </div>` : `<div style="margin-bottom:18px;"></div>`}
-
-    <!-- C · DETALLE POR PRODUCTO -->
-    <div style="font-family:'Space Mono',monospace;font-size:.62rem;color:var(--muted);letter-spacing:.1em;margin-bottom:10px;">C · DETALLE POR PRODUCTO</div>
+    <!-- Detalle por producto -->
+    <div style="font-family:'Space Mono',monospace;font-size:.6rem;color:var(--muted);letter-spacing:.08em;margin-bottom:8px;">DETALLE POR PRODUCTO</div>
     ${detCards || '<div class="empty"><div class="empty-icon">⚰️</div>Sin productos registrados</div>'}
   `;
 }
@@ -6044,26 +5985,12 @@ function vEliminarEvento(patente, idx) {
 
 
 // ════════════════════════════════════════════════════
-// BEZANILLA — Productos de compra (oficina, limpieza, etc.)
+// REPOSICIÓN — Materiales en o bajo stock mínimo
 // ════════════════════════════════════════════════════
 
-let _bzEditId = null;
-
-// ── Nav ──────────────────────────────────────────────
-function bzNavTo(name) {
-  document.querySelectorAll('#seccion-bezanilla .page').forEach(p => p.classList.remove('active'));
-  document.getElementById('bzpage-' + name).classList.add('active');
-  document.querySelectorAll('#seccion-bezanilla nav .tab').forEach(t => t.classList.remove('active'));
-  const btn = document.getElementById('bztab-' + name);
-  if(btn) btn.classList.add('active');
-  setSeccionHeader('Bezanilla', 'var(--accent)');
-  if(name === 'productos')  bzRenderProductos();
-  if(name === 'reposicion') bzRenderReposicion();
-}
-
 // ── Render: Reposición (compras pendientes) ───────────
-function bzRenderReposicion() {
-  const el = document.getElementById('bz-repos-lista');
+function matRenderReposicion() {
+  const el = document.getElementById('mat-repos-lista');
   if(!el) return;
   const ESTADOS = ['Pendiente', 'Pedido', 'Recibido'];
   const ESTADO_COLOR = { Pendiente: 'var(--danger)', Pedido: '#f5a623', Recibido: 'var(--success)' };
@@ -6093,7 +6020,7 @@ function bzRenderReposicion() {
             ID: ${sanitizar(p.id)} · Stock: <strong>${p.stock}</strong> / Mín: ${p.min}
           </div>
         </div>
-        <select onchange="bzActualizarPedido('${p.id}','estado',this.value)"
+        <select onchange="matActualizarPedido('${p.id}','estado',this.value)"
           style="font-size:.75rem;padding:4px 8px;border-radius:7px;border:1px solid var(--border);
                  background:var(--surface);color:${ESTADO_COLOR[estado]||'var(--text)'};font-weight:700;">
           ${ESTADOS.map(e => `<option value="${e}" ${e===estado?'selected':''}>${e}</option>`).join('')}
@@ -6102,7 +6029,7 @@ function bzRenderReposicion() {
       <div style="margin-top:8px;display:flex;gap:8px;align-items:center;">
         <input type="text" value="${sanitizar(nota)}" placeholder="Nota del pedido (proveedor, cantidad…)"
           style="flex:1;font-size:.78rem;"
-          onchange="bzActualizarPedido('${p.id}','nota',this.value)">
+          onchange="matActualizarPedido('${p.id}','nota',this.value)">
         ${fecha ? `<span style="font-size:.65rem;color:var(--muted);white-space:nowrap;">${fecha}</span>` : ''}
       </div>
     </div>`;
@@ -6110,201 +6037,11 @@ function bzRenderReposicion() {
   el.innerHTML = html;
 }
 
-function bzActualizarPedido(prodId, campo, valor) {
+function matActualizarPedido(prodId, campo, valor) {
   if(!bzPedidos[prodId]) bzPedidos[prodId] = { estado: 'Pendiente', nota: '', fecha: new Date().toISOString() };
   bzPedidos[prodId][campo] = valor;
   if(!bzPedidos[prodId].fecha) bzPedidos[prodId].fecha = new Date().toISOString();
   lsGuardar();
-}
-
-// ── Render lista ─────────────────────────────────────
-function bzRenderProductos() {
-  const lista   = document.getElementById('bz-lista');
-  const q       = (document.getElementById('bz-search')?.value || '').toLowerCase().trim();
-  const catFilt = document.getElementById('bz-cat-filter')?.value || '';
-  if(!lista) return;
-
-  // Populate category filter
-  const allCats = [...new Set(bzProductos.map(p => p.cat).filter(Boolean))].sort((a,b) => a.localeCompare(b,'es'));
-  const selFilt = document.getElementById('bz-cat-filter');
-  if(selFilt) {
-    const cur = selFilt.value;
-    selFilt.innerHTML = '<option value="">Todas las categorías</option>' +
-      allCats.map(c => `<option value="${c}" ${c===cur?'selected':''}>${c}</option>`).join('');
-    selFilt.value = cur;
-  }
-
-  if(!bzProductos.length) {
-    lista.innerHTML = '<div class="empty"><div class="empty-icon">🛒</div>Sin productos. Agrega el primero con + Producto.</div>';
-    return;
-  }
-
-  // Filter
-  const filtrados = bzProductos.filter(p => {
-    if(catFilt && p.cat !== catFilt) return false;
-    if(!q) return true;
-    return (p.nombre||'').toLowerCase().includes(q) ||
-           (p.cat||'').toLowerCase().includes(q) ||
-           (p.proveedor||'').toLowerCase().includes(q);
-  });
-
-  if(!filtrados.length) {
-    lista.innerHTML = '<div class="empty"><div class="empty-icon">🔍</div>Sin resultados</div>';
-    return;
-  }
-
-  // Group by category
-  const byCat = {};
-  filtrados.forEach(p => {
-    const c = p.cat || 'Sin categoría';
-    if(!byCat[c]) byCat[c] = [];
-    byCat[c].push(p);
-  });
-
-  let html = '';
-  Object.entries(byCat).sort((a,b) => a[0].localeCompare(b[0],'es')).forEach(([cat, prods]) => {
-    html += `<div style="font-family:'Space Mono',monospace;font-size:.6rem;color:var(--muted);
-      letter-spacing:.08em;padding:10px 4px 4px;">${sanitizar(cat).toUpperCase()}</div>`;
-
-    prods.sort((a,b) => (a.nombre||'').localeCompare(b.nombre||'','es')).forEach(p => {
-      const stockColor = p.stock === 0 ? 'var(--danger)' : p.stock <= (p.min||0) ? 'var(--warn)' : 'var(--accent)';
-      const pct = (p.min||0) > 0 ? Math.min(100, (p.stock / p.min) * 100) : (p.stock > 0 ? 100 : 0);
-      const valorTotal = (p.precio||0) * (p.stock||0);
-
-      html += `<div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;
-        padding:11px 14px;margin-bottom:8px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
-
-        <!-- Nombre + proveedor -->
-        <div style="flex:1;min-width:180px;">
-          <div style="font-weight:600;font-size:.85rem;">${sanitizar(p.nombre)}</div>
-          <div style="font-size:.7rem;color:var(--muted);margin-top:2px;">
-            ${p.proveedor ? '🏭 ' + sanitizar(p.proveedor) : ''}
-            ${p.unidad ? ' · ' + sanitizar(p.unidad) : ''}
-            ${p.notas ? '<span style="color:var(--muted);font-style:italic;"> · ' + sanitizar(p.notas) + '</span>' : ''}
-          </div>
-        </div>
-
-        <!-- Stock -->
-        <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
-          <div style="min-width:40px;text-align:right;">
-            <span style="font-family:'Space Mono',monospace;font-weight:700;color:${stockColor};">${p.stock||0}</span>
-            ${p.unidad ? '<span style="font-size:.62rem;color:var(--muted);"> ' + sanitizar(p.unidad) + '</span>' : ''}
-          </div>
-          <div class="stock-bar" style="width:50px;">
-            <div class="stock-bar-fill" style="width:${pct}%;background:${stockColor};"></div>
-          </div>
-          <span style="font-size:.65rem;color:var(--muted);">mín ${p.min||0}</span>
-        </div>
-
-        <!-- Precio + valor -->
-        <div style="text-align:right;flex-shrink:0;">
-          <div style="font-family:'Space Mono',monospace;font-size:.82rem;color:var(--accent2);">
-            ${p.precio ? '$' + fmtNum(p.precio) : '—'}
-          </div>
-          ${valorTotal > 0 ? '<div style="font-size:.65rem;color:var(--muted);">Total: $' + fmtNum(valorTotal) + '</div>' : ''}
-        </div>
-
-        <!-- Acciones -->
-        <div style="display:flex;gap:4px;flex-shrink:0;">
-          <button class="btn btn-secondary" style="font-size:.65rem;padding:4px 9px;"
-            onclick="bzEditar('${p.id}')">✏</button>
-          <button class="btn btn-secondary" style="font-size:.65rem;padding:4px 9px;color:var(--danger);"
-            onclick="bzEliminar('${p.id}')">🗑</button>
-        </div>
-      </div>`;
-    });
-  });
-
-  lista.innerHTML = html;
-}
-
-// ── Modal: abrir nuevo ───────────────────────────────
-function bzAbrirModal(prodId) {
-  _bzEditId = null;
-  document.getElementById('bz-modal-title').textContent = 'Agregar producto';
-  document.getElementById('bz-form-nombre').value   = '';
-  document.getElementById('bz-form-cat').value      = '';
-  document.getElementById('bz-form-proveedor').value= '';
-  document.getElementById('bz-form-precio').value   = '';
-  document.getElementById('bz-form-unidad').value   = '';
-  document.getElementById('bz-form-stock').value    = '';
-  document.getElementById('bz-form-min').value      = '';
-  document.getElementById('bz-form-notas').value    = '';
-  // Populate category datalist
-  const dl = document.getElementById('bz-cat-datalist');
-  if(dl) dl.innerHTML = [...new Set(bzProductos.map(p=>p.cat).filter(Boolean))]
-    .sort().map(c=>`<option value="${c}">`).join('');
-  document.getElementById('modal-bz-producto').style.display = 'flex';
-  setTimeout(() => document.getElementById('bz-form-nombre').focus(), 80);
-}
-
-// ── Modal: editar ────────────────────────────────────
-function bzEditar(id) {
-  const p = bzProductos.find(x => x.id === id);
-  if(!p) return;
-  _bzEditId = id;
-  document.getElementById('bz-modal-title').textContent = 'Editar producto';
-  document.getElementById('bz-form-nombre').value    = p.nombre   || '';
-  document.getElementById('bz-form-cat').value       = p.cat      || '';
-  document.getElementById('bz-form-proveedor').value = p.proveedor|| '';
-  document.getElementById('bz-form-precio').value    = p.precio   || '';
-  document.getElementById('bz-form-unidad').value    = p.unidad   || '';
-  document.getElementById('bz-form-stock').value     = p.stock    ?? '';
-  document.getElementById('bz-form-min').value       = p.min      ?? '';
-  document.getElementById('bz-form-notas').value     = p.notas    || '';
-  const dl = document.getElementById('bz-cat-datalist');
-  if(dl) dl.innerHTML = [...new Set(bzProductos.map(x=>x.cat).filter(Boolean))]
-    .sort().map(c=>`<option value="${c}">`).join('');
-  document.getElementById('modal-bz-producto').style.display = 'flex';
-}
-
-// ── Cerrar modal ─────────────────────────────────────
-function bzCerrarModal() {
-  document.getElementById('modal-bz-producto').style.display = 'none';
-  _bzEditId = null;
-}
-
-// ── Guardar ──────────────────────────────────────────
-function bzGuardar() {
-  const nombre = document.getElementById('bz-form-nombre').value.trim();
-  if(!nombre) return showToast('El nombre es obligatorio', 'error');
-
-  const data = {
-    nombre,
-    cat:       document.getElementById('bz-form-cat').value.trim(),
-    proveedor: document.getElementById('bz-form-proveedor').value.trim(),
-    precio:    parseFloat(document.getElementById('bz-form-precio').value) || 0,
-    unidad:    document.getElementById('bz-form-unidad').value.trim(),
-    stock:     parseFloat(document.getElementById('bz-form-stock').value) || 0,
-    min:       parseFloat(document.getElementById('bz-form-min').value) || 0,
-    notas:     document.getElementById('bz-form-notas').value.trim(),
-    fecha:     new Date().toISOString().split('T')[0],
-  };
-
-  if(_bzEditId) {
-    const idx = bzProductos.findIndex(x => x.id === _bzEditId);
-    if(idx >= 0) bzProductos[idx] = { ...bzProductos[idx], ...data };
-    showToast('✓ Producto actualizado', 'success');
-  } else {
-    data.id = 'BZ-' + Date.now();
-    bzProductos.push(data);
-    showToast('✓ ' + nombre + ' agregado', 'success');
-  }
-
-  lsGuardar();
-  bzCerrarModal();
-  bzRenderProductos();
-}
-
-// ── Eliminar ─────────────────────────────────────────
-function bzEliminar(id) {
-  const _p = bzProductos.find(x => x.id === id);
-  const nombre = _p ? _p.nombre : id;
-  if(!confirm('¿Eliminar "' + nombre + '"?')) return;
-  bzProductos = bzProductos.filter(x => x.id !== id);
-  lsGuardar();
-  bzRenderProductos();
-  showToast('"' + nombre + '" eliminado', 'error');
 }
 
 
@@ -7095,16 +6832,18 @@ function eliminarTrabajador(i){
 // ── RESUMEN MATERIALES ──
 function renderResumenMat(){
   const now = new Date();
-  const hoy = now.toISOString().split('T')[0];
   const hace30 = new Date(now-30*86400000).toISOString().split('T')[0];
+  const hace7  = new Date(now-7*86400000).toISOString().split('T')[0];
+  const hoy    = now.toISOString().split('T')[0];
   const inicioMes = hoy.slice(0,7)+'-01';
 
   const salidas  = movements.filter(m=>m.type==='Salida');
   const ingresos = movements.filter(m=>m.type==='Ingreso');
   const sal30    = salidas.filter(m=>m.date>=hace30);
+  const sal7     = salidas.filter(m=>m.date>=hace7);
   const salMes   = salidas.filter(m=>m.date>=inicioMes);
 
-  // ── Stock global ──
+  // Stock global
   const sinStock = products.filter(p=>p.stock===0).length;
   const enAlerta = products.filter(p=>p.stock>0&&p.stock<=p.min).length;
   const ok       = products.filter(p=>p.stock>p.min).length;
@@ -7113,26 +6852,26 @@ function renderResumenMat(){
   const saludColor = pctSalud>=80?'var(--accent)':pctSalud>=50?'var(--warn)':'var(--danger)';
   const valorStock = products.reduce((s,p)=>s+p.stock*pValorUnitario(p),0);
 
-  // ── CPD global ──
+  // CPD global
   const sal30qty = sal30.reduce((s,m)=>s+m.qty,0);
+  const sal7qty  = sal7.reduce((s,m)=>s+m.qty,0);
   const cpd      = sal30qty/30;
 
-  // ── KPIs por producto ──
+  // KPIs por producto (para detalle + reorden)
   const prodData = products.map(p=>{
-    const pSal    = salidas.filter(m=>m.prodId===p.id);
-    const pSal30  = pSal.filter(m=>m.date>=hace30).reduce((s,m)=>s+m.qty,0);
-    const pSalMes = pSal.filter(m=>m.date>=inicioMes).reduce((s,m)=>s+m.qty,0);
-    const pCpd    = pSal30/30;
-    const pDias   = pCpd>0 ? Math.round(p.stock/pCpd) : null;
+    const pSal   = salidas.filter(m=>m.prodId===p.id);
+    const pSal30 = pSal.filter(m=>m.date>=hace30).reduce((s,m)=>s+m.qty,0);
+    const pSalMes= pSal.filter(m=>m.date>=inicioMes).reduce((s,m)=>s+m.qty,0);
+    const pCpd   = pSal30/30;
+    const pDias  = pCpd>0 ? Math.round(p.stock/pCpd) : null;
     const pReorden= pCpd>0 ? Math.ceil(pCpd*7) : null;
-    const pRot    = p.stock>0 ? (pSal30/p.stock).toFixed(2) : '0.00';
-    const badge   = p.stock===0 ? {t:'CRÍTICO',c:'var(--danger)',bg:'rgba(255,71,87,.12)'}
-                  : (p.stock<=p.min||(pDias!==null&&pDias<=7)) ? {t:'REORDEN',c:'var(--warn)',bg:'rgba(255,165,2,.12)'}
-                  : {t:'ESTABLE',c:'var(--accent)',bg:'rgba(0,229,160,.1)'};
+    const pRot   = p.stock>0 ? (pSal30/p.stock).toFixed(2) : '0.00';
+    const badge  = p.stock===0 ? {t:'CRÍTICO',c:'var(--danger)',bg:'rgba(255,71,87,.12)'}
+                 : (p.stock<=p.min||(pDias!==null&&pDias<=7)) ? {t:'REORDEN',c:'var(--warn)',bg:'rgba(255,165,2,.12)'}
+                 : {t:'ESTABLE',c:'var(--accent)',bg:'rgba(0,229,160,.1)'};
     return {p,pSal30,pSalMes,pCpd,pDias,pReorden,pRot,badge};
   });
 
-  // CAMBIO 4: Ordenar por autonomía — crítico primero, sin CPD al final
   const prodOrdenado = [...prodData].sort((a,b)=>{
     if(a.pDias===null&&b.pDias===null) return 0;
     if(a.pDias===null) return 1;
@@ -7140,34 +6879,33 @@ function renderResumenMat(){
     return a.pDias-b.pDias;
   });
 
-  // CAMBIO 1: Productos que necesitan reorden por nombre
-  const necesitanReorden = prodData.filter(x=>x.pReorden!==null&&x.p.stock<=x.pReorden);
+  const necesitanReorden = prodData.filter(x=>x.p.stock===0||(x.pReorden!==null&&x.p.stock<=x.pReorden));
+  const peor = prodOrdenado.find(x=>x.pDias!==null);
+  const diasWorst = peor?.pDias??null;
+  const diasColor = diasWorst===null?'var(--muted)':diasWorst<=5?'var(--danger)':diasWorst<=14?'var(--warn)':'var(--accent)';
 
-  // CAMBIO 2: Último ingreso con nombre de producto
+  // Último ingreso
   const ultIngreso = [...ingresos].sort((a,b)=>b.date.localeCompare(a.date))[0];
-  const ingPrevio  = [...ingresos].filter(m=>m.prodId===ultIngreso?.prodId&&m.date<(ultIngreso?.date||'')).sort((a,b)=>b.date.localeCompare(a.date))[0];
+  const ingPrevio  = ultIngreso ? [...ingresos].filter(m=>m.prodId===ultIngreso.prodId&&m.date<ultIngreso.date).sort((a,b)=>b.date.localeCompare(a.date))[0] : null;
   const precioCambio = ultIngreso&&ingPrevio&&ingPrevio.cost>0 ? ((ultIngreso.cost-ingPrevio.cost)/ingPrevio.cost*100).toFixed(1) : null;
   const ultProd = ultIngreso ? (products.find(p=>p.id===ultIngreso.prodId)?.name||ultIngreso.prodName||'') : '';
-  const ultProdCorto = ultProd.length>12 ? ultProd.slice(0,12)+'…' : ultProd;
+  const ultProdCorto = ultProd.length>14?ultProd.slice(0,14)+'…':ultProd;
 
-  // Top consumidores — con valor monetario y datos por producto
+  // Top consumidores
   const workerMap={};
   salidas.forEach(m=>{
     if(!m.worker)return;
     const prod=products.find(p=>p.id===m.prodId);
-    const unitCost=prod?prod.cost:0;
-    const valor=(m.cost||unitCost||0)*m.qty;
+    const valor=(m.cost||prod?.cost||0)*m.qty;
     if(!workerMap[m.worker])workerMap[m.worker]={qty:0,count:0,valor:0,porProd:{}};
     workerMap[m.worker].qty+=m.qty;
     workerMap[m.worker].count++;
     workerMap[m.worker].valor+=valor;
-    // por producto
     const pn=m.prodName||m.prodId;
     if(!workerMap[m.worker].porProd[pn])workerMap[m.worker].porProd[pn]={qty:0,valor:0};
     workerMap[m.worker].porProd[pn].qty+=m.qty;
     workerMap[m.worker].porProd[pn].valor+=valor;
   });
-  // Calcular promedio de consumo por trabajador (para detectar desviación)
   const prodAvg={};
   products.forEach(p=>{
     const pSal=salidas.filter(m=>m.prodId===p.id&&m.worker);
@@ -7178,179 +6916,144 @@ function renderResumenMat(){
   });
   const topWorkers=Object.entries(workerMap).sort((a,b)=>b[1].valor-a[1].valor).slice(0,5);
 
-  // CAMBIO 3: Frecuencia = días transcurridos desde primer retiro / total retiros
-  let freqDias=null, freqLabel='';
-  if(salidas.length>=2){
-    const primero=[...salidas].sort((a,b)=>a.date.localeCompare(b.date))[0];
-    const diasTranscurridos=Math.max(1,(now-new Date(primero.date))/86400000);
-    freqDias=(diasTranscurridos/salidas.length).toFixed(1);
-    freqLabel=parseFloat(freqDias)<1?'⚠ Varios retiros/día':parseFloat(freqDias)<=2?'Frecuencia alta':'Frecuencia normal';
-  } else if(salidas.length===1){
-    freqDias='<1'; freqLabel='Solo 1 retiro registrado';
-  }
-
-  // Consumo semanal
+  // Consumo semanal (6 semanas)
   const semanas=[];
-  for(let i=7;i>=0;i--){
+  for(let i=5;i>=0;i--){
     const ini=new Date(now-(i*7+6)*86400000).toISOString().split('T')[0];
     const fin=new Date(now-i*7*86400000).toISOString().split('T')[0];
-    semanas.push({label:'S'+(8-i),qty:salidas.filter(m=>m.date>=ini&&m.date<=fin).reduce((s,m)=>s+m.qty,0)});
+    semanas.push({label:'S'+(6-i),qty:salidas.filter(m=>m.date>=ini&&m.date<=fin).reduce((s,m)=>s+m.qty,0)});
   }
   const maxSem=Math.max(...semanas.map(s=>s.qty),1);
-
-  // Peor producto (menor autonomía)
-  const peor = prodOrdenado.find(x=>x.pDias!==null);
-  const diasWorst   = peor?.pDias??null;
-  const diasColor   = diasWorst===null?'var(--muted)':diasWorst<=5?'var(--danger)':diasWorst<=14?'var(--warn)':'var(--accent)';
-  const diasLabel2  = diasWorst===null?'Sin consumo registrado':diasWorst<=5?'⛔ CRÍTICO':diasWorst<=14?'⚠ Atención':'✔ Estable';
 
   document.getElementById('mat-res-summary').innerHTML='';
   document.getElementById('mat-res-content').innerHTML=`
 
-  <div style="margin-bottom:10px;">
-    <div style="font-family:'Space Mono',monospace;font-size:.65rem;color:var(--muted);letter-spacing:.08em;margin-bottom:8px;">ESTADO DE ALERTA</div>
-    <div style="display:grid;grid-template-columns:auto 1fr;gap:10px;margin-bottom:10px;">
+  <!-- ALERTAS (solo si hay problemas) -->
+  ${sinStock>0||enAlerta>0 ? `
+  <div style="display:flex;flex-direction:column;gap:5px;margin-bottom:12px;">
+    ${sinStock>0 ? `<div style="display:flex;align-items:center;gap:8px;padding:9px 13px;background:rgba(255,71,87,.09);border-radius:8px;border:1px solid var(--danger);">
+      <span>🔴</span>
+      <div><span style="font-weight:700;font-size:.82rem;color:var(--danger);">${sinStock} producto${sinStock>1?'s':''} sin stock</span>
+      <span style="font-size:.68rem;color:var(--muted);margin-left:4px;">${products.filter(p=>p.stock===0).map(p=>sanitizar(p.name)).slice(0,3).join(', ')}${sinStock>3?'…':''}</span></div>
+    </div>` : ''}
+    ${enAlerta>0 ? `<div style="display:flex;align-items:center;gap:8px;padding:9px 13px;background:rgba(255,165,2,.08);border-radius:8px;border:1px solid var(--warn);">
+      <span>🟡</span>
+      <div><span style="font-weight:700;font-size:.82rem;color:var(--warn);">${enAlerta} con stock bajo</span>
+      <span style="font-size:.68rem;color:var(--muted);margin-left:4px;">${products.filter(p=>p.stock>0&&p.stock<=p.min).map(p=>sanitizar(p.name)).slice(0,3).join(', ')}${enAlerta>3?'…':''}</span></div>
+    </div>` : ''}
+  </div>` : `
+  <div style="display:flex;align-items:center;gap:8px;padding:9px 13px;background:rgba(0,229,160,.08);border-radius:8px;border:1px solid var(--accent);margin-bottom:12px;">
+    <span>✅</span><span style="font-size:.82rem;font-weight:700;color:var(--accent);">Todos los materiales sobre su mínimo</span>
+  </div>`}
 
-      <!-- CÍRCULO: % Salud (consejo pro) -->
-      <div class="card" style="padding:14px;display:flex;flex-direction:column;align-items:center;justify-content:center;min-width:128px;">
-        <div style="position:relative;width:88px;height:88px;">
-          <svg width="88" height="88" viewBox="0 0 90 90" style="position:absolute;top:0;left:0;">
-            ${donutArc(90,ok,enAlerta,sinStock,total)}
-          </svg>
-          <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;">
-            <div style="font-family:'Space Mono',monospace;font-size:1.15rem;font-weight:700;color:${saludColor};line-height:1;">${pctSalud}%</div>
-            <div style="font-size:.5rem;color:var(--muted);">SALUD</div>
-          </div>
-        </div>
-        <div style="width:100%;margin-top:8px;display:flex;flex-direction:column;gap:2px;">
-          <div style="display:flex;justify-content:space-between;font-size:.62rem;"><span style="color:var(--accent);">● OK</span><b>${ok}</b></div>
-          <div style="display:flex;justify-content:space-between;font-size:.62rem;"><span style="color:var(--warn);">● Alerta</span><b>${enAlerta}</b></div>
-          <div style="display:flex;justify-content:space-between;font-size:.62rem;"><span style="color:var(--danger);">● Crítico</span><b>${sinStock}</b></div>
-        </div>
-      </div>
-
-      <!-- Peor autonomía + CPD -->
-      <div style="display:flex;flex-direction:column;gap:8px;">
-        <div class="card" style="padding:13px;border-color:${diasColor};flex:1;">
-          <div style="font-size:.58rem;color:var(--muted);font-family:'Space Mono',monospace;margin-bottom:2px;">MENOR AUTONOMÍA</div>
-          <div style="font-family:'Space Mono',monospace;font-size:1.9rem;font-weight:700;color:${diasColor};line-height:1;">${diasWorst!==null?diasWorst:'∞'}<span style="font-size:.75rem;"> días</span></div>
-          <div style="font-size:.68rem;color:${diasColor};margin-top:2px;">${diasLabel2}</div>
-          ${peor?`<div style="font-size:.62rem;color:var(--muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${peor.p.name}</div>`:''}
-        </div>
-        <div class="card" style="padding:11px;flex:1;">
-          <div style="font-size:.58rem;color:var(--muted);font-family:'Space Mono',monospace;margin-bottom:2px;">CONSUMO DIARIO (CPD)</div>
-          <div style="font-family:'Space Mono',monospace;font-size:1.05rem;font-weight:700;">${cpd>0?cpd.toFixed(1):'—'} <span style="font-size:.65rem;color:var(--muted);">uds/día</span></div>
-        </div>
-      </div>
+  <!-- KPIs PRINCIPALES: cuadrícula 2×3 compacta -->
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:12px;">
+    <div class="card" style="padding:11px;border-color:${saludColor};">
+      <div style="font-family:'Space Mono',monospace;font-size:.55rem;color:var(--muted);letter-spacing:.06em;margin-bottom:2px;">SALUD INVENTARIO</div>
+      <div style="font-family:'Space Mono',monospace;font-size:1.4rem;font-weight:700;color:${saludColor};line-height:1;">${pctSalud}%</div>
+      <div style="font-size:.6rem;color:var(--muted);margin-top:3px;">${ok} OK · ${enAlerta} ⚠ · ${sinStock} 🔴</div>
     </div>
-
-    <!-- CAMBIO 1: Panel reorden por producto -->
-    ${necesitanReorden.length>0?`
-    <div class="card" style="padding:0;overflow:hidden;border-color:var(--warn);margin-bottom:10px;">
-      <div onclick="toggleReorden()" style="padding:12px 15px;cursor:pointer;display:flex;align-items:center;gap:10px;">
-        <span style="font-size:1.2rem;">🔔</span>
-        <div style="flex:1;">
-          <div style="font-weight:700;font-size:.85rem;color:var(--warn);">${necesitanReorden.length} producto${necesitanReorden.length!==1?'s':''} necesita${necesitanReorden.length===1?'':'n'} reorden</div>
-          <div style="font-size:.65rem;color:var(--muted);">Toca para ver qué comprar hoy</div>
-        </div>
-        <span id="reorden-arrow">⬇</span>
-      </div>
-      <div id="reorden-list" style="display:none;border-top:1px solid var(--border);">
-        ${necesitanReorden.map(x=>`
-        <div style="padding:10px 15px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;gap:8px;">
-          <div>
-            <div style="font-weight:600;font-size:.82rem;">${x.p.name}</div>
-            <div style="font-size:.65rem;color:var(--muted);">Stock: <span style="color:var(--danger);font-weight:700;">${x.p.stock}</span> · Punto reorden: ${x.pReorden} uds</div>
-          </div>
-          <div style="text-align:right;flex-shrink:0;">
-            <div style="font-family:'Space Mono',monospace;font-size:.78rem;color:var(--accent);font-weight:700;">~${Math.ceil((x.pCpd||0)*30)} uds</div>
-            <div style="font-size:.6rem;color:var(--muted);">para 30 días</div>
-          </div>
-        </div>`).join('')}
-      </div>
-    </div>`:`
-    <div class="card" style="padding:10px 14px;border-color:var(--accent);margin-bottom:10px;display:flex;align-items:center;gap:8px;">
-      <span>✅</span><span style="font-size:.82rem;color:var(--accent);">Todos los productos sobre su punto de reorden</span>
-    </div>`}
-  </div>
-
-  <!-- FINANZAS OPERATIVAS -->
-  <div style="margin-bottom:10px;">
-    <div style="font-family:'Space Mono',monospace;font-size:.65rem;color:var(--muted);letter-spacing:.08em;margin-bottom:8px;">FINANZAS OPERATIVAS</div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
-      <div class="card" style="padding:12px;">
-        <div style="font-size:.6rem;color:var(--muted);font-family:'Space Mono',monospace;margin-bottom:2px;">VALOR EN BODEGA</div>
-        <div style="font-family:'Space Mono',monospace;font-size:1.05rem;font-weight:700;color:var(--accent2);">$${fmtNum(valorStock)}</div>
-        <div style="font-size:.6rem;color:var(--muted);margin-top:1px;">Stock × Costo unit.</div>
-      </div>
-      <!-- CAMBIO 2: precio + nombre producto -->
-      <div class="card" style="padding:12px;">
-        <div style="font-size:.6rem;color:var(--muted);font-family:'Space Mono',monospace;margin-bottom:2px;">ÚLTIMO INGRESO</div>
-        <div style="font-family:'Space Mono',monospace;font-size:1.05rem;font-weight:700;">${ultIngreso?'$'+fmtNum(ultIngreso.cost):'—'}</div>
-        ${ultProdCorto?`<div style="font-size:.63rem;color:var(--accent2);font-family:'Space Mono',monospace;margin-top:1px;">${ultProdCorto}</div>`:''}
-        ${precioCambio!==null?`<div style="font-size:.6rem;margin-top:2px;color:${parseFloat(precioCambio)>0?'var(--danger)':parseFloat(precioCambio)<0?'var(--accent)':'var(--muted)'};">${parseFloat(precioCambio)>0?'▲':'▼'} ${Math.abs(precioCambio)}% vs compra anterior</div>`:''}
-      </div>
+    <div class="card" style="padding:11px;">
+      <div style="font-family:'Space Mono',monospace;font-size:.55rem;color:var(--muted);letter-spacing:.06em;margin-bottom:2px;">VALOR EN BODEGA</div>
+      <div style="font-family:'Space Mono',monospace;font-size:1.1rem;font-weight:700;color:var(--accent2);">$${fmtNum(Math.round(valorStock))}</div>
+      <div style="font-size:.6rem;color:var(--muted);margin-top:3px;">stock × costo unit.</div>
     </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-      <div class="card" style="padding:12px;">
-        <div style="font-size:.6rem;color:var(--muted);font-family:'Space Mono',monospace;margin-bottom:2px;">SALIDAS ESTE MES</div>
-        <div style="font-family:'Space Mono',monospace;font-size:1.05rem;font-weight:700;color:var(--danger);">${salMes.reduce((s,m)=>s+m.qty,0)} <span style="font-size:.65rem;">uds</span></div>
-        <div style="font-size:.6rem;color:var(--muted);margin-top:1px;">${salMes.length} retiros</div>
-      </div>
-      <!-- CAMBIO 3: frecuencia con nueva fórmula -->
-      <div class="card" style="padding:12px;">
-        <div style="font-size:.6rem;color:var(--muted);font-family:'Space Mono',monospace;margin-bottom:2px;">FRECUENCIA RETIRO</div>
-        <div style="font-family:'Space Mono',monospace;font-size:1.05rem;font-weight:700;">${freqDias!==null?'c/'+freqDias+'d':'—'}</div>
-        <div style="font-size:.6rem;color:var(--muted);margin-top:1px;">${freqLabel||'Sin retiros aún'}</div>
-      </div>
+    <div class="card" style="padding:11px;border-color:${diasColor};">
+      <div style="font-family:'Space Mono',monospace;font-size:.55rem;color:var(--muted);letter-spacing:.06em;margin-bottom:2px;">MENOR AUTONOMÍA</div>
+      <div style="font-family:'Space Mono',monospace;font-size:1.4rem;font-weight:700;color:${diasColor};line-height:1;">${diasWorst!==null?diasWorst+'d':'∞'}</div>
+      ${peor?`<div style="font-size:.58rem;color:var(--muted);margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${sanitizar(peor.p.name)}</div>`:''}
+    </div>
+    <div class="card" style="padding:11px;">
+      <div style="font-family:'Space Mono',monospace;font-size:.55rem;color:var(--muted);letter-spacing:.06em;margin-bottom:2px;">SALIDAS ESTA SEMANA</div>
+      <div style="font-family:'Space Mono',monospace;font-size:1.4rem;font-weight:700;">${sal7qty} <span style="font-size:.65rem;">uds</span></div>
+      <div style="font-size:.6rem;color:var(--muted);margin-top:3px;">${salMes.reduce((s,m)=>s+m.qty,0)} este mes</div>
+    </div>
+    <div class="card" style="padding:11px;">
+      <div style="font-family:'Space Mono',monospace;font-size:.55rem;color:var(--muted);letter-spacing:.06em;margin-bottom:2px;">CONSUMO DIARIO (CPD)</div>
+      <div style="font-family:'Space Mono',monospace;font-size:1.1rem;font-weight:700;">${cpd>0?cpd.toFixed(1)+' uds':'—'}</div>
+      <div style="font-size:.6rem;color:var(--muted);margin-top:3px;">base 30 días</div>
+    </div>
+    <div class="card" style="padding:11px;">
+      <div style="font-family:'Space Mono',monospace;font-size:.55rem;color:var(--muted);letter-spacing:.06em;margin-bottom:2px;">ÚLTIMO INGRESO</div>
+      <div style="font-family:'Space Mono',monospace;font-size:1rem;font-weight:700;">${ultIngreso?'$'+fmtNum(ultIngreso.cost):'—'}</div>
+      ${ultProdCorto?`<div style="font-size:.6rem;color:var(--accent2);margin-top:2px;">${sanitizar(ultProdCorto)}${precioCambio!==null?` <span style="color:${parseFloat(precioCambio)>0?'var(--danger)':'var(--accent)'};">${parseFloat(precioCambio)>0?'▲':'▼'}${Math.abs(precioCambio)}%</span>`:''}</div>`:''}
     </div>
   </div>
 
-  <!-- COMPORTAMIENTO -->
-  <div style="margin-bottom:10px;">
-    <div style="font-family:'Space Mono',monospace;font-size:.65rem;color:var(--muted);letter-spacing:.08em;margin-bottom:8px;">COMPORTAMIENTO</div>
-    <div class="card" style="padding:13px;margin-bottom:10px;">
-      <div style="font-weight:600;font-size:.82rem;margin-bottom:10px;">📊 Consumo semanal <span style="font-size:.65rem;color:var(--muted);font-weight:400;">(últimas 8 semanas)</span></div>
-      <div style="display:flex;align-items:flex-end;gap:5px;height:76px;">
-        ${semanas.map(s=>{
-          const h=Math.max(4,Math.round(s.qty/maxSem*68));
-          const isMax=s.qty>0&&s.qty===Math.max(...semanas.map(x=>x.qty));
-          const c=s.qty===0?'var(--surface2)':isMax?'var(--accent)':'var(--accent2)';
-          return `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;">
-            <div style="font-family:'Space Mono',monospace;font-size:.52rem;color:var(--muted);">${s.qty||''}</div>
-            <div style="width:100%;height:${h}px;background:${c};border-radius:3px 3px 0 0;"></div>
-            <div style="font-family:'Space Mono',monospace;font-size:.52rem;color:var(--muted);">${s.label}</div>
-          </div>`;
-        }).join('')}
+  <!-- REORDEN (colapsable si hay items) -->
+  ${necesitanReorden.length>0?`
+  <div class="card" style="padding:0;overflow:hidden;border-color:var(--warn);margin-bottom:10px;">
+    <div onclick="toggleReorden()" style="padding:11px 14px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;">
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span>🛒</span>
+        <div>
+          <div style="font-weight:700;font-size:.84rem;color:var(--warn);">${necesitanReorden.length} producto${necesitanReorden.length!==1?'s':''} para comprar</div>
+          <div style="font-size:.62rem;color:var(--muted);">Toca para ver el plan de compra</div>
+        </div>
       </div>
+      <span id="reorden-arrow" style="color:var(--warn);">▼</span>
     </div>
-    <div class="card" style="padding:0;overflow:hidden;">
-      <div style="padding:11px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:8px;">
-        <div style="font-weight:600;font-size:.82rem;">👷 Top consumidores</div>
-        <select id="mat-top-filtro" onchange="matFiltrarTop()" style="font-size:.68rem;padding:3px 6px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text);max-width:130px;">
-          <option value="">— Todos los productos —</option>
-          ${products.map(p=>`<option value="${p.id}">${p.name}</option>`).join('')}
-        </select>
-      </div>
-      <div style="padding:8px 14px;border-bottom:1px solid var(--border);display:flex;gap:8px;">
+    <div id="reorden-list" style="display:none;border-top:1px solid var(--border);">
+      ${necesitanReorden.map(x=>`
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:9px 14px;border-bottom:1px solid var(--border);gap:8px;">
+        <div>
+          <div style="font-weight:600;font-size:.82rem;">${sanitizar(x.p.name)}</div>
+          <div style="font-size:.63rem;color:var(--muted);">Stock: <span style="color:${x.p.stock===0?'var(--danger)':'var(--warn)'};font-weight:700;">${x.p.stock}</span> · Mín: ${x.p.min}</div>
+        </div>
+        <div style="text-align:right;flex-shrink:0;">
+          <div style="font-family:'Space Mono',monospace;font-size:.8rem;color:var(--accent);font-weight:700;">~${Math.ceil((x.pCpd||0)*30)} uds</div>
+          <div style="font-size:.58rem;color:var(--muted);">para 30 días</div>
+        </div>
+      </div>`).join('')}
+    </div>
+  </div>`:``}
+
+  <!-- CONSUMO SEMANAL (gráfico de barras compacto) -->
+  <div class="card" style="padding:12px;margin-bottom:10px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+      <div style="font-weight:600;font-size:.82rem;">📊 Consumo semanal</div>
+      <div style="font-family:'Space Mono',monospace;font-size:.6rem;color:var(--muted);">últimas 6 semanas</div>
+    </div>
+    <div style="display:flex;align-items:flex-end;gap:6px;height:68px;">
+      ${semanas.map(s=>{
+        const h=s.qty===0?4:Math.max(6,Math.round(s.qty/maxSem*58));
+        const isMax=s.qty>0&&s.qty===maxSem;
+        return `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;">
+          <div style="font-family:'Space Mono',monospace;font-size:.52rem;color:var(--muted);">${s.qty||''}</div>
+          <div style="width:100%;height:${h}px;background:${s.qty===0?'var(--surface2)':isMax?'var(--accent)':'var(--accent2)'};border-radius:3px 3px 0 0;"></div>
+          <div style="font-family:'Space Mono',monospace;font-size:.5rem;color:var(--muted);">${s.label}</div>
+        </div>`;
+      }).join('')}
+    </div>
+  </div>
+
+  <!-- TOP CONSUMIDORES -->
+  <div class="card" style="padding:0;overflow:hidden;margin-bottom:10px;">
+    <div style="padding:11px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;">
+      <div style="font-weight:600;font-size:.82rem;">👷 Top consumidores</div>
+      <div style="display:flex;align-items:center;gap:6px;">
         <button onclick="matSortTop('valor')" id="mat-sort-valor" style="font-family:'Space Mono',monospace;font-size:.6rem;padding:3px 8px;border-radius:5px;border:1px solid var(--accent);background:var(--accent);color:var(--bg);cursor:pointer;">$ Valor</button>
         <button onclick="matSortTop('qty')" id="mat-sort-qty" style="font-family:'Space Mono',monospace;font-size:.6rem;padding:3px 8px;border-radius:5px;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;">Uds</button>
+        <select id="mat-top-filtro" onchange="matFiltrarTop()" style="font-size:.68rem;padding:3px 6px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text);max-width:120px;">
+          <option value="">Todos</option>
+          ${products.map(p=>`<option value="${p.id}">${sanitizar(p.name)}</option>`).join('')}
+        </select>
       </div>
-      <div id="mat-top-lista" style="padding:4px 0;">
-        ${renderTopWorkers(topWorkers,'valor',workerMap,prodAvg,'')}
-      </div>
-      ${!topWorkers.length?`<div class="empty" style="padding:18px 0;"><div class="empty-icon">👷</div>Sin retiros registrados</div>`:''}
     </div>
+    <div id="mat-top-lista" style="padding:4px 0;">
+      ${renderTopWorkers(topWorkers,'valor',workerMap,prodAvg,'')}
+    </div>
+    ${!topWorkers.length?`<div class="empty" style="padding:16px 0;"><div class="empty-icon">👷</div>Sin retiros registrados</div>`:''}
   </div>
 
-  <!-- CAMBIO 4+5: DETALLE POR PRODUCTO ordenado, con badges -->
+  <!-- DETALLE POR PRODUCTO (colapsable) -->
   <div class="card" style="padding:0;overflow:hidden;">
-    <div onclick="toggleMatResProductos()" style="padding:13px 17px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;">
+    <div onclick="toggleMatResProductos()" style="padding:12px 14px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;">
       <div>
-        <div class="card-title" style="margin:0;">📋 Detalle por producto</div>
-        <div style="font-size:.62rem;color:var(--muted);margin-top:1px;">Ordenado por autonomía — más crítico primero</div>
+        <div class="card-title" style="margin:0;font-size:.85rem;">📋 Detalle por producto</div>
+        <div style="font-size:.6rem;color:var(--muted);margin-top:2px;">Ordenado por autonomía · más crítico primero</div>
       </div>
-      <span id="mat-res-prod-arrow" style="color:var(--muted);">⬇</span>
+      <span id="mat-res-prod-arrow" style="color:var(--muted);">▼</span>
     </div>
     <div id="mat-res-prod-body" style="display:none;">
       ${prodOrdenado.map((x,i)=>{
@@ -7359,30 +7062,30 @@ function renderResumenMat(){
         const pDiasColor=pDias===null?'var(--muted)':pDias<=5?'var(--danger)':pDias<=14?'var(--warn)':'var(--accent)';
         return `
         <div style="border-top:1px solid var(--border);">
-          <div onclick="toggleMatResProd('mpr-${i}')" style="padding:11px 15px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:8px;">
+          <div onclick="toggleMatResProd('mpr-${i}')" style="padding:10px 14px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:8px;">
             <div style="flex:1;min-width:0;">
-              <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:2px;">
-                <span style="font-weight:600;font-size:.85rem;">${p.name}</span>
-                <span style="font-family:'Space Mono',monospace;font-size:.58rem;padding:1px 6px;border-radius:4px;background:${badge.bg};color:${badge.c};white-space:nowrap;">${badge.t}</span>
+              <div style="display:flex;align-items:center;gap:5px;margin-bottom:2px;flex-wrap:wrap;">
+                <span style="font-weight:600;font-size:.84rem;">${sanitizar(p.name)}</span>
+                <span style="font-family:'Space Mono',monospace;font-size:.56rem;padding:1px 6px;border-radius:4px;background:${badge.bg};color:${badge.c};">${badge.t}</span>
               </div>
-              <div style="font-family:'Space Mono',monospace;font-size:.6rem;color:var(--muted);">${p.id}</div>
+              <div style="font-family:'Space Mono',monospace;font-size:.58rem;color:var(--muted);">${p.id} · ${sanitizar(p.cat||'—')}</div>
             </div>
             <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
               <div style="text-align:right;">
-                <div style="font-family:'Space Mono',monospace;font-size:.8rem;font-weight:700;color:${sc};">${p.stock} uds</div>
-                ${pDias!==null?`<div style="font-size:.6rem;color:${pDiasColor};">${pDias}d</div>`:'<div style="font-size:.6rem;color:var(--muted);">sin consumo</div>'}
+                <div style="font-family:'Space Mono',monospace;font-size:.78rem;font-weight:700;color:${sc};">${p.stock}</div>
+                ${pDias!==null?`<div style="font-size:.58rem;color:${pDiasColor};">${pDias}d</div>`:`<div style="font-size:.58rem;color:var(--muted);">—</div>`}
               </div>
-              <span style="color:var(--muted);" id="mpr-${i}-arrow">⬇</span>
+              <span id="mpr-${i}-arrow" style="color:var(--muted);font-size:.7rem;">▼</span>
             </div>
           </div>
-          <div id="mpr-${i}" style="display:none;padding:0 14px 12px;background:var(--surface2);">
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
-              <div style="background:var(--bg);border-radius:7px;padding:8px 10px;"><div style="font-size:.6rem;color:var(--muted);">CPD (30d)</div><div style="font-family:'Space Mono',monospace;font-size:.85rem;font-weight:700;">${pCpd>0?pCpd.toFixed(2):'-'} uds/d</div></div>
-              <div style="background:var(--bg);border-radius:7px;padding:8px 10px;"><div style="font-size:.6rem;color:var(--muted);">Días autonomía</div><div style="font-family:'Space Mono',monospace;font-size:.85rem;font-weight:700;color:${pDiasColor};">${pDias!==null?pDias+'d':'∞'}</div></div>
-              <div style="background:var(--bg);border-radius:7px;padding:8px 10px;"><div style="font-size:.6rem;color:var(--muted);">Salidas mes</div><div style="font-family:'Space Mono',monospace;font-size:.85rem;font-weight:700;">${pSalMes} uds</div></div>
-              <div style="background:var(--bg);border-radius:7px;padding:8px 10px;"><div style="font-size:.6rem;color:var(--muted);">Punto reorden</div><div style="font-family:'Space Mono',monospace;font-size:.85rem;font-weight:700;color:var(--warn);">${pReorden!==null?pReorden+' uds':'—'}</div></div>
-              <div style="background:var(--bg);border-radius:7px;padding:8px 10px;"><div style="font-size:.6rem;color:var(--muted);">Valor bodega</div><div style="font-family:'Space Mono',monospace;font-size:.85rem;font-weight:700;color:var(--accent2);">$${fmtNum(p.stock*pValorUnitario(p))}</div></div>
-              <div style="background:var(--bg);border-radius:7px;padding:8px 10px;"><div style="font-size:.6rem;color:var(--muted);">Rotación 30d</div><div style="font-family:'Space Mono',monospace;font-size:.85rem;font-weight:700;">${pRot}x</div></div>
+          <div id="mpr-${i}" style="display:none;padding:0 13px 11px;background:var(--surface2);">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-top:2px;">
+              <div style="background:var(--bg);border-radius:7px;padding:7px 9px;"><div style="font-size:.58rem;color:var(--muted);">CPD (30d)</div><div style="font-family:'Space Mono',monospace;font-size:.82rem;font-weight:700;">${pCpd>0?pCpd.toFixed(2):'-'} uds/d</div></div>
+              <div style="background:var(--bg);border-radius:7px;padding:7px 9px;"><div style="font-size:.58rem;color:var(--muted);">Autonomía</div><div style="font-family:'Space Mono',monospace;font-size:.82rem;font-weight:700;color:${pDiasColor};">${pDias!==null?pDias+'d':'∞'}</div></div>
+              <div style="background:var(--bg);border-radius:7px;padding:7px 9px;"><div style="font-size:.58rem;color:var(--muted);">Salidas mes</div><div style="font-family:'Space Mono',monospace;font-size:.82rem;font-weight:700;">${pSalMes} uds</div></div>
+              <div style="background:var(--bg);border-radius:7px;padding:7px 9px;"><div style="font-size:.58rem;color:var(--muted);">Reorden sugerido</div><div style="font-family:'Space Mono',monospace;font-size:.82rem;font-weight:700;color:var(--warn);">${pReorden!==null?pReorden+' uds':'—'}</div></div>
+              <div style="background:var(--bg);border-radius:7px;padding:7px 9px;"><div style="font-size:.58rem;color:var(--muted);">Valor bodega</div><div style="font-family:'Space Mono',monospace;font-size:.82rem;font-weight:700;color:var(--accent2);">$${fmtNum(p.stock*pValorUnitario(p))}</div></div>
+              <div style="background:var(--bg);border-radius:7px;padding:7px 9px;"><div style="font-size:.58rem;color:var(--muted);">Rotación 30d</div><div style="font-family:'Space Mono',monospace;font-size:.82rem;font-weight:700;">${pRot}x</div></div>
             </div>
           </div>
         </div>`;
@@ -7597,10 +7300,10 @@ window._fbSubscribe = function() {
       }
       if(data.proveedores) { proveedores = data.proveedores; localStorage.setItem(LS_PROVEEDORES, JSON.stringify(proveedores)); }
         if(data.costosData) { costosData={...costosData,...data.costosData}; localStorage.setItem(LS_COSTOS, JSON.stringify(costosData)); }
-        if(data.bzProductos) { bzProductos = data.bzProductos; localStorage.setItem(LS_BEZANILLA, JSON.stringify(bzProductos)); }
         if(data.bzPedidos)   { bzPedidos   = data.bzPedidos;   localStorage.setItem(LS_BZ_PEDIDOS, JSON.stringify(bzPedidos)); }
         if(data.vehFlota) { vehFlota = data.vehFlota; localStorage.setItem(LS_VEHICULOS, JSON.stringify(vehFlota)); }
       updateHeader();
+      // Refresh active materiales views
       const active = document.querySelector('#seccion-materiales .page.active');
       if(active) {
         const id = active.id.replace('page-','');
@@ -7608,6 +7311,23 @@ window._fbSubscribe = function() {
         if(id === 'movements')   renderMovements();
         if(id === 'resumen')     renderResumenMat();
         if(id === 'workers')     renderWorkers();
+      }
+      // Refresh active vehiculos views (vehFlota lives in inventario/materiales doc)
+      if(data.vehFlota) {
+        const activeV = document.querySelector('#seccion-vehiculos .page.active');
+        if(activeV) {
+          const vid = activeV.id.replace('vpage-','');
+          if(vid === 'flota')   vRenderFlota();
+          if(vid === 'resumen') vRenderResumen();
+        }
+      }
+      // Refresh trabajadores section if active (workers comes from materiales doc)
+      if(data.workers && document.getElementById('seccion-trabajadores').style.display !== 'none') {
+        renderTrabajadoresGlobal();
+      }
+      // Refresh costos section if active (costosData comes from materiales doc)
+      if(data.costosData && document.getElementById('seccion-costos').style.display !== 'none') {
+        cRenderWizard();
       }
     }
   );
@@ -8209,67 +7929,6 @@ function menuUrnEditarOPs() {
     <div style="display:flex;gap:8px;">
       <button class="btn btn-primary" style="flex:1;" onclick="provGuardar()">✓ Guardar</button>
       <button class="btn btn-secondary" style="flex:1;" onclick="provCerrarModal()">Cancelar</button>
-    </div>
-  </div>
-</div>
-
-<!-- MODAL BEZANILLA PRODUCTO -->
-<div class="modal-overlay" id="modal-bz-producto" onclick="if(event.target===this)bzCerrarModal()" style="display:none;">
-  <div class="modal-box" style="max-width:480px;width:94%;">
-    <div class="modal-title" id="bz-modal-title">Agregar producto</div>
-
-    <!-- Nombre + categoría -->
-    <div class="form-row" style="margin-bottom:10px;">
-      <div>
-        <label style="font-size:.72rem;color:var(--muted);">Nombre del producto</label>
-        <input type="text" id="bz-form-nombre" placeholder="ej: Resma A4, Detergente" style="width:100%;margin-top:4px;">
-      </div>
-      <div>
-        <label style="font-size:.72rem;color:var(--muted);">Categoría</label>
-        <input type="text" id="bz-form-cat" placeholder="ej: Oficina, Limpieza" style="width:100%;margin-top:4px;" list="bz-cat-datalist">
-        <datalist id="bz-cat-datalist"></datalist>
-      </div>
-    </div>
-
-    <!-- Proveedor + precio -->
-    <div class="form-row" style="margin-bottom:10px;">
-      <div>
-        <label style="font-size:.72rem;color:var(--muted);">Proveedor</label>
-        <input type="text" id="bz-form-proveedor" placeholder="ej: Sodimac, Proveedor X" style="width:100%;margin-top:4px;">
-      </div>
-      <div>
-        <label style="font-size:.72rem;color:var(--muted);">Precio ($)</label>
-        <input type="number" id="bz-form-precio" placeholder="0" min="0" style="width:100%;margin-top:4px;">
-      </div>
-    </div>
-
-    <!-- Unidad + stock actual -->
-    <div class="form-row" style="margin-bottom:10px;">
-      <div>
-        <label style="font-size:.72rem;color:var(--muted);">Unidad / presentación</label>
-        <input type="text" id="bz-form-unidad" placeholder="ej: caja, resma, litro, unidad" style="width:100%;margin-top:4px;">
-      </div>
-      <div>
-        <label style="font-size:.72rem;color:var(--muted);">Stock actual</label>
-        <input type="number" id="bz-form-stock" placeholder="0" min="0" style="width:100%;margin-top:4px;">
-      </div>
-    </div>
-
-    <!-- Stock mínimo + notas -->
-    <div class="form-row" style="margin-bottom:14px;">
-      <div>
-        <label style="font-size:.72rem;color:var(--muted);">Stock mínimo</label>
-        <input type="number" id="bz-form-min" placeholder="1" min="0" style="width:100%;margin-top:4px;">
-      </div>
-      <div>
-        <label style="font-size:.72rem;color:var(--muted);">Notas (opcional)</label>
-        <input type="text" id="bz-form-notas" placeholder="ej: pedir con 1 semana anticipación" style="width:100%;margin-top:4px;">
-      </div>
-    </div>
-
-    <div style="display:flex;gap:8px;">
-      <button class="btn btn-primary" style="flex:1;" onclick="bzGuardar()">✓ Guardar</button>
-      <button class="btn btn-secondary" style="flex:1;" onclick="bzCerrarModal()">Cancelar</button>
     </div>
   </div>
 </div>
