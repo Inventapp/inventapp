@@ -470,7 +470,6 @@ tr:hover td{background:rgba(255,255,255,.02);}
   <a id="mnav-urnas"      onclick="entrarSeccionMenu('urnas')">🪦 Urnas</a>
   <a id="mnav-trabajadores" onclick="entrarSeccionMenu('trabajadores')">👷 Trabajadores</a>
   <a id="mnav-costos"     onclick="entrarSeccionMenu('costos')">💰 Costos</a>
-  <a id="mnav-bezanilla"  onclick="entrarSeccionMenu('bezanilla')">🛒 Bezanilla</a>
   <a id="mnav-vehiculos"  onclick="entrarSeccionMenu('vehiculos')">🚗 Vehículos</a>
 
   <!-- HERRAMIENTAS -->
@@ -528,11 +527,6 @@ tr:hover td{background:rgba(255,255,255,.02);}
       <div class="hb-icon">⚰️</div>
       <div class="hb-label">Urnas</div>
       <div class="hb-sub">Inventario y producción</div>
-    </div>
-    <div id="hbtn-bezanilla" class="home-btn active-section" onclick="entrarSeccion('bezanilla')">
-      <div class="hb-icon">🛒</div>
-      <div class="hb-label">Bezanilla</div>
-      <div class="hb-sub">Compras y proveedores</div>
     </div>
     <div id="hbtn-costos" class="home-btn active-section" onclick="entrarSeccion('costos')">
       <div class="hb-icon">💰</div>
@@ -1437,42 +1431,6 @@ tr:hover td{background:rgba(255,255,255,.02);}
 </main>
 </div><!-- fin seccion-costos -->
 
-<!-- SECCION BEZANILLA -->
-<div id="seccion-bezanilla" style="display:none">
-<nav>
-  <button class="tab active" id="bztab-reposicion" onclick="bzNavTo('reposicion')">⚠ Reposición</button>
-  <button class="tab"        id="bztab-productos"  onclick="bzNavTo('productos')">🛒 Suministros</button>
-</nav>
-<main>
-
-<!-- BZ: REPOSICIÓN (compras pendientes desde products[]) -->
-<div class="page active" id="bzpage-reposicion">
-  <div style="font-size:.72rem;color:var(--muted);margin-bottom:10px;">
-    Materiales del inventario que están en o por debajo del stock mínimo. Hace seguimiento de pedidos de reposición.
-  </div>
-  <div id="bz-repos-lista"></div>
-</div>
-
-<!-- BZ: SUMINISTROS (catálogo externo Bezanilla) -->
-<div class="page" id="bzpage-productos">
-
-  <!-- Barra: buscar + filtro categoría + agregar -->
-  <div style="display:flex;gap:8px;align-items:center;margin-bottom:12px;flex-wrap:wrap;">
-    <input type="text" id="bz-search" placeholder="🔍 Buscar producto o proveedor…"
-      style="flex:1;min-width:0;" oninput="bzRenderProductos()">
-    <select id="bz-cat-filter" style="width:auto;font-size:.78rem;" onchange="bzRenderProductos()">
-      <option value="">Todas las categorías</option>
-    </select>
-    <button class="btn btn-primary" style="white-space:nowrap;" onclick="bzAbrirModal()">+ Producto</button>
-  </div>
-
-  <!-- Lista de productos agrupados por categoría -->
-  <div id="bz-lista"></div>
-
-</div>
-
-</main>
-</div><!-- fin seccion-bezanilla -->
 
 
 <!-- SECCION VEHÍCULOS -->
@@ -1563,7 +1521,6 @@ const LS_MOVEMENTS = 'inventapp_movements';
 const LS_WORKERS   = 'inventapp_workers';
 const LS_PROVEEDORES = 'inventapp_proveedores';
 const LS_COSTOS      = 'inventapp_costos';
-const LS_BEZANILLA   = 'inventapp_bezanilla';
 const LS_BZ_PEDIDOS  = 'inventapp_bz_pedidos';
 const LS_VEHICULOS   = 'inventapp_vehiculos';
 
@@ -1622,7 +1579,6 @@ function _idbBackupMat() {
   _IDB.set(LS_WORKERS,     workers);
   _IDB.set(LS_PROVEEDORES, proveedores);
   _IDB.set(LS_COSTOS,      costosData);
-  _IDB.set(LS_BEZANILLA,   bzProductos);
   _IDB.set(LS_BZ_PEDIDOS,  bzPedidos);
   _IDB.set(LS_VEHICULOS,   vehFlota);
 }
@@ -1637,7 +1593,6 @@ function lsGuardar() {
     localStorage.setItem(LS_WORKERS,     JSON.stringify(workers));
     localStorage.setItem(LS_PROVEEDORES, JSON.stringify(proveedores));
     localStorage.setItem(LS_COSTOS,      JSON.stringify(costosData));
-    localStorage.setItem(LS_BEZANILLA,   JSON.stringify(bzProductos));
     localStorage.setItem(LS_BZ_PEDIDOS,  JSON.stringify(bzPedidos));
     localStorage.setItem(LS_VEHICULOS,   JSON.stringify(vehFlota));
   } catch(e) {
@@ -1655,7 +1610,7 @@ async function fbSaveMat() {
   try {
     await window._fbSetDoc(
       window._fbDoc(window._fbDb, 'inventario', 'materiales'),
-      { products, movements, workers, proveedores, costosData, bzProductos, bzPedidos, vehFlota,
+      { products, movements, workers, proveedores, costosData, bzPedidos, vehFlota,
         updatedAt: new Date().toISOString(), nonce }
     );
   } catch(e) {
@@ -1686,7 +1641,6 @@ function lsCargar() {
     }
     const pv = localStorage.getItem(LS_PROVEEDORES); if(pv) proveedores = JSON.parse(pv);
     const cd = localStorage.getItem(LS_COSTOS); if(cd) { const _cd=JSON.parse(cd); costosData={...costosData,..._cd}; }
-    const bz = localStorage.getItem(LS_BEZANILLA); if(bz) bzProductos = JSON.parse(bz);
     const bzp = localStorage.getItem(LS_BZ_PEDIDOS); if(bzp) bzPedidos = JSON.parse(bzp);
     const vf = localStorage.getItem(LS_VEHICULOS); if(vf) vehFlota = JSON.parse(vf);
   } catch(e) {
@@ -1701,7 +1655,6 @@ function lsCargar() {
       const m  = await _IDB.get(LS_MOVEMENTS);   if(m  && !movements.length)  movements  = m;
       const w  = await _IDB.get(LS_WORKERS);     if(w  && !workers.length)    workers    = w.map(x => typeof x==='string'?{name:x,area:'Sin área'}:x);
       const pv = await _IDB.get(LS_PROVEEDORES); if(pv && !proveedores.length) proveedores = pv;
-      const bz  = await _IDB.get(LS_BEZANILLA);   if(bz  && !bzProductos.length) bzProductos = bz;
       const bzp = await _IDB.get(LS_BZ_PEDIDOS);  if(bzp && !Object.keys(bzPedidos).length) bzPedidos = bzp;
       const vf  = await _IDB.get(LS_VEHICULOS);   if(vf  && !vehFlota.length)    vehFlota    = vf;
     })();
@@ -1714,8 +1667,8 @@ function workerName(w){ return typeof w==='object'&&w!==null ? w.name : w; }
 let products  = DEFAULT_PRODUCTS;
 let movements = DEFAULT_MOVEMENTS;
 let workers   = DEFAULT_WORKERS;
-let currentProd = null;
-let currentType = null;
+let currentProd = null; // unused — kept for legacy compat
+let currentType = null; // unused — kept for legacy compat
 let proveedores = []; // [{id, prodId, nombre, rut, precio, unidad, contacto, notas, fecha}]
 
 // ── COSTOS state ──
@@ -1731,12 +1684,10 @@ let costosData = {
   unidadesMes:   50,
   precioVenta:   0,
   ultimoResultado: null,
-  matExtra:  {}, // {prodId: {formato:10, unidad:'L'}} extra cost metadata per material
 };
 let cProdActual = null; // currently selected uProduct id
 
-// ── BEZANILLA state ──
-let bzProductos = []; // [{id, nombre, cat, proveedor, precio, unidad, stock, min, notas, fecha}]
+// ── REPOSICION state ──
 let bzPedidos   = {}; // {prodId: {nota, estado, fecha}} — pending reorder tracking for products[] items
 
 // ── VEHÍCULOS state ──
@@ -1825,10 +1776,10 @@ function rolPuedeVer(seccion) {
   const u = window._currentUser;
   if(!u) return false;
   const permisos = {
-    admin:      ['materiales','urnas','trabajadores','costos','bezanilla','vehiculos'],
-    ventas:     ['materiales','urnas','bezanilla','vehiculos'],
+    admin:      ['materiales','urnas','trabajadores','costos','vehiculos'],
+    ventas:     ['materiales','urnas','vehiculos'],
     instalacion:['urnas'],
-    viewer:     ['materiales','urnas','trabajadores','costos','bezanilla','vehiculos'],
+    viewer:     ['materiales','urnas','trabajadores','costos','vehiculos'],
   };
   const permitidas = permisos[u.rol] || permisos['viewer'];
   return permitidas.includes(seccion);
@@ -1840,7 +1791,7 @@ function entrarSeccion(nombre) {
   document.getElementById('hamburger-btn').style.display = 'flex';
   document.getElementById('hdr-alert-wrap').style.display = 'none';
   // Hide all sections first
-  ['seccion-materiales','seccion-urnas','seccion-trabajadores','seccion-costos','seccion-bezanilla','seccion-vehiculos'].forEach(s=>{
+  ['seccion-materiales','seccion-urnas','seccion-trabajadores','seccion-costos','seccion-vehiculos'].forEach(s=>{
     const el=document.getElementById(s); if(el) el.style.display='none';
   });
   if (nombre === 'vehiculos') {
@@ -1888,7 +1839,7 @@ function volverHome() {
   closeMenu(); closeGear(); stopScanner(); uStopScanner();
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.getElementById('page-home').classList.add('active');
-  ['seccion-materiales','seccion-urnas','seccion-trabajadores','seccion-costos','seccion-bezanilla','seccion-vehiculos'].forEach(s=>{
+  ['seccion-materiales','seccion-urnas','seccion-trabajadores','seccion-costos','seccion-vehiculos'].forEach(s=>{
     const el=document.getElementById(s); if(el) el.style.display='none';
   });
   document.getElementById('back-btn').style.display = 'none';
@@ -5048,101 +4999,6 @@ function cLabelUnidadBase(unidad) {
 }
 
 // ── Tab: PRODUCTOS ────────────────────────────────────
-function cRenderProductos() {
-  const el = document.getElementById('c-prod-lista');
-  if(!el) return;
-  if(!uProducts.length) {
-    el.innerHTML = '<div style="color:var(--muted);font-size:.8rem;">Sin SKUs en Urnas. Agrega primero urnas en el módulo de Urnas.</div>';
-    return;
-  }
-  const CAT_ORDER = ['estandar','especial','restos'];
-  const CAT_LABEL = {estandar:'Urnas Estándar', especial:'Especiales', restos:'Restos y Párvulo'};
-  let html = '';
-  CAT_ORDER.forEach(cat => {
-    const prods = uProducts.filter(p => (p.categoria||'estandar') === cat);
-    if(!prods.length) return;
-    html += `<div style="font-family:'Space Mono',monospace;font-size:.58rem;color:var(--muted);
-      letter-spacing:.08em;padding:6px 0 4px;">${CAT_LABEL[cat]}</div>`;
-    prods.forEach(p => {
-      const sel = p.id === cProdActual;
-      const tiene = costosData.procesos[p.id];
-      const totalMats = tiene ? C_PROCESOS.reduce((s,pr) => s + ((costosData.procesos[p.id]||{})[pr]||[]).length, 0) : 0;
-      html += `<div onclick="cSelProd('${p.id}')" style="background:var(--surface${sel?'':'2'});
-        border:1px solid ${sel?'var(--accent)':'var(--border)'};border-radius:9px;padding:11px 14px;
-        cursor:pointer;display:flex;align-items:center;gap:10px;">
-        <div style="flex:1;min-width:0;">
-          <div style="font-size:.85rem;font-weight:600;">${sanitizar(p.name)}</div>
-          <div style="font-family:'Space Mono',monospace;font-size:.62rem;color:var(--muted);">
-            ${p.id} · ${p.terminacion||'Bruto'}</div>
-        </div>
-        <div style="display:flex;gap:6px;align-items:center;">
-          ${totalMats ? `<span style="background:rgba(0,229,160,.15);color:var(--accent);
-            font-size:.62rem;font-family:'Space Mono',monospace;padding:2px 7px;border-radius:8px;">
-            ${totalMats} mat.</span>` : ''}
-          ${sel ? '<span style="color:var(--accent);font-size:.8rem;">✓</span>' : ''}
-        </div>
-      </div>`;
-    });
-  });
-  el.innerHTML = html;
-}
-
-function cSelProd(prodId) {
-  cProdActual = prodId;
-  if(!costosData.procesos[prodId]) {
-    costosData.procesos[prodId] = {barniz:[], enzincado:[], telas:[], terminacion:[]};
-  }
-  cRenderProductos();
-  showToast('Producto seleccionado: ' + (uProducts.find(p=>p.id===prodId)?.name||prodId), 'success');
-}
-
-// ── Tab: CATÁLOGO ─────────────────────────────────────
-function cRenderCatalogo() {
-  const tbody = document.getElementById('c-cat-tbody');
-  if(!tbody) return;
-  if(!products.length) {
-    tbody.innerHTML = '<tr><td colspan="7" style="padding:12px;color:var(--muted);font-size:.78rem;">Sin materiales registrados en Materiales</td></tr>';
-    return;
-  }
-  const cats = {};
-  products.forEach(p => { const c = p.cat||'Sin categoría'; if(!cats[c])cats[c]=[]; cats[c].push(p); });
-  let rows = '';
-  Object.entries(cats).sort((a,b)=>a[0].localeCompare(b[0],'es')).forEach(([cat,prods]) => {
-    rows += `<tr><td colspan="7" style="background:var(--surface2);padding:6px 12px;
-      font-family:'Space Mono',monospace;font-size:.58rem;color:var(--muted);letter-spacing:.08em;">
-      ${sanitizar(cat).toUpperCase()}</td></tr>`;
-    prods.sort((a,b)=>a.name.localeCompare(b.name,'es')).forEach((p,_) => {
-      const extra = costosData.matExtra[p.id] || {formato:1, unidad:'u'};
-      const base  = cFormatoToBase(extra.formato||1, extra.unidad||'u');
-      const costoBase = base > 0 ? (p.cost||0) / base : 0;
-      const lblBase   = cLabelUnidadBase(extra.unidad||'u');
-      rows += `<tr>
-        <td style="font-family:'Space Mono',monospace;font-size:.72rem;color:var(--muted);">${p.id}</td>
-        <td style="font-size:.83rem;font-weight:600;">${sanitizar(p.name)}</td>
-        <td style="font-size:.72rem;color:var(--muted);">${sanitizar(p.cat||'—')}</td>
-        <td><input type="number" min="0.001" step="any" value="${extra.formato||1}"
-          style="width:80px;text-align:right;font-family:'Space Mono',monospace;font-size:.8rem;"
-          onchange="cSetMatExtra('${p.id}','formato',parseFloat(this.value)||1); cRenderCatalogo()"></td>
-        <td><select style="width:70px;font-size:.78rem;"
-          onchange="cSetMatExtra('${p.id}','unidad',this.value); cRenderCatalogo()">
-          ${C_UNIDADES.map(u=>`<option value="${u}" ${(extra.unidad||'u')===u?'selected':''}>${u}</option>`).join('')}
-        </select></td>
-        <td style="text-align:right;font-family:'Space Mono',monospace;font-size:.82rem;color:var(--accent2);">
-          $${fmtNum(p.cost||0)}</td>
-        <td style="text-align:right;font-family:'Space Mono',monospace;font-size:.78rem;color:var(--accent);font-weight:700;">
-          $${costoBase.toFixed(2)}/${lblBase}</td>
-      </tr>`;
-    });
-  });
-  tbody.innerHTML = rows;
-}
-
-function cSetMatExtra(prodId, field, value) {
-  if(!costosData.matExtra[prodId]) costosData.matExtra[prodId] = {formato:1, unidad:'u'};
-  costosData.matExtra[prodId][field] = value;
-  lsGuardar();
-}
-
 // ── Tab: PROCESO (barniz/enzincado/telas/terminacion) ──
 function cRenderProceso(proceso) {
   if(!cProdActual) {
@@ -6958,14 +6814,6 @@ function elimVTodo() {
 }
 
 // Also define uClearMovements (called by limpiarMovimientosMenu for urnas)
-function uClearMovements() {
-  if(!confirm('¿Borrar todos los movimientos de Urnas (ingresos y ventas)? Las unidades NO se eliminan.')) return;
-  uMovements = [];
-  lsGuardarU();
-  closeMenu();
-  showToast('✓ Movimientos de Urnas borrados', 'success');
-}
-
 // ── TRABAJADORES GLOBAL ──
 function addTrabajadorGlobal(){
   // legacy compatibility — redirect to modal
