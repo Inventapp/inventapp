@@ -5295,7 +5295,11 @@ function vRenderFlota() {
           </div>
           ${alertas.length?`<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;">${alertas.map(a=>`<span style="font-size:.62rem;font-family:'Space Mono',monospace;padding:2px 7px;border-radius:6px;background:rgba(0,0,0,.2);color:${a.c};">⚠ ${a.txt}</span>`).join('')}</div>`:''}
         </div>
-        <div style="font-size:.7rem;color:var(--accent);flex-shrink:0;">▶</div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:8px;flex-shrink:0;">
+          <span style="font-size:.7rem;color:var(--accent);">▶</span>
+          <button onclick="event.stopPropagation();vEliminarVehiculo('${v.patente}')"
+            style="background:none;border:none;cursor:pointer;color:var(--danger);font-size:.85rem;padding:0;line-height:1;" title="Eliminar vehículo">🗑</button>
+        </div>
       </div>
     </div>`;
   }).join('');
@@ -5964,6 +5968,15 @@ function vEliminarEvento(patente, idx) {
   showToast('Evento eliminado','error');
 }
 
+function vEliminarVehiculo(patente) {
+  const v = vehFlota.find(x => x.patente === patente);
+  if(!v) return;
+  if(!confirm(`¿Eliminar el vehículo ${patente} (${v.marca||''} ${v.modelo||''})?\nEsta acción no se puede deshacer.`)) return;
+  vehFlota = vehFlota.filter(x => x.patente !== patente);
+  lsGuardar();
+  vRenderFlota();
+  showToast('Vehículo eliminado', 'error');
+}
 
 // ════════════════════════════════════════════════════
 // REPOSICIÓN — Materiales en o bajo stock mínimo
