@@ -4822,7 +4822,10 @@ function cRenderWizard() {
       const prods = uProducts.filter(p => (p.categoria||'estandar') === cat);
       if(!prods.length) return;
       opts += `<optgroup label="${CAT_LABEL[cat]}">`;
-      prods.forEach(p => { opts += `<option value="${p.id}" ${p.id===cProdActual?'selected':''}>${sanitizar(p.name)}</option>`; });
+      prods.forEach(p => {
+        const label = p.terminacion ? `${sanitizar(p.name)} — ${sanitizar(p.terminacion)}` : sanitizar(p.name);
+        opts += `<option value="${p.id}" ${p.id===cProdActual?'selected':''}>${label}</option>`;
+      });
       opts += '</optgroup>';
     });
     sel.innerHTML = opts;
@@ -5234,7 +5237,9 @@ function vNavTo(name) {
   document.querySelectorAll('#seccion-vehiculos .page').forEach(p => p.classList.remove('active'));
   document.getElementById('vpage-' + name).classList.add('active');
   document.querySelectorAll('#veh-nav .tab').forEach(t => t.classList.remove('active'));
-  const btn = document.getElementById('vehtab-' + name);
+  // ficha has no tab — keep flota highlighted as active context
+  const tabName = name === 'ficha' ? 'flota' : name;
+  const btn = document.getElementById('vehtab-' + tabName);
   if(btn) btn.classList.add('active');
   setSeccionHeader('Vehículos', 'var(--accent)');
   if(name === 'flota')    vRenderFlota();
@@ -5308,18 +5313,13 @@ function vRenderFlota() {
 // ── FICHA DE VEHÍCULO ─────────────────────────────────
 function vAbrirFicha(patente) {
   _vehActual = patente;
-  vNavTo('ficha');
-  // Remove ficha tab if exists, keep flota + resumen
-  let fichaTab = document.getElementById('vehtab-ficha');
-  if(!fichaTab) {
-    fichaTab = document.createElement('button');
-    fichaTab.className = 'tab';
-    fichaTab.id = 'vehtab-ficha';
-    fichaTab.onclick = () => vNavTo('ficha');
-    document.getElementById('veh-nav').insertBefore(fichaTab, document.getElementById('vehtab-resumen'));
-  }
-  const v = vehFlota.find(x => x.patente === patente);
-  if(v) fichaTab.textContent = (VEH_TIPO_ICON[v.tipo]||'🚗') + ' ' + v.patente;
+  // Show ficha page without adding a dynamic tab — use ← Flota back button
+  document.querySelectorAll('#seccion-vehiculos .page').forEach(p => p.classList.remove('active'));
+  document.getElementById('vpage-ficha').classList.add('active');
+  // Keep Flota tab visually active so nav always shows only 2 tabs
+  document.querySelectorAll('#veh-nav .tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('vehtab-flota').classList.add('active');
+  setSeccionHeader('Vehículos', 'var(--accent)');
   vRenderFicha();
 }
 
