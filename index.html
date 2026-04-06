@@ -1289,14 +1289,25 @@ tr:hover td{background:rgba(255,255,255,.02);}
 <main>
 <div id="c-wizard" style="max-width:780px;margin:0 auto;">
 
-  <!-- Selector de producto (sticky) -->
+  <!-- Selector + barra live sticky -->
   <div style="position:sticky;top:0;z-index:10;background:var(--bg);padding:8px 0 6px;border-bottom:1px solid var(--border);margin-bottom:14px;">
-    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:7px;">
       <span style="font-family:'Space Mono',monospace;font-size:.62rem;color:var(--muted);letter-spacing:.06em;flex-shrink:0;">PRODUCTO:</span>
       <select id="c-prod-select" onchange="cSelProdWizard(this.value)"
         style="flex:1;min-width:0;font-size:.85rem;font-weight:700;color:var(--accent);">
         <option value="">— selecciona una urna —</option>
       </select>
+      <button onclick="cCopiarReceta()" id="c-copy-btn"
+        style="display:none;background:none;border:1px solid var(--border);border-radius:7px;padding:4px 10px;cursor:pointer;font-size:.72rem;color:var(--muted);"
+        title="Copiar materiales a otro producto">📋 Copiar</button>
+    </div>
+    <!-- Barra resumen en tiempo real -->
+    <div id="c-live-bar" style="display:none;gap:5px;flex-wrap:wrap;font-family:'Space Mono',monospace;font-size:.68rem;">
+      <span id="c-lb-mat"    style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:3px 8px;color:var(--muted);">Mat: —</span>
+      <span id="c-lb-mod"    style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:3px 8px;color:var(--muted);">MOD: —</span>
+      <span id="c-lb-cif"    style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:3px 8px;color:var(--muted);">CIF: —</span>
+      <span id="c-lb-total"  style="background:var(--accent);color:var(--bg);border-radius:6px;padding:3px 10px;font-weight:700;">Total: —</span>
+      <span id="c-lb-margen" style="border:1px solid var(--border);border-radius:6px;padding:3px 8px;color:var(--muted);">Margen: —</span>
     </div>
   </div>
 
@@ -1315,10 +1326,9 @@ tr:hover td{background:rgba(255,255,255,.02);}
         <button class="btn btn-primary" style="font-size:.7rem;padding:5px 11px;" onclick="cAgregarMat('barniz')">+ Material</button>
       </div>
       <div class="table-wrap" style="border:none;border-radius:0;">
-        <table><thead><tr><th>Material</th><th style="width:90px;">Cant.</th><th style="width:80px;">Unidad</th><th style="width:100px;">Costo unit.</th><th style="width:100px;">Total</th><th style="width:40px;"></th></tr></thead>
+        <table><thead><tr><th>Material</th><th style="width:90px;">Cant.</th><th style="width:70px;">Unidad</th><th style="width:95px;">$/base</th><th style="width:95px;">Total</th><th style="width:36px;"></th></tr></thead>
         <tbody id="c-mat-barniz"></tbody></table>
       </div>
-      <div id="c-mod-barniz" style="padding:0 12px 12px;"></div>
     </div>
   </div>
 
@@ -1337,10 +1347,9 @@ tr:hover td{background:rgba(255,255,255,.02);}
         <button class="btn btn-primary" style="font-size:.7rem;padding:5px 11px;" onclick="cAgregarMat('enzincado')">+ Material</button>
       </div>
       <div class="table-wrap" style="border:none;border-radius:0;">
-        <table><thead><tr><th>Material</th><th style="width:90px;">Cant.</th><th style="width:80px;">Unidad</th><th style="width:100px;">Costo unit.</th><th style="width:100px;">Total</th><th style="width:40px;"></th></tr></thead>
+        <table><thead><tr><th>Material</th><th style="width:90px;">Cant.</th><th style="width:70px;">Unidad</th><th style="width:95px;">$/base</th><th style="width:95px;">Total</th><th style="width:36px;"></th></tr></thead>
         <tbody id="c-mat-enzincado"></tbody></table>
       </div>
-      <div id="c-mod-enzincado" style="padding:0 12px 12px;"></div>
     </div>
   </div>
 
@@ -1359,10 +1368,9 @@ tr:hover td{background:rgba(255,255,255,.02);}
         <button class="btn btn-primary" style="font-size:.7rem;padding:5px 11px;" onclick="cAgregarMat('telas')">+ Material</button>
       </div>
       <div class="table-wrap" style="border:none;border-radius:0;">
-        <table><thead><tr><th>Material</th><th style="width:90px;">Cant.</th><th style="width:80px;">Unidad</th><th style="width:100px;">Costo unit.</th><th style="width:100px;">Total</th><th style="width:40px;"></th></tr></thead>
+        <table><thead><tr><th>Material</th><th style="width:90px;">Cant.</th><th style="width:70px;">Unidad</th><th style="width:95px;">$/base</th><th style="width:95px;">Total</th><th style="width:36px;"></th></tr></thead>
         <tbody id="c-mat-telas"></tbody></table>
       </div>
-      <div id="c-mod-telas" style="padding:0 12px 12px;"></div>
     </div>
   </div>
 
@@ -1381,47 +1389,84 @@ tr:hover td{background:rgba(255,255,255,.02);}
         <button class="btn btn-primary" style="font-size:.7rem;padding:5px 11px;" onclick="cAgregarMat('terminacion')">+ Material</button>
       </div>
       <div class="table-wrap" style="border:none;border-radius:0;">
-        <table><thead><tr><th>Material</th><th style="width:90px;">Cant.</th><th style="width:80px;">Unidad</th><th style="width:100px;">Costo unit.</th><th style="width:100px;">Total</th><th style="width:40px;"></th></tr></thead>
+        <table><thead><tr><th>Material</th><th style="width:90px;">Cant.</th><th style="width:70px;">Unidad</th><th style="width:95px;">$/base</th><th style="width:95px;">Total</th><th style="width:36px;"></th></tr></thead>
         <tbody id="c-mat-terminacion"></tbody></table>
       </div>
-      <div id="c-mod-terminacion" style="padding:0 12px 12px;"></div>
     </div>
   </div>
 
-  <!-- CIF + Resultados -->
+  <!-- Mano de Obra — tabla compacta única -->
+  <div class="card" style="padding:0;overflow:hidden;margin-bottom:10px;" id="c-acc-mod">
+    <div onclick="cToggleMOD()" style="padding:11px 16px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;user-select:none;">
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span style="font-size:1rem;">👷</span>
+        <span style="font-weight:700;font-size:.88rem;">Mano de Obra Directa</span>
+        <span id="c-total-mod-all" style="font-size:.72rem;color:var(--muted);font-family:'Space Mono',monospace;"></span>
+      </div>
+      <span id="c-arrow-mod" style="font-size:.8rem;color:var(--muted);">▼</span>
+    </div>
+    <div id="c-body-mod" style="display:none;border-top:1px solid var(--border);overflow-x:auto;">
+      <table style="width:100%;font-size:.78rem;border-collapse:collapse;">
+        <thead>
+          <tr style="background:var(--surface2);">
+            <th style="padding:8px 12px;text-align:left;font-size:.68rem;color:var(--muted);">Proceso</th>
+            <th style="padding:8px 10px;text-align:right;font-size:.68rem;color:var(--muted);">Sueldo/mes</th>
+            <th style="padding:8px 10px;text-align:right;font-size:.68rem;color:var(--muted);">Hrs/mes</th>
+            <th style="padding:8px 10px;text-align:right;font-size:.68rem;color:var(--muted);">Tasa/hr</th>
+            <th style="padding:8px 10px;text-align:right;font-size:.68rem;color:var(--muted);">Hrs/unidad</th>
+            <th style="padding:8px 10px;text-align:right;font-size:.68rem;color:var(--muted);">% Merma</th>
+            <th style="padding:8px 10px;text-align:right;font-size:.68rem;color:var(--accent);">MOD/unidad</th>
+          </tr>
+        </thead>
+        <tbody id="c-mod-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- CIF + Precio de venta -->
   <div class="card" style="margin-bottom:12px;">
-    <div class="card-title" style="margin-bottom:12px;">📊 CIF y Resultados</div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">
+    <div class="card-title" style="margin-bottom:12px;">⚙️ CIF y Precio de Venta</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:10px;">
       <div>
         <label style="font-size:.68rem;color:var(--muted);">CIF mensual ($)</label>
         <input type="number" id="c-cif-total" value="3000000" min="0" step="100000"
           style="width:100%;margin-top:4px;text-align:right;font-family:'Space Mono',monospace;"
-          onchange="cGuardarCIF()">
+          oninput="cGuardarCIF()">
       </div>
       <div>
-        <label style="font-size:.68rem;color:var(--muted);">Unidades producidas / mes</label>
+        <label style="font-size:.68rem;color:var(--muted);">Unidades / mes</label>
         <input type="number" id="c-unidades-mes" value="50" min="1" step="1"
           style="width:100%;margin-top:4px;text-align:right;font-family:'Space Mono',monospace;"
-          onchange="cGuardarCIF()">
+          oninput="cGuardarCIF()">
       </div>
+      <div>
+        <label style="font-size:.68rem;color:var(--muted);">CIF / unidad (auto)</label>
+        <div id="c-cif-unit-preview" style="margin-top:4px;background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:7px 10px;font-family:'Space Mono',monospace;font-size:.82rem;color:var(--muted);">—</div>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
       <div>
         <label style="font-size:.68rem;color:var(--muted);">Precio de venta ($)</label>
         <input type="number" id="c-precio-venta" value="0" min="0" step="1000"
           style="width:100%;margin-top:4px;text-align:right;font-family:'Space Mono',monospace;"
-          onchange="cGuardarCIF()">
+          oninput="cGuardarCIF()">
       </div>
       <div style="display:flex;flex-direction:column;justify-content:flex-end;">
-        <div id="c-margen-preview" style="background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:7px 10px;font-family:'Space Mono',monospace;font-size:.78rem;color:var(--muted);min-height:34px;margin-top:4px;">Margen: —</div>
+        <div id="c-margen-preview" style="margin-top:4px;background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:7px 10px;font-family:'Space Mono',monospace;font-size:.82rem;color:var(--muted);">Margen: —</div>
       </div>
     </div>
-    <button class="btn btn-primary btn-full" onclick="cCalcularTodo()">🧮 Calcular costos</button>
   </div>
+
+  <!-- Resultados -->
   <div id="c-resultados-content" style="display:none;">
-    <div class="summary-grid" id="c-res-kpis"></div>
-    <div class="card" style="padding:0;overflow:hidden;margin-top:12px;">
+    <div class="card" style="margin-bottom:10px;padding:14px 16px;">
+      <div id="c-breakdown-bar" style="margin-bottom:12px;"></div>
+      <div class="summary-grid" id="c-res-kpis"></div>
+    </div>
+    <div class="card" style="padding:0;overflow:hidden;margin-bottom:16px;">
       <div style="padding:11px 16px;border-bottom:1px solid var(--border);"><div class="card-title" style="margin:0;">Desglose por proceso</div></div>
       <div class="table-wrap" style="border:none;border-radius:0;">
-        <table><thead><tr><th>Proceso</th><th>Materiales</th><th>MOD</th><th>CIF</th><th>Total</th></tr></thead>
+        <table><thead><tr><th>Proceso</th><th>Materiales</th><th>MOD</th><th>CIF</th><th>Total</th><th style="width:50px;">%</th></tr></thead>
         <tbody id="c-desglose-tbody"></tbody></table>
       </div>
     </div>
@@ -1430,6 +1475,7 @@ tr:hover td{background:rgba(255,255,255,.02);}
 </div><!-- fin c-wizard -->
 </main>
 </div><!-- fin seccion-costos -->
+
 
 
 
@@ -1665,14 +1711,21 @@ let workers   = DEFAULT_WORKERS;
 let proveedores = []; // [{id, prodId, nombre, rut, precio, unidad, contacto, notas, fecha}]
 
 // ── COSTOS state ──
+const C_MOD_DEFAULTS = {
+  barniz:     {sueldo:800000, horasMes:180, horasUnidad:2.5, merma:4},
+  enzincado:  {sueldo:850000, horasMes:180, horasUnidad:2.0, merma:3},
+  telas:      {sueldo:750000, horasMes:180, horasUnidad:3.0, merma:2},
+  terminacion:{sueldo:700000, horasMes:180, horasUnidad:1.5, merma:2},
+};
 let costosData = {
   procesos:  {},  // {uProdId: {barniz:[{matId,cantidad,unidad}], enzincado:[], telas:[], terminacion:[]}}
   mod: {
-    barniz:     {sueldo:800000, horasMes:180, horasUnidad:2.5,  merma:4},
-    enzincado:  {sueldo:850000, horasMes:180, horasUnidad:2.0,  merma:3},
-    telas:      {sueldo:750000, horasMes:180, horasUnidad:3.0,  merma:2},
-    terminacion:{sueldo:700000, horasMes:180, horasUnidad:1.5,  merma:2},
+    barniz:     {...C_MOD_DEFAULTS.barniz},
+    enzincado:  {...C_MOD_DEFAULTS.enzincado},
+    telas:      {...C_MOD_DEFAULTS.telas},
+    terminacion:{...C_MOD_DEFAULTS.terminacion},
   },
+  precios:       {},  // {uProdId: precioVenta}
   cifTotal:      3000000,
   unidadesMes:   50,
   precioVenta:   0,
@@ -4786,11 +4839,11 @@ function uEliminarOP(opId) {
 
 const C_PROCESOS = ['barniz','enzincado','telas','terminacion'];
 const C_PROC_LABEL = {barniz:'🎨 Barniz', enzincado:'⚡ Enzincado', telas:'🧵 Telas', terminacion:'✨ Terminación'};
+const C_PROC_ICON  = {barniz:'🎨', enzincado:'⚡', telas:'🧵', terminacion:'✨'};
 const C_UNIDADES  = ['ml','gr','u','L','kg','Gl'];
 
 // ── Wizard ────────────────────────────────────────────
 function cRenderWizard() {
-  // Populate product selector
   const sel = document.getElementById('c-prod-select');
   if(sel) {
     const CAT_ORDER = ['estandar','especial','restos'];
@@ -4809,10 +4862,20 @@ function cRenderWizard() {
     sel.innerHTML = opts;
   }
   // Restore CIF values
-  const cifEl = document.getElementById('c-cif-total');     if(cifEl) cifEl.value = costosData.cifTotal || 3000000;
+  const cifEl = document.getElementById('c-cif-total');    if(cifEl) cifEl.value = costosData.cifTotal || 3000000;
   const unEl  = document.getElementById('c-unidades-mes'); if(unEl)  unEl.value  = costosData.unidadesMes || 50;
-  const pvEl  = document.getElementById('c-precio-venta'); if(pvEl)  pvEl.value  = costosData.precioVenta || 0;
-  // Render all open accordions
+  // Per-product price
+  const pv = cProdActual ? (costosData.precios?.[cProdActual] ?? costosData.precioVenta ?? 0) : (costosData.precioVenta || 0);
+  const pvEl = document.getElementById('c-precio-venta'); if(pvEl) pvEl.value = pv;
+  // Copy button visibility
+  const copyBtn = document.getElementById('c-copy-btn');
+  if(copyBtn) copyBtn.style.display = cProdActual ? 'inline-flex' : 'none';
+  // Live bar visibility
+  const liveBar = document.getElementById('c-live-bar');
+  if(liveBar) liveBar.style.display = cProdActual ? 'flex' : 'none';
+  // Render MOD table
+  cRenderMODTable();
+  // Render open accordions
   C_PROCESOS.forEach(pr => {
     const body = document.getElementById('c-body-'+pr);
     if(body && body.style.display !== 'none') cRenderProceso(pr);
@@ -4825,7 +4888,9 @@ function cRenderWizard() {
     const rc = document.getElementById('c-resultados-content');
     if(rc) rc.style.display = 'none';
   }
+  cUpdateCIFPreview();
   cUpdateMargenPreview();
+  if(cProdActual) cAutoCalc();
 }
 
 function cSelProdWizard(prodId) {
@@ -4833,7 +4898,17 @@ function cSelProdWizard(prodId) {
   if(prodId && !costosData.procesos[prodId]) {
     costosData.procesos[prodId] = {barniz:[], enzincado:[], telas:[], terminacion:[]};
   }
-  // Re-render all open proceso bodies
+  // Restore per-product price
+  const pvEl = document.getElementById('c-precio-venta');
+  if(pvEl && cProdActual) {
+    pvEl.value = costosData.precios?.[cProdActual] ?? costosData.precioVenta ?? 0;
+  }
+  // Copy button + live bar
+  const copyBtn = document.getElementById('c-copy-btn');
+  if(copyBtn) copyBtn.style.display = cProdActual ? 'inline-flex' : 'none';
+  const liveBar = document.getElementById('c-live-bar');
+  if(liveBar) liveBar.style.display = cProdActual ? 'flex' : 'none';
+  // Re-render open proceso bodies
   C_PROCESOS.forEach(pr => {
     const body = document.getElementById('c-body-'+pr);
     if(body && body.style.display !== 'none') cRenderProceso(pr);
@@ -4844,6 +4919,9 @@ function cSelProdWizard(prodId) {
   if(rc && (!costosData.ultimoResultado || costosData.ultimoResultado.prodId !== cProdActual)) {
     rc.style.display = 'none';
   }
+  cUpdateCIFPreview();
+  cUpdateMargenPreview();
+  if(cProdActual) cAutoCalc();
 }
 
 function cToggleProceso(proceso) {
@@ -4865,11 +4943,125 @@ function cUpdateProcTotal(proceso) {
     const p = products.find(x => x.id === mat.matId);
     return s + (p ? mat.cantidad * cCostoUnitBase(p) : 0);
   }, 0);
-  const mod   = costosData.mod[proceso] || {sueldo:800000, horasMes:180, horasUnidad:2, merma:0};
-  const tasa  = mod.horasMes > 0 ? mod.sueldo / mod.horasMes : 0;
-  const modV  = (mod.horasUnidad || 0) * tasa;
+  const mod  = {...(C_MOD_DEFAULTS[proceso]||{}), ...(costosData.mod[proceso]||{})};
+  const tasa = mod.horasMes > 0 ? mod.sueldo / mod.horasMes : 0;
+  const modV = (mod.horasUnidad || 0) * tasa;
   const total = costoMats * (1 + (mod.merma||0)/100) + modV;
   lbl.textContent = total > 0 ? `$${fmtNum(Math.round(total))}` : '';
+}
+
+// ── MOD tabla compacta ─────────────────────────────────
+function cToggleMOD() {
+  const body  = document.getElementById('c-body-mod');
+  const arrow = document.getElementById('c-arrow-mod');
+  if(!body) return;
+  const open = body.style.display === 'none';
+  body.style.display = open ? 'block' : 'none';
+  if(arrow) arrow.textContent = open ? '▲' : '▼';
+  if(open) cRenderMODTable();
+}
+
+function cRenderMODTable() {
+  const tbody = document.getElementById('c-mod-tbody');
+  if(!tbody) return;
+  let modTotal = 0;
+  tbody.innerHTML = C_PROCESOS.map(pr => {
+    const mod  = {...(C_MOD_DEFAULTS[pr]||{}), ...(costosData.mod[pr]||{})};
+    const tasa = mod.horasMes > 0 ? mod.sueldo / mod.horasMes : 0;
+    const modU = (mod.horasUnidad || 0) * tasa;
+    modTotal += modU;
+    return `<tr style="border-top:1px solid var(--border);">
+      <td style="padding:8px 12px;font-size:.78rem;">${C_PROC_ICON[pr]} ${pr.charAt(0).toUpperCase()+pr.slice(1)}</td>
+      <td style="padding:6px 10px;"><input type="number" min="0" step="10000" value="${mod.sueldo}"
+        style="width:90px;text-align:right;font-family:'Space Mono',monospace;font-size:.78rem;"
+        oninput="cSetMOD('${pr}','sueldo',parseFloat(this.value)||0);cRenderMODTable();cAutoCalc()"></td>
+      <td style="padding:6px 10px;"><input type="number" min="1" step="1" value="${mod.horasMes}"
+        style="width:65px;text-align:right;font-family:'Space Mono',monospace;font-size:.78rem;"
+        oninput="cSetMOD('${pr}','horasMes',Math.max(1,parseFloat(this.value)||1));cRenderMODTable();cAutoCalc()"></td>
+      <td style="padding:8px 10px;text-align:right;font-family:'Space Mono',monospace;font-size:.75rem;color:var(--accent);">$${fmtNum(Math.round(tasa))}</td>
+      <td style="padding:6px 10px;"><input type="number" min="0" step="0.1" value="${mod.horasUnidad}"
+        style="width:65px;text-align:right;font-family:'Space Mono',monospace;font-size:.78rem;"
+        oninput="cSetMOD('${pr}','horasUnidad',parseFloat(this.value)||0);cRenderMODTable();cAutoCalc()"></td>
+      <td style="padding:6px 10px;"><input type="number" min="0" max="100" step="0.1" value="${mod.merma}"
+        style="width:55px;text-align:right;font-family:'Space Mono',monospace;font-size:.78rem;"
+        oninput="cSetMOD('${pr}','merma',parseFloat(this.value)||0);cAutoCalc()"></td>
+      <td style="padding:8px 10px;text-align:right;font-family:'Space Mono',monospace;font-size:.78rem;font-weight:700;color:var(--accent2);">$${fmtNum(Math.round(modU))}</td>
+    </tr>`;
+  }).join('');
+  // Update MOD total badge
+  const lbl = document.getElementById('c-total-mod-all');
+  if(lbl) lbl.textContent = modTotal > 0 ? `$${fmtNum(Math.round(modTotal))} total` : '';
+}
+
+// ── Auto-cálculo con debounce ──────────────────────────
+let _cAutoTimer = null;
+function cAutoCalc() {
+  clearTimeout(_cAutoTimer);
+  _cAutoTimer = setTimeout(() => {
+    if(cProdActual) cCalcularTodo(true);
+  }, 600);
+}
+
+// ── Live bar ───────────────────────────────────────────
+function cUpdateLiveBar(costoTotal, matsTot, modTotal, cifPorUnidad, precioV) {
+  const set = (id, txt, color) => {
+    const el = document.getElementById(id); if(el){ el.textContent=txt; if(color) el.style.color=color; }
+  };
+  set('c-lb-mat',   `Mat: $${fmtNum(Math.round(matsTot))}`);
+  set('c-lb-mod',   `MOD: $${fmtNum(Math.round(modTotal))}`);
+  set('c-lb-cif',   `CIF: $${fmtNum(Math.round(cifPorUnidad))}`);
+  set('c-lb-total', `Total: $${fmtNum(Math.round(costoTotal))}`);
+  if(precioV > 0) {
+    const margen = ((precioV - costoTotal) / precioV * 100);
+    const col = margen >= 20 ? 'var(--accent)' : margen >= 0 ? 'var(--warn)' : 'var(--danger)';
+    const el = document.getElementById('c-lb-margen');
+    if(el){ el.textContent=`Margen: ${margen.toFixed(1)}%`; el.style.color=col; el.style.borderColor=col; }
+  } else {
+    set('c-lb-margen', 'Margen: —');
+    const el = document.getElementById('c-lb-margen');
+    if(el){ el.style.color='var(--muted)'; el.style.borderColor='var(--border)'; }
+  }
+}
+
+function cUpdateCIFPreview() {
+  const cif = parseFloat(document.getElementById('c-cif-total')?.value) || costosData.cifTotal || 0;
+  const uni = parseFloat(document.getElementById('c-unidades-mes')?.value) || costosData.unidadesMes || 50;
+  const el  = document.getElementById('c-cif-unit-preview');
+  if(el) el.textContent = uni > 0 ? `$${fmtNum(Math.round(cif/uni))}` : '—';
+}
+
+// ── Copiar receta a otro producto ──────────────────────
+function cCopiarReceta() {
+  if(!cProdActual) return;
+  const otros = uProducts.filter(p => p.id !== cProdActual);
+  if(!otros.length) return showToast('No hay otros productos', 'error');
+  const opts = otros.map(p => {
+    const lbl = p.terminacion ? `${p.name} — ${p.terminacion}` : p.name;
+    return `<option value="${escJs(p.id)}">${sanitizar(lbl)}</option>`;
+  }).join('');
+  const sel = `<select id="c-copy-dest" style="width:100%;font-size:.85rem;margin-top:8px;">${opts}</select>`;
+  document.getElementById('c-wizard').insertAdjacentHTML('afterbegin',
+    `<div id="c-copy-modal" style="position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;padding:20px;">
+      <div style="background:var(--surface);border-radius:14px;padding:20px;width:100%;max-width:360px;">
+        <div style="font-weight:700;margin-bottom:8px;">📋 Copiar receta a:</div>
+        <div style="font-size:.75rem;color:var(--muted);margin-bottom:6px;">Los materiales del producto actual se copiarán al producto destino.</div>
+        ${sel}
+        <div style="display:flex;gap:8px;margin-top:14px;">
+          <button onclick="document.getElementById('c-copy-modal').remove()" class="btn btn-secondary" style="flex:1;justify-content:center;">Cancelar</button>
+          <button onclick="cEjecutarCopia()" class="btn btn-primary" style="flex:1;justify-content:center;">Copiar</button>
+        </div>
+      </div>
+    </div>`);
+}
+function cEjecutarCopia() {
+  const dest = document.getElementById('c-copy-dest')?.value;
+  if(!dest || !cProdActual) return;
+  const origen = costosData.procesos[cProdActual];
+  if(!origen) { showToast('Sin materiales para copiar', 'error'); return; }
+  costosData.procesos[dest] = JSON.parse(JSON.stringify(origen)); // deep copy
+  document.getElementById('c-copy-modal')?.remove();
+  lsGuardar();
+  showToast('Receta copiada ✓', 'success');
 }
 
 // Backwards-compat alias (used by entrarSeccion and any deep links)
@@ -4901,93 +5093,52 @@ function cLabelUnidadBase(unidad) {
   return unidad;
 }
 
-// ── Tab: PRODUCTOS ────────────────────────────────────
 // ── Tab: PROCESO (barniz/enzincado/telas/terminacion) ──
 function cRenderProceso(proceso) {
+  const tbody = document.getElementById('c-mat-'+proceso);
+  if(!tbody) return;
   if(!cProdActual) {
-    const tbody = document.getElementById('c-mat-'+proceso);
-    if(tbody) tbody.innerHTML = '<tr><td colspan="6" style="padding:12px;color:var(--muted);font-size:.78rem;">Selecciona un producto arriba para configurar este proceso.</td></tr>';
-    cRenderMOD(proceso);
+    tbody.innerHTML = '<tr><td colspan="6" style="padding:12px;color:var(--muted);font-size:.78rem;">Selecciona un producto arriba.</td></tr>';
     cUpdateProcTotal(proceso);
     return;
   }
-
   const mats = (costosData.procesos[cProdActual]||{})[proceso] || [];
-  const tbody = document.getElementById('c-mat-'+proceso);
-  if(!tbody) return;
-
   if(!mats.length) {
-    tbody.innerHTML = '<tr><td colspan="6" style="padding:10px 14px;color:var(--muted);font-size:.78rem;font-style:italic;">Sin materiales. Pulsa + Agregar.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="6" style="padding:10px 14px;color:var(--muted);font-size:.78rem;font-style:italic;">Sin materiales. Pulsa + Material.</td></tr>';
   } else {
     tbody.innerHTML = mats.map((mat, i) => {
       const prodMat = products.find(p => p.id === mat.matId);
       const costoUB = prodMat ? cCostoUnitBase(prodMat) : 0;
       const costoT  = mat.cantidad * costoUB;
+      // Stock indicator
+      const stockWarn = prodMat && prodMat.stock <= prodMat.min
+        ? `<span style="color:var(--warn);font-size:.6rem;margin-left:4px;" title="Stock bajo">⚠</span>` : '';
+      const sinStock  = prodMat && prodMat.stock === 0
+        ? `<span style="color:var(--danger);font-size:.6rem;margin-left:4px;" title="Sin stock">⛔</span>` : '';
       return `<tr>
-        <td>
-          <select style="width:100%;font-size:.78rem;" onchange="cSetMatId('${proceso}',${i},this.value)">
-            <option value="">— Selecciona —</option>
-            ${products.map(p => `<option value="${p.id}" ${p.id===mat.matId?'selected':''}>${sanitizar(p.name)}</option>`).join('')}
-          </select>
+        <td style="min-width:140px;">
+          <div style="display:flex;align-items:center;">
+            <select style="flex:1;font-size:.78rem;" onchange="cSetMatId('${proceso}',${i},this.value)">
+              <option value="">— Selecciona —</option>
+              ${products.map(p => `<option value="${escJs(p.id)}" ${p.id===mat.matId?'selected':''}>${sanitizar(p.name)}</option>`).join('')}
+            </select>${stockWarn}${sinStock}
+          </div>
         </td>
-        <td><input type="number" min="0" step="any" value="${mat.cantidad}"
+        <td><input type="number" min="0.001" step="any" value="${mat.cantidad}"
           style="width:80px;text-align:right;font-family:'Space Mono',monospace;font-size:.8rem;"
-          onchange="cSetMatCantidad('${proceso}',${i},parseFloat(this.value)||0)"></td>
-        <td><select style="width:60px;font-size:.78rem;" onchange="cSetMatUnidad('${proceso}',${i},this.value)">
+          oninput="cSetMatCantidad('${proceso}',${i},Math.max(0,parseFloat(this.value)||0))"></td>
+        <td><select style="width:58px;font-size:.78rem;" onchange="cSetMatUnidad('${proceso}',${i},this.value)">
           ${C_UNIDADES.map(u=>`<option value="${u}" ${mat.unidad===u?'selected':''}>${u}</option>`).join('')}
         </select></td>
-        <td style="text-align:right;font-family:'Space Mono',monospace;font-size:.78rem;color:var(--muted);">
+        <td style="text-align:right;font-family:'Space Mono',monospace;font-size:.75rem;color:var(--muted);">
           $${costoUB.toFixed(2)}</td>
         <td style="text-align:right;font-family:'Space Mono',monospace;font-size:.82rem;font-weight:700;color:var(--accent2);">
-          $${fmtNum(costoT)}</td>
+          $${fmtNum(Math.round(costoT))}</td>
         <td><button onclick="cEliminarMat('${proceso}',${i})" style="background:none;border:none;cursor:pointer;color:var(--danger);font-size:.9rem;padding:0 4px;">🗑</button></td>
       </tr>`;
     }).join('');
   }
-  cRenderMOD(proceso);
   cUpdateProcTotal(proceso);
-}
-
-function cRenderMOD(proceso) {
-  const el = document.getElementById('c-mod-'+proceso);
-  if(!el) return;
-  const mod = costosData.mod[proceso] || {sueldo:800000, horasMes:180, horasUnidad:2, merma:2};
-  const tasa = mod.horasMes > 0 ? mod.sueldo / mod.horasMes : 0;
-  el.innerHTML = `<div class="card">
-    <div class="card-title" style="margin-bottom:12px;">Mano de Obra — ${C_PROC_LABEL[proceso]}</div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
-      <div>
-        <label style="font-size:.68rem;color:var(--muted);">Sueldo mensual ($)</label>
-        <input type="number" min="0" step="10000" value="${mod.sueldo}"
-          style="width:100%;margin-top:4px;text-align:right;font-family:'Space Mono',monospace;"
-          onchange="cSetMOD('${proceso}','sueldo',parseFloat(this.value)||0); cRenderMOD('${proceso}')">
-      </div>
-      <div>
-        <label style="font-size:.68rem;color:var(--muted);">Horas/mes</label>
-        <input type="number" min="1" step="1" value="${mod.horasMes}"
-          style="width:100%;margin-top:4px;text-align:right;font-family:'Space Mono',monospace;"
-          onchange="cSetMOD('${proceso}','horasMes',parseFloat(this.value)||1); cRenderMOD('${proceso}')">
-      </div>
-      <div>
-        <label style="font-size:.68rem;color:var(--muted);">Tasa/hora (auto)</label>
-        <div style="width:100%;margin-top:4px;background:var(--surface2);border:1px solid var(--border);
-          border-radius:7px;padding:7px 10px;font-family:'Space Mono',monospace;font-size:.82rem;
-          color:var(--accent);font-weight:700;">$${fmtNum(Math.round(tasa))}</div>
-      </div>
-      <div>
-        <label style="font-size:.68rem;color:var(--muted);">Horas por unidad</label>
-        <input type="number" min="0" step="0.1" value="${mod.horasUnidad}"
-          style="width:100%;margin-top:4px;text-align:right;font-family:'Space Mono',monospace;"
-          onchange="cSetMOD('${proceso}','horasUnidad',parseFloat(this.value)||0)">
-      </div>
-    </div>
-    <div>
-      <label style="font-size:.68rem;color:var(--muted);">% Merma</label>
-      <input type="number" min="0" max="100" step="0.1" value="${mod.merma}"
-        style="width:120px;margin-top:4px;text-align:right;font-family:'Space Mono',monospace;"
-        onchange="cSetMOD('${proceso}','merma',parseFloat(this.value)||0)">
-    </div>
-  </div>`;
 }
 
 // ── Mutators ───────────────────────────────────────────
@@ -4998,42 +5149,56 @@ function cAgregarMat(proceso) {
   costosData.procesos[cProdActual][proceso].push({matId:defaultMat, cantidad:100, unidad:'ml'});
   lsGuardar();
   cRenderProceso(proceso);
+  cAutoCalc();
 }
 function cEliminarMat(proceso, idx) {
   if(!cProdActual || !costosData.procesos[cProdActual]) return;
   costosData.procesos[cProdActual][proceso].splice(idx, 1);
   lsGuardar();
   cRenderProceso(proceso);
+  cAutoCalc();
 }
 function cSetMatId(proceso, idx, matId) {
   if(!cProdActual || !costosData.procesos[cProdActual]) return;
   costosData.procesos[cProdActual][proceso][idx].matId = matId;
   lsGuardar();
   cRenderProceso(proceso);
+  cAutoCalc();
 }
 function cSetMatCantidad(proceso, idx, val) {
   if(!cProdActual || !costosData.procesos[cProdActual]) return;
-  costosData.procesos[cProdActual][proceso][idx].cantidad = val;
+  costosData.procesos[cProdActual][proceso][idx].cantidad = Math.max(0, val);
   lsGuardar();
-  cRenderProceso(proceso);
+  cUpdateProcTotal(proceso);
+  cAutoCalc();
 }
 function cSetMatUnidad(proceso, idx, val) {
   if(!cProdActual || !costosData.procesos[cProdActual]) return;
   costosData.procesos[cProdActual][proceso][idx].unidad = val;
   lsGuardar();
-  cRenderProceso(proceso);
+  cUpdateProcTotal(proceso);
+  cAutoCalc();
 }
 function cSetMOD(proceso, field, val) {
-  if(!costosData.mod[proceso]) costosData.mod[proceso] = {};
+  if(!costosData.mod[proceso]) costosData.mod[proceso] = {...C_MOD_DEFAULTS[proceso]};
   costosData.mod[proceso][field] = val;
+  cUpdateProcTotal(proceso);
   lsGuardar();
 }
 function cGuardarCIF() {
-  costosData.cifTotal    = parseFloat(document.getElementById('c-cif-total')?.value)    || 0;
-  costosData.unidadesMes = parseFloat(document.getElementById('c-unidades-mes')?.value) || 50;
-  costosData.precioVenta = parseFloat(document.getElementById('c-precio-venta')?.value) || 0;
+  costosData.cifTotal    = Math.max(0, parseFloat(document.getElementById('c-cif-total')?.value)    || 0);
+  costosData.unidadesMes = Math.max(1, parseFloat(document.getElementById('c-unidades-mes')?.value) || 50);
+  // Save price per product if one is selected, else globally
+  const pv = Math.max(0, parseFloat(document.getElementById('c-precio-venta')?.value) || 0);
+  if(cProdActual) {
+    if(!costosData.precios) costosData.precios = {};
+    costosData.precios[cProdActual] = pv;
+  }
+  costosData.precioVenta = pv;
   lsGuardar();
+  cUpdateCIFPreview();
   cUpdateMargenPreview();
+  cAutoCalc();
 }
 function cUpdateMargenPreview() {
   const pv   = parseFloat(document.getElementById('c-precio-venta')?.value) || 0;
@@ -5048,24 +5213,8 @@ function cUpdateMargenPreview() {
 }
 
 // ── Tab: RESULTADOS ───────────────────────────────────
-function cInitResultados() {
-  const cifEl = document.getElementById('c-cif-total');
-  if(cifEl) cifEl.value = costosData.cifTotal || 3000000;
-  const unEl = document.getElementById('c-unidades-mes');
-  if(unEl) unEl.value = costosData.unidadesMes || 50;
-  const pvEl = document.getElementById('c-precio-venta');
-  if(pvEl) pvEl.value = costosData.precioVenta || 0;
-  // Restore last result if exists and same product
-  if(costosData.ultimoResultado && costosData.ultimoResultado.prodId === cProdActual) {
-    cMostrarResultado(costosData.ultimoResultado);
-  } else {
-    document.getElementById('c-resultados-content').style.display = 'none';
-  }
-  cUpdateMargenPreview();
-}
-
 function cCalcularProceso(proceso) {
-  const mod    = costosData.mod[proceso] || {sueldo:800000, horasMes:180, horasUnidad:2, merma:0};
+  const mod    = {...(C_MOD_DEFAULTS[proceso]||{}), ...(costosData.mod[proceso]||{})};
   const merma  = (mod.merma || 0) / 100;
   const tasa   = mod.horasMes > 0 ? mod.sueldo / mod.horasMes : 0;
   const modVal = (mod.horasUnidad || 0) * tasa;
@@ -5081,19 +5230,25 @@ function cCalcularProceso(proceso) {
 }
 
 function cMostrarResultado(r) {
+  const bar = document.getElementById('c-breakdown-bar');
+  if(bar) bar.innerHTML = r.breakdownHtml || '';
   document.getElementById('c-res-kpis').innerHTML = r.kpisHtml;
   document.getElementById('c-desglose-tbody').innerHTML = r.desgHtml;
   document.getElementById('c-resultados-content').style.display = 'block';
 }
 
-function cCalcularTodo() {
-  if(!cProdActual) return showToast('Selecciona primero un producto en la pestaña Productos','error');
+function cCalcularTodo(silencioso = false) {
+  if(!cProdActual) {
+    if(!silencioso) showToast('Selecciona primero un producto','error');
+    return;
+  }
 
-  const cifMes    = parseFloat(document.getElementById('c-cif-total')?.value)    || costosData.cifTotal    || 0;
-  const unidades  = parseFloat(document.getElementById('c-unidades-mes')?.value) || costosData.unidadesMes || 50;
-  const precioV   = parseFloat(document.getElementById('c-precio-venta')?.value) || costosData.precioVenta || 0;
+  const cifMes   = parseFloat(document.getElementById('c-cif-total')?.value)    || costosData.cifTotal    || 0;
+  const unidades = parseFloat(document.getElementById('c-unidades-mes')?.value) || costosData.unidadesMes || 50;
+  const precioV  = parseFloat(document.getElementById('c-precio-venta')?.value) ||
+                   (cProdActual ? costosData.precios?.[cProdActual] : null) ??
+                   costosData.precioVenta ?? 0;
 
-  // CIF por unidad (proporcional)
   const cifPorUnidad = unidades > 0 ? cifMes / unidades : 0;
 
   const res = {};
@@ -5110,6 +5265,23 @@ function cCalcularTodo() {
   const margen     = precioV > 0 ? ((precioV - costoTotal) / precioV * 100) : null;
   const ganancia   = precioV > 0 ? precioV - costoTotal : null;
 
+  // Barra visual de desglose (%)
+  const pMat = costoTotal > 0 ? (matsTot / costoTotal * 100) : 0;
+  const pMod = costoTotal > 0 ? (modTotal / costoTotal * 100) : 0;
+  const pCif = costoTotal > 0 ? (cifPorUnidad / costoTotal * 100) : 0;
+  const breakdownHtml = costoTotal > 0 ? `
+    <div style="font-size:.68rem;color:var(--muted);margin-bottom:5px;font-family:'Space Mono',monospace;">Composición del costo</div>
+    <div style="display:flex;height:10px;border-radius:6px;overflow:hidden;gap:1px;">
+      <div style="width:${pMat.toFixed(1)}%;background:var(--accent2);" title="Materiales ${pMat.toFixed(1)}%"></div>
+      <div style="width:${pMod.toFixed(1)}%;background:var(--accent);" title="MOD ${pMod.toFixed(1)}%"></div>
+      <div style="width:${pCif.toFixed(1)}%;background:var(--warn);" title="CIF ${pCif.toFixed(1)}%"></div>
+    </div>
+    <div style="display:flex;gap:14px;margin-top:5px;font-size:.65rem;color:var(--muted);font-family:'Space Mono',monospace;">
+      <span><span style="color:var(--accent2);">■</span> Mat ${pMat.toFixed(0)}%</span>
+      <span><span style="color:var(--accent);">■</span> MOD ${pMod.toFixed(0)}%</span>
+      <span><span style="color:var(--warn);">■</span> CIF ${pCif.toFixed(0)}%</span>
+    </div>` : '';
+
   // KPI cards
   const kpisHtml = `
     <div class="sum-card accent"><div class="sum-val">$${fmtNum(Math.round(costoTotal))}</div><div class="sum-lbl">Costo unitario</div></div>
@@ -5117,35 +5289,39 @@ function cCalcularTodo() {
     <div class="sum-card"><div class="sum-val">$${fmtNum(Math.round(modTotal))}</div><div class="sum-lbl">MOD total</div></div>
     ${precioV > 0
       ? `<div class="sum-card" style="border-color:${margen>=20?'rgba(0,229,160,.3)':margen>=0?'rgba(245,158,11,.3)':'rgba(239,68,68,.3)'};"><div class="sum-val" style="color:${margen>=20?'var(--accent)':margen>=0?'var(--warn)':'var(--danger)'};">${margen.toFixed(1)}%</div><div class="sum-lbl">Margen bruto</div></div>`
-      : `<div class="sum-card"><div class="sum-val">$${fmtNum(Math.round(cifPorUnidad))}</div><div class="sum-lbl">CIF/unidad (${unidades} uds)</div></div>`
+      : `<div class="sum-card"><div class="sum-val">$${fmtNum(Math.round(cifPorUnidad))}</div><div class="sum-lbl">CIF/unidad</div></div>`
     }`;
 
-  // Desglose
-  const totMat = C_PROCESOS.reduce((s,p)=>s+res[p].materiales,0);
-  const desgHtml = C_PROCESOS.map(p => `
-    <tr>
+  // Desglose por proceso
+  const desgHtml = C_PROCESOS.map(p => {
+    const pct = costoTotal > 0 ? (res[p].total / costoTotal * 100).toFixed(1) : '0.0';
+    return `<tr>
       <td>${C_PROC_LABEL[p]}</td>
       <td style="text-align:right;font-family:'Space Mono',monospace;">$${fmtNum(Math.round(res[p].materiales))}</td>
       <td style="text-align:right;font-family:'Space Mono',monospace;">$${fmtNum(Math.round(res[p].mod))}</td>
       <td style="text-align:right;font-family:'Space Mono',monospace;">$${fmtNum(Math.round(res[p].cif))}</td>
       <td style="text-align:right;font-family:'Space Mono',monospace;font-weight:700;color:var(--accent2);">$${fmtNum(Math.round(res[p].total))}</td>
-    </tr>`).join('') + `
+      <td style="text-align:right;font-family:'Space Mono',monospace;font-size:.72rem;color:var(--muted);">${pct}%</td>
+    </tr>`;
+  }).join('') + `
     <tr style="background:var(--surface2);font-weight:700;">
       <td>TOTAL</td>
-      <td style="text-align:right;font-family:'Space Mono',monospace;">$${fmtNum(Math.round(totMat))}</td>
+      <td style="text-align:right;font-family:'Space Mono',monospace;">$${fmtNum(Math.round(matsTot))}</td>
       <td style="text-align:right;font-family:'Space Mono',monospace;">$${fmtNum(Math.round(modTotal))}</td>
       <td style="text-align:right;font-family:'Space Mono',monospace;">$${fmtNum(Math.round(cifPorUnidad))}</td>
       <td style="text-align:right;font-family:'Space Mono',monospace;color:var(--accent);font-size:1rem;">$${fmtNum(Math.round(costoTotal))}</td>
+      <td></td>
     </tr>`;
 
-  // Save result for persistence
-  const resultadoGuardado = { prodId: cProdActual, costoTotal, kpisHtml, desgHtml };
+  // Update live bar
+  cUpdateLiveBar(costoTotal, matsTot, modTotal, cifPorUnidad, precioV);
+
+  const resultadoGuardado = { prodId: cProdActual, costoTotal, breakdownHtml, kpisHtml, desgHtml };
   costosData.ultimoResultado = resultadoGuardado;
   lsGuardar();
-
   cMostrarResultado(resultadoGuardado);
   cUpdateMargenPreview();
-  showToast('✓ Costos calculados', 'success');
+  if(!silencioso) showToast('✓ Costos calculados', 'success');
 }
 
 
