@@ -1662,8 +1662,6 @@ function workerName(w){ return typeof w==='object'&&w!==null ? w.name : w; }
 let products  = DEFAULT_PRODUCTS;
 let movements = DEFAULT_MOVEMENTS;
 let workers   = DEFAULT_WORKERS;
-let currentProd = null; // unused — kept for legacy compat
-let currentType = null; // unused — kept for legacy compat
 let proveedores = []; // [{id, prodId, nombre, rut, precio, unidad, contacto, notas, fecha}]
 
 // ── COSTOS state ──
@@ -1695,6 +1693,11 @@ function sanitizar(str) {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#x27;');
+}
+// Escape for JS string inside onclick/onchange HTML attributes
+function escJs(str) {
+  if (!str) return "";
+  return String(str).replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '\\"');
 }
 
 // Cargar datos guardados al iniciar
@@ -2009,7 +2012,6 @@ function rstGuardar(){
   cerrarModalResetStock();
   showToast('✓ '+cambios+' campo'+(cambios!==1?'s':'')+' actualizado'+(cambios!==1?'s':''),'success');
 }
-function uToggleMenu(){ toggleMenu(); }
 function uCloseMenu(){ closeMenu(); }
 
 // ── SCANNER (fábrica compartida por Materiales y Urnas) ──
@@ -2833,7 +2835,7 @@ function addProduct(){
   const id = idField || generarIdMaterial(name, products);
   if(products.find(p=>p.id===id))return showToast('ID "'+id+'" ya existe — edita el campo ID','error');
   const cat    = document.getElementById('np-cat').value.trim();
-  const stockRaw    = parseFloat(document.getElementById('np-stock').value)||0;
+  const stockRaw    = Math.max(0, parseFloat(document.getElementById('np-stock').value)||0);
   const stockUnit   = document.getElementById('np-stock-unit')?.value || 'pres';
   const formatoVal  = parseFloat(document.getElementById('np-formato').value)||1;
   const unidadVal   = document.getElementById('np-unidad').value||'u';
@@ -2849,7 +2851,7 @@ function addProduct(){
   } else {
     stock = stockRaw;
   }
-  const minRaw    = parseFloat(document.getElementById('np-min').value)||0;
+  const minRaw    = Math.max(0, parseFloat(document.getElementById('np-min').value)||0);
   const minUnit   = document.getElementById('np-min-unit')?.value || 'pres';
   let min;
   if(hasPres && minUnit === 'base') {
@@ -3060,8 +3062,8 @@ function guardarEdicionMat(i){
   const p=products[i]; if(!p) return;
   const nombre=document.getElementById(`ep-m-name-${i}`)?.value.trim();
   const cat=document.getElementById(`ep-m-cat-${i}`)?.value.trim();
-  const min=parseFloat(document.getElementById(`ep-m-min-${i}`)?.value)||0;
-  const cost=parseFloat(document.getElementById(`ep-m-cost-${i}`)?.value)||0;
+  const min=Math.max(0, parseFloat(document.getElementById(`ep-m-min-${i}`)?.value)||0);
+  const cost=Math.max(0, parseFloat(document.getElementById(`ep-m-cost-${i}`)?.value)||0);
   if(!nombre) return showToast('El nombre no puede estar vacío','error');
   p.name=nombre; p.cat=cat; p.min=min; p.cost=cost;
   lsGuardar(); renderInventory(); _renderEditorProductos();
@@ -3112,8 +3114,8 @@ function guardarEdicionUrna(i){
   const p=uProducts[i]; if(!p) return;
   const nombre=document.getElementById(`ep-u-name-${i}`)?.value.trim();
   const term=document.getElementById(`ep-u-term-${i}`)?.value;
-  const min=parseFloat(document.getElementById(`ep-u-min-${i}`)?.value)||0;
-  const cost=parseFloat(document.getElementById(`ep-u-cost-${i}`)?.value)||0;
+  const min=Math.max(0, parseFloat(document.getElementById(`ep-u-min-${i}`)?.value)||0);
+  const cost=Math.max(0, parseFloat(document.getElementById(`ep-u-cost-${i}`)?.value)||0);
   if(!nombre) return showToast('El nombre no puede estar vacío','error');
   p.name=nombre; p.terminacion=term; p.min=min; p.cost=cost;
   lsGuardarU(); uRenderInventory(); _renderEditorProductosUrnas();
@@ -4778,30 +4780,6 @@ function uEliminarOP(opId) {
 
 
 
-let _uRecetaSkuId  = null;  // SKU que se está editando
-let _uRecetaItems  = [];    // [{matId, matName, cantidad, um}]
-
-
-
-// ── Modal receta ──────────────────────────────────────
-
-
-
-
-// ════════════════════════════════════════════════════════════════
-// COSTEO
-// ════════════════════════════════════════════════════════════════
-
-
-
-
-// ════════════════════════════════════════════════════════════════
-// HOOK EN OP TERMINADA — descontar materiales + registrar costeo
-// ════════════════════════════════════════════════════════════════
-
-
-
-
 // ════════════════════════════════════════════════════
 // COSTOS — módulo completo
 // ════════════════════════════════════════════════════
@@ -5282,7 +5260,7 @@ function vRenderFlota() {
     if(kmAceit  !== null && kmAceit  <= 2000) alertas.push({txt: (kmAceit<=0?'Aceite VENCIDO':'Aceite en '+fmtNum(kmAceit)+' km'), c: kmAceit<=0?'var(--danger)':'var(--warn)'});
     const costoTotal = (v.eventos||[]).reduce((s,e) => s+(e.costo||0)+(e.costoTotal||0),0);
     const ultKm = v.km || 0;
-    return `<div onclick="vAbrirFicha('${v.patente}')" style="background:var(--surface);border:1px solid ${v.estado==='En reparación'?'var(--danger)':v.estado==='Inactivo'?'var(--border)':'var(--border)'};border-radius:12px;padding:14px 16px;margin-bottom:10px;cursor:pointer;transition:border-color .2s;" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='${v.estado==='En reparación'?'var(--danger)':'var(--border)'}'">
+    return `<div onclick="vAbrirFicha('${escJs(v.patente)}')" style="background:var(--surface);border:1px solid ${v.estado==='En reparación'?'var(--danger)':v.estado==='Inactivo'?'var(--border)':'var(--border)'};border-radius:12px;padding:14px 16px;margin-bottom:10px;cursor:pointer;transition:border-color .2s;" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='${v.estado==='En reparación'?'var(--danger)':'var(--border)'}'">
       <div style="display:flex;align-items:flex-start;gap:12px;">
         <div style="font-size:2rem;flex-shrink:0;line-height:1;">${icon}</div>
         <div style="flex:1;min-width:0;">
@@ -5302,7 +5280,7 @@ function vRenderFlota() {
         </div>
         <div style="display:flex;flex-direction:column;align-items:center;gap:8px;flex-shrink:0;">
           <span style="font-size:.7rem;color:var(--accent);">▶</span>
-          <button onclick="event.stopPropagation();vEliminarVehiculo('${v.patente}')"
+          <button onclick="event.stopPropagation();vEliminarVehiculo('${escJs(v.patente)}')"
             style="background:none;border:none;cursor:pointer;color:var(--danger);font-size:.85rem;padding:0;line-height:1;" title="Eliminar vehículo">🗑</button>
         </div>
       </div>
@@ -5353,7 +5331,7 @@ function vRenderFicha() {
           <div style="font-size:.88rem;font-weight:600;margin-top:2px;">${sanitizar(v.marca)} ${sanitizar(v.modelo)} ${v.anio?'('+v.anio+')':''}</div>
           <div style="font-size:.72rem;color:var(--muted);margin-top:2px;">${v.tipo}${v.color?' · '+sanitizar(v.color):''}${v.conductor?' · 👤 '+sanitizar(v.conductor):''}</div>
         </div>
-        <button onclick="vAbrirModalVehiculo('${v.patente}')" style="font-size:.65rem;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:5px 10px;cursor:pointer;color:var(--muted);flex-shrink:0;">✏ Editar</button>
+        <button onclick="vAbrirModalVehiculo('${escJs(v.patente)}')" style="font-size:.65rem;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:5px 10px;cursor:pointer;color:var(--muted);flex-shrink:0;">✏ Editar</button>
       </div>
       <!-- Estado rápido -->
       <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
@@ -5361,7 +5339,7 @@ function vRenderFicha() {
         ${['Disponible','En reparación','Inactivo'].map(s => {
           const active = estado === s;
           const sc = s==='Disponible'?'var(--accent)':s==='En reparación'?'var(--danger)':'var(--muted)';
-          return `<button onclick="vCambiarEstado('${v.patente}','${s}')"
+          return `<button onclick="vCambiarEstado('${escJs(v.patente)}','${escJs(s)}')"
             style="font-size:.62rem;font-family:'Space Mono',monospace;padding:3px 10px;border-radius:8px;cursor:pointer;
             border:1px solid ${active?sc:'var(--border)'};
             background:${active?(s==='Disponible'?'rgba(0,229,160,.12)':s==='En reparación'?'rgba(239,68,68,.12)':'rgba(74,85,104,.2)'):'transparent'};
@@ -5421,7 +5399,7 @@ function vRenderFicha() {
           <span style="font-family:'Space Mono',monospace;font-size:.7rem;color:${r.diff>0?'var(--accent2)':'var(--muted)'};">${r.diff>0?'+'+fmtNum(r.diff):'—'}</span>
         </div>`).join('')}
       </div>
-      ${(v.kmDiario||[]).length > 5 ? `<button onclick="vToggleKmCompleto('${v.patente}')"
+      ${(v.kmDiario||[]).length > 5 ? `<button onclick="vToggleKmCompleto('${escJs(v.patente)}')"
         style="width:100%;background:none;border:none;border-top:1px solid var(--border);padding:8px;cursor:pointer;color:var(--accent);font-size:.72rem;font-family:'Space Mono',monospace;">
         Ver historial completo (${(v.kmDiario||[]).length} registros) ▼
       </button>
@@ -5459,7 +5437,7 @@ function vToggleKmCompleto(patente) {
     <span style="color:var(--muted);font-family:'Space Mono',monospace;">${fmtFecha(r.fecha)}</span>
     <span style="font-family:'Space Mono',monospace;font-weight:600;">${fmtNum(r.km)} km</span>
     <span style="font-family:'Space Mono',monospace;font-size:.7rem;color:${r.diff>0?'var(--accent2)':'var(--muted)'};">${r.diff>0?'+'+fmtNum(r.diff):'—'}</span>
-    <button onclick="vEliminarKm('${patente}','${r.id}')" style="background:none;border:none;cursor:pointer;color:var(--danger);font-size:.72rem;">🗑</button>
+    <button onclick="vEliminarKm('${escJs(patente)}','${escJs(r.id)}')" style="background:none;border:none;cursor:pointer;color:var(--danger);font-size:.72rem;">🗑</button>
   </div>`).join('');
 }
 
@@ -5492,7 +5470,7 @@ function events_html(eventos, v) {
       </div>
       <div style="text-align:right;flex-shrink:0;">
         ${costo?`<div style="font-family:'Space Mono',monospace;font-size:.78rem;color:var(--accent2);">$${fmtNum(costo)}</div>`:''}
-        <button onclick="vEliminarEvento('${v.patente}',${i})" style="background:none;border:none;cursor:pointer;color:var(--danger);font-size:.75rem;margin-top:4px;">🗑</button>
+        <button onclick="vEliminarEvento('${escJs(v.patente)}',${i})" style="background:none;border:none;cursor:pointer;color:var(--danger);font-size:.75rem;margin-top:4px;">🗑</button>
       </div>
     </div>`;
   }).join('');
@@ -5571,7 +5549,7 @@ function vRenderResumen() {
         const umbroBueno  = isHeavy ? 5 : 8;
         const umbroMedio  = isHeavy ? 3 : 6;
         const rc = rendRec?(rendRec>=umbroBueno?'var(--accent)':rendRec>=umbroMedio?'var(--warn)':'var(--danger)'):'var(--muted)';
-        return `<div onclick="vAbrirFicha('${v.patente}')" style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:11px 14px;margin-bottom:6px;cursor:pointer;display:flex;align-items:center;gap:12px;">
+        return `<div onclick="vAbrirFicha('${escJs(v.patente)}')" style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:11px 14px;margin-bottom:6px;cursor:pointer;display:flex;align-items:center;gap:12px;">
           <div style="font-size:1.3rem;">${VEH_TIPO_ICON[v.tipo]||'🚗'}</div>
           <div style="flex:1;min-width:0;">
             <div style="font-family:'Space Mono',monospace;font-size:.82rem;font-weight:700;">${sanitizar(v.patente)}</div>
@@ -5931,7 +5909,7 @@ function vOdoSelVehiculo(patente) {
                 <td style="padding:9px 12px;text-align:right;font-family:'Space Mono',monospace;font-weight:700;color:var(--accent);">${fmtNum(r.km)}</td>
                 <td style="padding:9px 12px;text-align:right;font-family:'Space Mono',monospace;font-size:.75rem;color:${r.diff>0?'var(--accent2)':r.diff<0?'var(--danger)':'var(--muted)'};">${r.diff>0?'+'+fmtNum(r.diff):r.diff<0?fmtNum(r.diff):'—'}</td>
                 <td style="padding:9px 12px;font-size:.75rem;color:var(--muted);">${r.conductor?'👤 '+sanitizar(r.conductor):''}${r.notas?' · '+sanitizar(r.notas):''}</td>
-                <td style="padding:9px 8px;text-align:center;"><button onclick="vEliminarKm('${v.patente}','${r.id}')" style="background:none;border:none;cursor:pointer;color:var(--danger);font-size:.75rem;">🗑</button></td>
+                <td style="padding:9px 8px;text-align:center;"><button onclick="vEliminarKm('${escJs(v.patente)}','${escJs(r.id)}')" style="background:none;border:none;cursor:pointer;color:var(--danger);font-size:.75rem;">🗑</button></td>
               </tr>`).join('')}
             </tbody>
           </table>
@@ -6111,7 +6089,7 @@ function renderProveedores() {
                 <button class="btn btn-secondary" style="font-size:.65rem;padding:4px 9px;"
                   onclick="provEditar('${pv.id}')">✏</button>
                 <button class="btn btn-secondary" style="font-size:.65rem;padding:4px 9px;color:var(--danger);"
-                  onclick="provEliminar('${pv.id}','${sanitizar(pv.nombre)}')">🗑</button>
+                  onclick="provEliminar('${escJs(pv.id)}','${escJs(pv.nombre)}')">🗑</button>
               </div>
             </div>
           </div>`;
@@ -6243,7 +6221,6 @@ function provEliminar(pvId, nombre) {
 
 
 // Legacy aliases
-function uShowAddOP() { uAbrirNuevaOP(); }
 function uSaveOP()    { uGuardarOP(); }
 function uSetEstado() {}
 
@@ -7125,21 +7102,6 @@ function matSortTop(sort){
   document.getElementById('mat-sort-qty').style.borderColor=sort==='qty'?'var(--accent)':'var(--border)';
   matFiltrarTop();
 }
-function donutArc(size,ok,warn,danger,total){
-  if(!total)return `<circle cx="45" cy="45" r="34" fill="none" stroke="var(--surface2)" stroke-width="10"/>`;
-  const r=34,cx=45,cy=45,circ=2*Math.PI*r;
-  let offset=0;
-  function arc(pct,color){
-    if(pct<=0)return '';
-    const dash=circ*pct,gap=circ*(1-pct);
-    const rot=-90+offset*360;
-    offset+=pct;
-    return `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${color}" stroke-width="10" stroke-dasharray="${dash.toFixed(2)} ${gap.toFixed(2)}" stroke-dashoffset="${(-(circ*(offset-pct))+circ*0.25).toFixed(2)}" transform="rotate(${rot} ${cx} ${cy})"/>`;
-  }
-  const pOk=ok/total,pWarn=warn/total,pDanger=danger/total;
-  return `<circle cx="45" cy="45" r="34" fill="none" stroke="var(--surface2)" stroke-width="10"/>
-    ${arc(pOk,'var(--accent)')}${arc(pWarn,'var(--warn)')}${arc(pDanger,'var(--danger)')}`;
-}
 function toggleReorden(){
   const el=document.getElementById('reorden-list');
   const arrow=document.getElementById('reorden-arrow');
@@ -7196,19 +7158,26 @@ async function doLogin() {
   }
 }
 
+let _loginErrTimer = null;
 function showLoginError(msg) {
   const el = document.getElementById('login-error');
   if(!el) return;
   el.textContent = msg;
   el.style.display = 'block';
+  clearTimeout(_loginErrTimer);
+  _loginErrTimer = setTimeout(() => { el.style.display = 'none'; }, 5000);
 }
 
 // Logout handler (called from hamburger menu)
 async function cerrarSesion() {
   closeMenu();
   if(!confirm('¿Cerrar sesión?')) return;
+  // 1. Unsubscribe Firestore listeners (prevents permission errors + memory leak)
+  (window._fbUnsubs || []).forEach(fn => fn());
+  window._fbUnsubs = [];
+  // 2. Sign out from Firebase
   await window._fbSignOut();
-  // Clear local cache
+  // 3. Clear local cache AFTER successful sign-out
   localStorage.clear();
   document.getElementById('app-root').style.display = 'none';
   document.getElementById('login-screen').style.display = 'flex';
@@ -7220,11 +7189,13 @@ async function cerrarSesion() {
 }
 
 // Firestore subscription: load data and listen for changes
+// Store unsubscribe functions to clean up on logout
+window._fbUnsubs = [];
 window._fbSubscribe = function() {
   if(!window._fbDb) return;
 
   // ── Materiales ──────────────────────────────────────
-  window._fbOnSnap(
+  window._fbUnsubs.push(window._fbOnSnap(
     window._fbDoc(window._fbDb, 'inventario', 'materiales'),
     (snap) => {
       if(!snap.exists()) return; // first time, no data yet
@@ -7268,10 +7239,10 @@ window._fbSubscribe = function() {
         cRenderWizard();
       }
     }
-  );
+  ));
 
   // ── Urnas ──────────────────────────────────────────
-  window._fbOnSnap(
+  window._fbUnsubs.push(window._fbOnSnap(
     window._fbDoc(window._fbDb, 'inventario', 'urnas'),
     (snap) => {
       if(!snap.exists()) return;
@@ -7293,7 +7264,7 @@ window._fbSubscribe = function() {
         if(uid === 'uresumen')    uRenderResumen();
       }
     }
-  );
+  ));
 };
 
 // ── ADMIN: Panel de usuarios ─────────────────────────
