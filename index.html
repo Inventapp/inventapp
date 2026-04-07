@@ -5245,9 +5245,10 @@ function cCalcularTodo(silencioso = false) {
 
   const cifMes   = parseFloat(document.getElementById('c-cif-total')?.value)    || costosData.cifTotal    || 0;
   const unidades = parseFloat(document.getElementById('c-unidades-mes')?.value) || costosData.unidadesMes || 50;
-  const precioV  = parseFloat(document.getElementById('c-precio-venta')?.value) ||
-                   (cProdActual ? costosData.precios?.[cProdActual] : null) ??
-                   costosData.precioVenta ?? 0;
+  const precioV  = parseFloat(document.getElementById('c-precio-venta')?.value)
+                   || (cProdActual && costosData.precios?.[cProdActual])
+                   || costosData.precioVenta
+                   || 0;
 
   const cifPorUnidad = unidades > 0 ? cifMes / unidades : 0;
 
