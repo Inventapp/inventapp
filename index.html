@@ -870,14 +870,14 @@ body.modal-open{overflow:hidden;}
       <div class="scan-hint" id="u-scan-hint-txt">Toca para activar la cámara</div>
     </div>
     <div class="alt-btns">
-      <button class="alt-btn" onclick="uToggleAlt('u-manual-input')">✏ SKU Manual</button>
-      <button class="alt-btn" onclick="uToggleAlt('u-dropdown-input')">📋 Elegir de lista</button>
+      <button class="alt-btn" id="u-alt-manual-btn" onclick="uToggleAlt('u-manual-input')">✏ Serial Manual</button>
+      <button class="alt-btn" id="u-alt-lista-btn" onclick="uToggleAlt('u-dropdown-input')">📋 Elegir de lista</button>
     </div>
-    <!-- SKU manual (para venta o consulta) -->
+    <!-- Serial / SKU manual -->
     <div id="u-manual-input" style="display:none;margin-top:12px;">
-      <label for="u-manual-id">SKU de unidad (código)</label>
+      <label for="u-manual-id" id="u-manual-label">Serial o SKU</label>
       <div style="display:flex;gap:8px;">
-        <input type="text" id="u-manual-id" placeholder="ej: PAI-001" style="flex:1;font-family:'Space Mono',monospace;text-transform:uppercase;" onkeydown="if(event.key==='Enter')uLookupSerial()">
+        <input type="text" id="u-manual-id" placeholder="ej: A-001" style="flex:1;font-family:'Space Mono',monospace;text-transform:uppercase;" onkeydown="if(event.key==='Enter')uLookupSerial()">
         <button class="btn btn-primary" onclick="uLookupSerial()">Buscar</button>
       </div>
     </div>
@@ -944,7 +944,8 @@ body.modal-open{overflow:hidden;}
       <div id="u-ficha-info-extra" style="display:none;border-top:1px solid var(--border);padding-top:10px;margin-top:4px;">
         <div id="u-ficha-info-extra-content" style="font-size:.8rem;color:var(--muted);"></div>
       </div>
-      <button class="btn btn-secondary btn-full" style="margin-top:8px;" onclick="document.getElementById('u-ficha-serial').style.display='none'">Cerrar</button>
+      <button class="btn btn-secondary btn-full" style="margin-top:8px;" onclick="uMostrarHistorial(uCurrentSerial)">📜 Historial</button>
+      <button class="btn btn-secondary btn-full" style="margin-top:6px;" onclick="document.getElementById('u-ficha-serial').style.display='none'">Cerrar</button>
     </div>
   </div>
 
@@ -1254,6 +1255,18 @@ body.modal-open{overflow:hidden;}
       </div>
     </div>
     <button class="btn btn-primary btn-full" onclick="uConfirmarTraslado()">🚚 Confirmar traslado</button>
+  </div>
+</div>
+
+<!-- MODAL HISTORIAL DE UNIDAD -->
+<div id="u-historial-modal-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:9000;align-items:center;justify-content:center;" onclick="if(event.target===this)uCerrarHistorial()">
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:20px;width:92%;max-width:500px;max-height:80vh;overflow-y:auto;box-shadow:0 8px 40px rgba(0,0,0,.5);">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+      <div style="font-family:'Space Mono',monospace;font-size:.65rem;color:var(--muted);">HISTORIAL DE UNIDAD</div>
+      <button onclick="uCerrarHistorial()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:1.1rem;">✕</button>
+    </div>
+    <div id="u-hist-header" style="background:var(--surface2);border-radius:8px;padding:10px 12px;margin-bottom:16px;font-size:.82rem;"></div>
+    <div id="u-hist-timeline" style="padding-left:16px;border-left:2px solid var(--border);"></div>
   </div>
 </div>
 
@@ -3400,9 +3413,27 @@ function uSetScanMode(mode) {
     const btn = document.getElementById(id); if(!btn) return;
     btn.className = m === mode ? 'btn btn-primary' : 'btn btn-secondary';
   });
-  // Clear sub-panels when switching modes
+  // Clear all sub-panels when switching modes
   document.getElementById('u-ficha-serial').style.display = 'none';
-  if(mode !== 'ingreso') document.getElementById('u-ingreso-form').style.display = 'none';
+  document.getElementById('u-ingreso-form').style.display = 'none';
+  document.getElementById('u-manual-input').style.display = 'none';
+  document.getElementById('u-dropdown-input').style.display = 'none';
+  // Hide "Elegir de lista" in non-ingreso modes (only makes sense for ingreso)
+  const listaBtn = document.getElementById('u-alt-lista-btn');
+  if(listaBtn) listaBtn.style.display = mode === 'ingreso' ? '' : 'none';
+  // Update manual input labels per mode
+  const label = document.getElementById('u-manual-label');
+  const input = document.getElementById('u-manual-id');
+  const manBtn = document.getElementById('u-alt-manual-btn');
+  if(mode === 'ingreso') {
+    if(label) label.textContent = 'Serial o SKU';
+    if(input) input.placeholder = 'ej: A-001 o FUT-BO';
+    if(manBtn) manBtn.textContent = '✏ Serial / SKU';
+  } else {
+    if(label) label.textContent = 'Serial de unidad';
+    if(input) input.placeholder = 'ej: A-001';
+    if(manBtn) manBtn.textContent = '✏ Serial Manual';
+  }
 }
 function uHandleScan(text) {
   const serial = (text || '').trim().toUpperCase();
@@ -3601,6 +3632,53 @@ function uConfirmarTraslado() {
   if(document.getElementById('page-uunidades')?.classList.contains('active')) uRenderUnidades();
   if(document.getElementById('page-uresumen')?.classList.contains('active')) uRenderResumen();
   if(document.getElementById('page-uinventory')?.classList.contains('active')) uRenderInventory();
+}
+
+// ── HISTORIAL DE UNIDAD ─────────────────────────────────
+function uMostrarHistorial(serial) {
+  const u = uUnidades.find(x => x.id === serial);
+  if(!u) return showToast('Serial no encontrado', 'error');
+  const UB_ICON = { 'Fábrica':'🏭', 'Funeraria':'⛪', 'Metro':'🏪' };
+  const ub = u.ubicacion || 'Fábrica';
+  // Header
+  document.getElementById('u-hist-header').innerHTML = `
+    <div style="font-family:'Space Mono',monospace;font-size:.85rem;color:var(--accent);font-weight:700;margin-bottom:4px;">${sanitizar(u.id)}</div>
+    <div style="font-size:.8rem;font-weight:600;">${sanitizar(u.nombre)} · ${sanitizar(u.terminacion||'—')}</div>
+    <div style="display:flex;gap:12px;margin-top:6px;font-size:.72rem;color:var(--muted);">
+      <span>● ${sanitizar(u.estado)}</span>
+      <span>${UB_ICON[ub]||''} ${sanitizar(ub)}</span>
+    </div>`;
+  // Build timeline from movements
+  const movs = uMovements.filter(m =>
+    m.serial === serial || (m.seriales && m.seriales.includes(serial))
+  ).sort((a, b) => a.date > b.date ? 1 : a.date < b.date ? -1 : 0);
+  const timeline = document.getElementById('u-hist-timeline');
+  if(!movs.length) {
+    timeline.innerHTML = '<div style="padding:10px 0;font-size:.78rem;color:var(--muted);font-style:italic;">Sin movimientos registrados.</div>';
+  } else {
+    timeline.innerHTML = movs.map(m => {
+      let icon = '📦', color = 'var(--accent)', desc = '';
+      if(m.type === 'Ingreso') {
+        icon = '📥'; color = 'var(--accent)';
+        desc = `Ingreso · Costo: $${fmtNum(m.costo || 0)}`;
+      } else if(m.type === 'Traslado') {
+        icon = '🚚'; color = 'var(--warn)';
+        desc = `Traslado: ${sanitizar(m.desde||'?')} → ${sanitizar(m.hacia||'?')}`;
+      } else if(m.type === 'Salida') {
+        icon = '💰'; color = 'var(--danger)';
+        desc = `Venta${m.contrato ? ' · N° ' + sanitizar(m.contrato) : ''}${m.cliente ? ' · ' + sanitizar(m.cliente) : ''}`;
+      }
+      return `<div style="position:relative;padding:0 0 18px 20px;">
+        <div style="position:absolute;left:-9px;top:2px;width:16px;height:16px;border-radius:50%;background:var(--surface);border:2px solid ${color};display:flex;align-items:center;justify-content:center;font-size:.55rem;">${icon}</div>
+        <div style="font-family:'Space Mono',monospace;font-size:.65rem;color:var(--muted);">${sanitizar(m.date)}</div>
+        <div style="font-size:.78rem;margin-top:2px;">${desc}</div>
+      </div>`;
+    }).join('');
+  }
+  _modalShow('u-historial-modal-overlay');
+}
+function uCerrarHistorial() {
+  _modalHide('u-historial-modal-overlay');
 }
 
 function uConfirmarVentaModal() {
@@ -3952,6 +4030,7 @@ function uRenderUnidades() {
     let acciones = '';
     if(u.estado === 'En Stock') acciones = `<button onclick="uAbrirVentaModal('${u.id}')" style="background:none;border:1px solid var(--accent);border-radius:6px;padding:2px 8px;cursor:pointer;font-size:.65rem;color:var(--accent);">Vender</button> <button onclick="uAbrirTrasladoModal('${u.id}')" style="background:none;border:1px solid var(--border);border-radius:6px;padding:2px 8px;cursor:pointer;font-size:.65rem;color:var(--muted);">🚚</button>`;
     else if(u.estado !== 'Vendido') acciones = `<button onclick="uAbrirTrasladoModal('${u.id}')" style="background:none;border:1px solid var(--border);border-radius:6px;padding:2px 8px;cursor:pointer;font-size:.65rem;color:var(--muted);">🚚</button>`;
+    acciones += ` <button onclick="uMostrarHistorial('${u.id}')" style="background:none;border:1px solid var(--border);border-radius:6px;padding:2px 8px;cursor:pointer;font-size:.65rem;color:var(--muted);">Historial</button>`;
     tbody.insertAdjacentHTML('beforeend', `<tr>
       <td><span style="font-family:'Space Mono',monospace;font-size:.78rem;color:var(--accent);font-weight:700;">${sanitizar(u.id)}</span></td>
       <td style="font-size:.82rem;">${sanitizar(u.nombre)}</td>
