@@ -697,80 +697,31 @@ tr:hover td{background:rgba(255,255,255,.02);}
     </div>
     <div class="form-row">
       <div><label for="np-cat">Categoría</label><input type="text" id="np-cat" placeholder="ej: Adhesivos" list="cat-datalist"></div>
-      <div><label for="np-cost">Costo unitario ($)</label><input type="number" id="np-cost" value="0" min="0" step="0.01" oninput="npCalcCostoBase()"></div>
+      <div><label for="np-cost">Costo unitario ($)</label><input type="number" id="np-cost" value="0" min="0" step="0.01"></div>
     </div>
-    <!-- Modo de producto -->
-    <div style="display:flex;align-items:center;gap:14px;margin:8px 0 4px;padding:8px 10px;background:var(--surface2);border-radius:8px;">
-      <span style="font-size:.68rem;color:var(--muted);font-family:'Space Mono',monospace;letter-spacing:.05em;flex-shrink:0;">MODO:</span>
-      <label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:.8rem;font-weight:600;">
-        <input type="radio" name="np-modo" id="np-modo-simple" value="simple" onchange="npToggleModo()" checked>
-        Simple
-      </label>
-      <label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:.8rem;">
-        <input type="radio" name="np-modo" id="np-modo-frac" value="fraccionado" onchange="npToggleModo()">
-        Fraccionado
-        <span style="font-size:.65rem;color:var(--muted);">(viene por kg, L, gr…)</span>
-      </label>
-    </div>
-    <!-- Presentación / formato (solo modo Fraccionado) -->
-    <div id="np-pres-section" style="display:none;background:var(--surface2);border-radius:9px;padding:10px 12px;margin-top:2px;margin-bottom:2px;">
-      <div style="font-family:'Space Mono',monospace;font-size:.58rem;color:var(--muted);letter-spacing:.08em;margin-bottom:8px;">PRESENTACIÓN</div>
-      <div class="form-row" style="margin-bottom:6px;">
-        <div>
-          <label for="np-formato">Formato (cantidad por presentación)</label>
-          <input type="number" id="np-formato" value="1" min="0.001" step="any" placeholder="ej: 28" oninput="npCalcCostoBase()">
-        </div>
-        <div>
-          <label for="np-unidad">Unidad base</label>
-          <select id="np-unidad" onchange="npCalcCostoBase()" style="width:100%;">
-            <option value="u">u (unidad simple)</option>
-            <option value="gr">gr (gramos)</option>
-            <option value="ml">ml (mililitros)</option>
-            <option value="L">L (litros)</option>
-            <option value="kg">kg (kilogramos)</option>
-            <option value="m">m (metros)</option>
-            <option value="m2">m² (metro cuadrado)</option>
-            <option value="Gl">Gl (galón)</option>
-          </select>
-        </div>
-      </div>
-      <!-- Nombre de la presentación (bolsa, envase, frasco, etc.) -->
-      <div id="np-nombre-pres-wrap" style="margin-bottom:8px;display:none;">
-        <label style="font-size:.72rem;">Nombre de la presentación <span style="color:var(--muted);font-weight:400;">(opcional, ej: bolsa, envase, frasco, rollo)</span></label>
-        <input type="text" id="np-nombre-pres" placeholder="ej: bolsa" style="margin-top:4px;">
-      </div>
-      <!-- Resumen de conversión -->
-      <div id="np-conversion-wrap" style="display:none;background:rgba(0,229,160,.07);border:1px solid rgba(0,229,160,.2);border-radius:7px;padding:8px 10px;margin-top:4px;">
-        <div id="np-conversion-label" style="font-family:'Space Mono',monospace;font-size:.78rem;color:var(--accent);font-weight:700;"></div>
-        <div id="np-costo-base" style="font-family:'Space Mono',monospace;font-size:.72rem;color:var(--muted);margin-top:2px;"></div>
-      </div>
-      <div id="np-costo-base-simple" style="display:flex;align-items:center;gap:10px;margin-top:4px;">
-        <div style="font-size:.72rem;color:var(--muted);">Costo / unidad base:</div>
-        <div style="font-family:'Space Mono',monospace;font-size:.85rem;font-weight:700;color:var(--accent);">—</div>
+    <div class="form-row">
+      <div>
+        <label for="np-unidad">Unidad de medida</label>
+        <select id="np-unidad" style="width:100%;">
+          <option value="u">u (unidades)</option>
+          <option value="gr">gr (gramos)</option>
+          <option value="ml">ml (mililitros)</option>
+          <option value="L">L (litros)</option>
+          <option value="kg">kg (kilogramos)</option>
+          <option value="m">m (metros)</option>
+          <option value="m2">m² (metro cuadrado)</option>
+          <option value="Gl">Gl (galón)</option>
+        </select>
       </div>
     </div>
     <div class="form-row">
       <div>
         <label for="np-stock">Stock inicial</label>
-        <div style="display:flex;gap:6px;margin-top:4px;">
-          <input type="number" id="np-stock" value="0" min="0" style="flex:1;" oninput="npUpdateStockEquiv()">
-          <select id="np-stock-unit" onchange="npUpdateStockEquiv()" aria-label="Unidad de stock inicial" style="width:auto;min-width:80px;font-family:'Space Mono',monospace;font-size:.78rem;color:var(--accent);">
-            <option value="pres">unid.</option>
-            <option value="base">base</option>
-          </select>
-        </div>
-        <div id="np-stock-equiv" style="font-size:.65rem;color:var(--muted);margin-top:3px;font-family:'Space Mono',monospace;min-height:14px;"></div>
+        <input type="number" id="np-stock" value="0" min="0" step="any" style="width:100%;">
       </div>
       <div>
         <label for="np-min">Stock mínimo</label>
-        <div style="display:flex;gap:6px;margin-top:4px;">
-          <input type="number" id="np-min" value="1" min="0" style="flex:1;" oninput="npUpdateMinEquiv()">
-          <select id="np-min-unit" onchange="npUpdateMinEquiv()" aria-label="Unidad de stock mínimo" style="width:auto;min-width:80px;font-family:'Space Mono',monospace;font-size:.78rem;color:var(--muted);">
-            <option value="pres">unid.</option>
-            <option value="base">base</option>
-          </select>
-        </div>
-        <div id="np-min-equiv" style="font-size:.65rem;color:var(--muted);margin-top:3px;font-family:'Space Mono',monospace;min-height:14px;"></div>
+        <input type="number" id="np-min" value="1" min="0" step="any" style="width:100%;">
       </div>
     </div>
     <datalist id="cat-datalist"></datalist>
@@ -2222,7 +2173,8 @@ function _movPopulateProveedores() {
 function _movBuildOpts(selectedId) {
   return products.map(p => {
     const uLabel = p.unidad && p.unidad !== 'u' ? p.unidad : 'uds';
-    const stockStr = p.stock + ' ' + uLabel;
+    const stockDisp = Number(p.stock.toFixed(3)).toLocaleString('es-CL',{maximumFractionDigits:3});
+    const stockStr = stockDisp + ' ' + uLabel;
     const warn = p.stock === 0 ? '⛔ ' : p.stock <= p.min ? '⚠ ' : '';
     return `<option value="${p.id}" ${p.id===selectedId?'selected':''}>${warn}${p.name} · Stock: ${stockStr}</option>`;
   }).join('');
@@ -2234,11 +2186,9 @@ function _movAddRow(preselId) {
   const isIn  = movCurrentType === 'Ingreso';
   const rowId = 'mrow-' + Date.now() + '-' + list.children.length;
   const prod  = preselId ? products.find(p => p.id === preselId) : null;
-  const hasPres = prod && prod.formato > 1 && prod.unidad && prod.unidad !== 'u';
-  const presName = hasPres ? (prod.nombrePres || 'unid.') : '';
-  const baseU    = hasPres ? (prod.unidad === 'L' ? 'ml' : prod.unidad === 'kg' ? 'gr' : prod.unidad) : '';
+  const uLabel = prod ? (prod.unidad && prod.unidad !== 'u' ? prod.unidad : 'uds') : '';
   const stockLabel = prod
-    ? prod.stock + (presName ? ' ' + presName : (prod.unidad && prod.unidad !== 'u' ? ' ' + prod.unidad : ' uds'))
+    ? Number(prod.stock.toFixed(3)).toLocaleString('es-CL',{maximumFractionDigits:3}) + ' ' + uLabel
     : '—';
 
   list.insertAdjacentHTML('beforeend', `
@@ -2258,36 +2208,19 @@ function _movAddRow(preselId) {
       <div style="display:flex;gap:8px;align-items:center;font-size:.72rem;flex-wrap:wrap;">
         <span style="color:var(--muted);">Stock:</span>
         <span class="mov-stock-actual" style="font-family:'Space Mono',monospace;color:var(--accent);font-weight:700;">${stockLabel}</span>
-        <span class="mov-stock-equiv" style="color:var(--muted);font-size:.68rem;" ${hasPres?'':'hidden'}></span>
         <span class="mov-stock-arrow" style="color:var(--muted);" ${prod?'':'hidden'}>→</span>
         <span class="mov-stock-result" style="font-family:'Space Mono',monospace;font-weight:700;" ${prod?'':'hidden'}>—</span>
-      </div>
-
-      <!-- Selector de unidad de ingreso (solo si tiene presentación) -->
-      <div class="mov-unit-mode-wrap" style="display:${hasPres?'flex':'none'};gap:6px;align-items:center;">
-        <span style="font-size:.68rem;color:var(--muted);">Registrar en:</span>
-        <button class="mov-unit-mode-btn active-mode" data-mode="pres"
-          onclick="_movSetUnitMode(this,'pres')"
-          style="font-size:.68rem;padding:3px 10px;border-radius:6px;border:1px solid var(--accent);background:var(--accent);color:var(--bg);cursor:pointer;font-family:'Space Mono',monospace;">
-          ${presName || 'unid.'}
-        </button>
-        <button class="mov-unit-mode-btn" data-mode="base"
-          onclick="_movSetUnitMode(this,'base')"
-          style="font-size:.68rem;padding:3px 10px;border-radius:6px;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;font-family:'Space Mono',monospace;">
-          ${baseU}
-        </button>
-        <span class="mov-conv-hint" style="font-size:.65rem;color:var(--accent2);font-family:'Space Mono',monospace;"></span>
       </div>
 
       <!-- Cantidad + Costo -->
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
         <div>
-          <label style="font-size:.7rem;">Cantidad <span class="mov-unidad-lbl" style="font-family:'Space Mono',monospace;color:var(--accent);font-size:.65rem;">${presName||''}</span></label>
+          <label style="font-size:.7rem;">Cantidad <span class="mov-unidad-lbl" style="font-family:'Space Mono',monospace;color:var(--accent);font-size:.65rem;">${uLabel}</span></label>
           <input type="number" class="mov-item-qty" min="0.001" step="any" value="1" style="width:100%;"
             oninput="_movRecalcRow(this.closest('.mov-item-row'))">
         </div>
         <div class="mov-item-cost-wrap" style="display:${isIn?'flex':'none'};flex-direction:column;">
-          <label style="font-size:.7rem;">Costo presentación ($) <span class="mov-costo-base-lbl" style="font-family:'Space Mono',monospace;color:var(--accent2);font-size:.62rem;"></span></label>
+          <label style="font-size:.7rem;">Costo unitario ($)</label>
           <input type="number" class="mov-item-cost" min="0" step="1" value="${prod?prod.cost||'':''}" placeholder="0" style="width:100%;"
             oninput="_movRecalcRow(this.closest('.mov-item-row'))">
         </div>
@@ -2298,26 +2231,6 @@ function _movAddRow(preselId) {
   if (prod) _movRecalcRow(row);
 }
 
-// Toggle between registering in "bolsas" vs "gr"
-function _movSetUnitMode(btn, mode) {
-  const row = btn.closest('.mov-item-row');
-  // Update button styles
-  row.querySelectorAll('.mov-unit-mode-btn').forEach(b => {
-    const active = b.dataset.mode === mode;
-    b.style.background    = active ? 'var(--accent)' : 'transparent';
-    b.style.color         = active ? 'var(--bg)'     : 'var(--muted)';
-    b.style.borderColor   = active ? 'var(--accent)' : 'var(--border)';
-  });
-  // Update qty label
-  const prod = products.find(p => p.id === row.querySelector('.mov-item-prod').value);
-  if(!prod) return;
-  const presName = prod.nombrePres || 'unid.';
-  const baseU    = prod.unidad === 'L' ? 'ml' : prod.unidad === 'kg' ? 'gr' : prod.unidad;
-  const lbl = row.querySelector('.mov-unidad-lbl');
-  if(lbl) lbl.textContent = mode === 'pres' ? presName : baseU;
-  _movRecalcRow(row);
-}
-
 function addMovItem() {
   _movAddRow(null);
 }
@@ -2326,29 +2239,11 @@ function addMovItem() {
 function _movOnProdChange(sel) {
   const row  = sel.closest('.mov-item-row');
   const prod = products.find(p => p.id === sel.value);
-  const hasPres  = prod && prod.formato > 1 && prod.unidad && prod.unidad !== 'u';
-  const presName = hasPres ? (prod.nombrePres || 'unid.') : '';
-  const baseU    = hasPres ? (prod.unidad === 'L' ? 'ml' : prod.unidad === 'kg' ? 'gr' : prod.unidad) : '';
-
-  // Unit mode selector: show/hide + update labels
-  const modeWrap = row.querySelector('.mov-unit-mode-wrap');
-  if(modeWrap) {
-    modeWrap.style.display = hasPres ? 'flex' : 'none';
-    const btns = row.querySelectorAll('.mov-unit-mode-btn');
-    if(btns[0]) btns[0].textContent = presName;
-    if(btns[1]) btns[1].textContent = baseU;
-    // Reset to "pres" mode when product changes
-    btns.forEach(b => {
-      const active = b.dataset.mode === 'pres';
-      b.style.background  = active ? 'var(--accent)' : 'transparent';
-      b.style.color       = active ? 'var(--bg)'     : 'var(--muted)';
-      b.style.borderColor = active ? 'var(--accent)' : 'var(--border)';
-    });
-  }
+  const uLabel = prod ? (prod.unidad && prod.unidad !== 'u' ? prod.unidad : 'uds') : '';
 
   // Update qty label
   const lbl = row.querySelector('.mov-unidad-lbl');
-  if(lbl) lbl.textContent = presName || (prod?.unidad !== 'u' ? prod?.unidad : '') || '';
+  if(lbl) lbl.textContent = uLabel;
 
   // Update costo field
   const costoInput = row.querySelector('.mov-item-cost');
@@ -2357,7 +2252,7 @@ function _movOnProdChange(sel) {
   _movRecalcRow(row);
 }
 
-// Recalculate stock-resultante, equiv display and costo/unidad for a single row
+// Recalculate stock-resultante for a single row
 function _movRecalcRow(row) {
   const prodId   = row.querySelector('.mov-item-prod').value;
   const prod     = products.find(p => p.id === prodId);
@@ -2366,9 +2261,6 @@ function _movRecalcRow(row) {
   const resultEl = row.querySelector('.mov-stock-result');
   const arrowEl  = row.querySelector('.mov-stock-arrow');
   const actualEl = row.querySelector('.mov-stock-actual');
-  const equivEl  = row.querySelector('.mov-stock-equiv');
-  const costoLbl = row.querySelector('.mov-costo-base-lbl');
-  const convHint = row.querySelector('.mov-conv-hint');
 
   if(!prod) {
     if(resultEl) resultEl.hidden = true;
@@ -2376,95 +2268,20 @@ function _movRecalcRow(row) {
     return;
   }
 
-  const hasPres  = prod.formato > 1 && prod.unidad && prod.unidad !== 'u';
-  const presName = hasPres ? (prod.nombrePres || 'unid.') : '';
-  const baseU    = hasPres
-    ? (prod.unidad === 'L' ? 'ml' : prod.unidad === 'kg' ? 'gr' : prod.unidad)
-    : (prod.unidad && prod.unidad !== 'u' ? prod.unidad : 'uds');
+  const uLabel = prod.unidad && prod.unidad !== 'u' ? prod.unidad : 'uds';
 
-  // Current unit mode: pres or base
-  const activeBtn = row.querySelector('.mov-unit-mode-btn.active-mode') ||
-                    row.querySelector('.mov-unit-mode-btn[style*="var(--accent)"]') ||
-                    (hasPres ? { dataset:{mode:'pres'} } : { dataset:{mode:'base'} });
-  // Better: check which btn has accent background
-  let mode = 'pres';
-  if(hasPres) {
-    const btns = row.querySelectorAll('.mov-unit-mode-btn');
-    btns.forEach(b => { if(b.style.background.includes('var(--accent)')) mode = b.dataset.mode; });
-  } else {
-    mode = 'base';
-  }
-
-  // Convert qty to units-of-presentation for stock math
-  let qtyInUnits = qty;
-  if(hasPres && mode === 'base') {
-    // User typed in base units → convert to presentation units
-    const basePerUnit = prod.unidad === 'L' ? prod.formato * 1000
-                      : prod.unidad === 'kg' ? prod.formato * 1000
-                      : prod.unidad === 'Gl' ? prod.formato * 3785
-                      : prod.formato;
-    qtyInUnits = qty / basePerUnit;
-  }
-
-  // Stock label: "5 bolsas"
+  // Stock label
   if(actualEl) {
-    const stockTxt = prod.stock + (presName ? ' ' + presName : ' ' + baseU);
-    actualEl.textContent = stockTxt;
-  }
-
-  // Equiv: "(140 gr)"
-  if(equivEl && hasPres) {
-    const basePerUnit = prod.unidad === 'L' ? prod.formato * 1000
-                      : prod.unidad === 'kg' ? prod.formato * 1000
-                      : prod.unidad === 'Gl' ? prod.formato * 3785
-                      : prod.formato;
-    const totalBase = prod.stock * basePerUnit;
-    equivEl.textContent = '(' + fmtNum(totalBase) + ' ' + baseU + ')';
-    equivEl.hidden = false;
-  } else if(equivEl) {
-    equivEl.hidden = true;
-  }
-
-  // Conversion hint: "1 bolsa = 28 gr"
-  if(convHint && hasPres) {
-    const basePerUnit = prod.unidad === 'L' ? prod.formato * 1000
-                      : prod.unidad === 'kg' ? prod.formato * 1000
-                      : prod.unidad === 'Gl' ? prod.formato * 3785
-                      : prod.formato;
-    convHint.textContent = '1 ' + presName + ' = ' + basePerUnit + ' ' + baseU;
-  }
-
-  // Costo/unidad base live calc (ingreso only)
-  const costoInput = row.querySelector('.mov-item-cost');
-  if(costoLbl && costoInput && hasPres) {
-    const c = parseFloat(costoInput.value) || 0;
-    if(c > 0) {
-      const basePerUnit = prod.unidad === 'L' ? prod.formato * 1000
-                        : prod.unidad === 'kg' ? prod.formato * 1000
-                        : prod.unidad === 'Gl' ? prod.formato * 3785
-                        : prod.formato;
-      const cuBase = c / basePerUnit;
-      costoLbl.textContent = '$' + cuBase.toFixed(cuBase < 1 ? 4 : 2) + '/' + baseU;
-    } else {
-      costoLbl.textContent = '';
-    }
+    actualEl.textContent = Number(prod.stock.toFixed(3)).toLocaleString('es-CL',{maximumFractionDigits:3}) + ' ' + uLabel;
   }
 
   if(!qty || !resultEl) return;
 
-  // Stock resultante (in presentation units)
-  const resultante = isIn ? prod.stock + qtyInUnits : prod.stock - qtyInUnits;
+  // Stock resultante
+  const resultante = isIn ? prod.stock + qty : prod.stock - qty;
   const color = resultante < 0 ? 'var(--danger)' : resultante <= (prod.min||0) ? 'var(--warn)' : 'var(--accent)';
 
-  let resultTxt = fmtNum(Math.round(resultante * 1000) / 1000) + (presName ? ' ' + presName : ' ' + baseU);
-  if(hasPres) {
-    const basePerUnit = prod.unidad === 'L' ? prod.formato * 1000
-                      : prod.unidad === 'kg' ? prod.formato * 1000
-                      : prod.unidad === 'Gl' ? prod.formato * 3785
-                      : prod.formato;
-    resultTxt += ' (' + fmtNum(Math.round(resultante * basePerUnit)) + ' ' + baseU + ')';
-  }
-  resultEl.textContent = resultTxt;
+  resultEl.textContent = Number((Math.round(resultante * 1000) / 1000)).toLocaleString('es-CL',{maximumFractionDigits:3}) + ' ' + uLabel;
   resultEl.style.color = color;
   resultEl.hidden = false;
   if(arrowEl) arrowEl.hidden = false;
@@ -2491,36 +2308,9 @@ function registerMovement() {
   if (!rows.length) return showToast('Agrega al menos un producto','error');
   const items = rows.map(row => {
     const prodId  = row.querySelector('.mov-item-prod').value;
-    const rawQty  = parseFloat(row.querySelector('.mov-item-qty').value) || 0;
+    const qty     = parseFloat(row.querySelector('.mov-item-qty').value) || 0;
     const cost    = parseFloat(row.querySelector('.mov-item-cost')?.value) || 0;
-    const prod    = products.find(p => p.id === prodId);
-    const hasPres = prod && prod.formato > 1 && prod.unidad && prod.unidad !== 'u';
-
-    // Determine current mode
-    let mode = 'pres';
-    if(hasPres) {
-      row.querySelectorAll('.mov-unit-mode-btn').forEach(b => {
-        if(b.style.background.includes('var(--accent)')) mode = b.dataset.mode;
-      });
-    }
-
-    // Convert to presentation units (stored unit)
-    let qtyUnits = rawQty;
-    let qtyBase  = null;
-    if(hasPres) {
-      const basePerUnit = prod.unidad === 'L' ? prod.formato * 1000
-                        : prod.unidad === 'kg' ? prod.formato * 1000
-                        : prod.unidad === 'Gl' ? prod.formato * 3785
-                        : prod.formato;
-      const baseU = prod.unidad === 'L' ? 'ml' : prod.unidad === 'kg' ? 'gr' : prod.unidad;
-      if(mode === 'base') {
-        qtyUnits = rawQty / basePerUnit;
-        qtyBase  = rawQty;
-      } else {
-        qtyBase  = rawQty * basePerUnit;
-      }
-    }
-    return { prodId, qty: qtyUnits, qtyBase, cost };
+    return { prodId, qty, cost };
   }).filter(x => x.prodId !== '' && x.qty > 0);
   if (!items.length) return showToast('Completa al menos un producto con cantidad','error');
   // Validate stock for salidas
@@ -2528,7 +2318,7 @@ function registerMovement() {
     const p = products.find(x => x.id === item.prodId);
     if (!isIn && item.qty > p.stock) {
       const u = p.unidad && p.unidad !== 'u' ? p.unidad : 'uds';
-      return showToast('Stock insuficiente: '+p.name+' ('+p.stock+' '+u+' disponibles)','error');
+      return showToast('Stock insuficiente: '+p.name+' ('+Number(p.stock.toFixed(3))+' '+u+' disponibles)','error');
     }
   }
   const today   = new Date().toISOString().split('T')[0];
@@ -2537,13 +2327,9 @@ function registerMovement() {
     const p     = products.find(x => x.id === item.prodId);
     const movId = _genId('MOV-');
     const unidad = p.unidad || 'u';
-    const baseU = p.unidad === 'L' ? 'ml' : p.unidad === 'kg' ? 'gr' : p.unidad;
-    const qtyLabel = item.qtyBase !== null
-      ? item.qty.toLocaleString('es-CL',{maximumFractionDigits:3}) + ' ' + (p.nombrePres||unidad) +
-        ' (' + Math.round(item.qtyBase).toLocaleString('es-CL') + ' ' + baseU + ')'
-      : item.qty.toLocaleString('es-CL',{maximumFractionDigits:3}) + ' ' + unidad;
+    const qtyLabel = Number(item.qty.toFixed(3)).toLocaleString('es-CL',{maximumFractionDigits:3}) + ' ' + unidad;
     movements.unshift({id:movId, batchId, date:today, prodId:p.id, prodName:p.name,
-      type:movCurrentType, qty:item.qty, qtyBase:item.qtyBase, qtyLabel,
+      type:movCurrentType, qty:item.qty, qtyLabel,
       unidad, cost:item.cost, worker, proveedor:provNom, obs});
     if (isIn) {
       p.stock += item.qty;
@@ -2742,16 +2528,9 @@ function renderInventory(filtro) {
         <td colspan="7" style="padding:5px 14px;font-family:'Space Mono',monospace;font-size:.65rem;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;">${sanitizar(cat)||'Sin categoría'}</td>
       </tr>`);
     }
-    const hasPres = p.formato>1 && p.unidad && p.unidad!=='u';
-    const pn = p.nombrePres||(p.unidad&&p.unidad!=='u'?p.unidad:'');
-    let stockHtml;
-    if(!hasPres) {
-      stockHtml = `<span style="color:${bc};font-weight:700;">${p.stock}</span>`;
-    } else {
-      const stockDisp = Number(p.stock.toFixed(3)).toLocaleString('es-CL',{maximumFractionDigits:3});
-      const unitLabel = pn ? `<span style="font-size:.62rem;color:var(--muted);font-family:'Space Mono',monospace;">${sanitizar(pn)}</span>` : '';
-      stockHtml = `<span style="color:${bc};font-weight:700;">${stockDisp}</span>${unitLabel}`;
-    }
+    const uLabel = p.unidad && p.unidad !== 'u' ? p.unidad : 'uds';
+    const stockDisp = Number(p.stock.toFixed(3)).toLocaleString('es-CL',{maximumFractionDigits:3});
+    const stockHtml = `<span style="color:${bc};font-weight:700;">${stockDisp}</span><span style="font-size:.62rem;color:var(--muted);font-family:'Space Mono',monospace;">${sanitizar(uLabel)}</span>`;
     rows.push(`<tr data-pid="${sanitizar(p.id)}">
       <td><span style="font-family:'Space Mono',monospace;font-size:.72rem;background:var(--surface2);padding:2px 6px;border-radius:4px;color:var(--muted);">${sanitizar(p.id)}</span></td>
       <td><b>${sanitizar(p.name)}</b></td>
@@ -2772,33 +2551,11 @@ function invPrevPage() { if(_invPage > 0) { _invPage--; renderInventory(); } }
 function invNextPage() { if(_invPage < _invTotalPages - 1) { _invPage++; renderInventory(); } }
 function showAddProduct(){
   const f=document.getElementById('add-product-form');
-  // Populate catlist
   const cats=[...new Set(products.map(p=>p.cat).filter(Boolean))];
   const dl=document.getElementById('cat-datalist');
   if(dl) dl.innerHTML=cats.map(c=>`<option value="${c}">`).join('');
-  // Reset to Simple mode
-  const simpleRadio = document.getElementById('np-modo-simple');
-  if(simpleRadio) { simpleRadio.checked = true; npToggleModo(); }
   f.style.display='block';
   f.scrollIntoView({behavior:'smooth'});
-}
-function npToggleModo() {
-  const frac = document.getElementById('np-modo-frac')?.checked;
-  const presSection = document.getElementById('np-pres-section');
-  if(presSection) presSection.style.display = frac ? 'block' : 'none';
-  const stockUnit = document.getElementById('np-stock-unit');
-  const minUnit   = document.getElementById('np-min-unit');
-  if(stockUnit) stockUnit.style.display = frac ? '' : 'none';
-  if(minUnit)   minUnit.style.display   = frac ? '' : 'none';
-  if(!frac) {
-    const fmt = document.getElementById('np-formato');
-    const und = document.getElementById('np-unidad');
-    if(fmt) fmt.value = '1';
-    if(und) und.value = 'u';
-    if(stockUnit) stockUnit.value = 'pres';
-    if(minUnit)   minUnit.value   = 'pres';
-  }
-  npCalcCostoBase();
 }
 // ── GENERADOR DE ID DE MATERIAL ──────────────────────
 // Regla:
@@ -2888,181 +2645,23 @@ function addProduct(){
   const id = idField || generarIdMaterial(name, products);
   if(products.find(p=>p.id===id))return showToast('ID "'+id+'" ya existe — edita el campo ID','error');
   const cat    = document.getElementById('np-cat').value.trim();
-  const stockRaw    = Math.max(0, parseFloat(document.getElementById('np-stock').value)||0);
-  const stockUnit   = document.getElementById('np-stock-unit')?.value || 'pres';
-  const formatoVal  = parseFloat(document.getElementById('np-formato').value)||1;
-  const unidadVal   = document.getElementById('np-unidad').value||'u';
-  const hasPres     = formatoVal > 1 && unidadVal !== 'u';
-  let stock;
-  if(hasPres && stockUnit === 'base') {
-    // Convert base units → presentation units
-    let basePerUnit = formatoVal;
-    if(unidadVal === 'L')  basePerUnit = formatoVal * 1000;
-    if(unidadVal === 'kg') basePerUnit = formatoVal * 1000;
-    if(unidadVal === 'Gl') basePerUnit = formatoVal * 3785;
-    stock = basePerUnit > 0 ? stockRaw / basePerUnit : stockRaw;
-  } else {
-    stock = stockRaw;
-  }
-  const minRaw    = Math.max(0, parseFloat(document.getElementById('np-min').value)||0);
-  const minUnit   = document.getElementById('np-min-unit')?.value || 'pres';
-  let min;
-  if(hasPres && minUnit === 'base') {
-    let basePerUnitMin = formatoVal;
-    if(unidadVal === 'L')  basePerUnitMin = formatoVal * 1000;
-    if(unidadVal === 'kg') basePerUnitMin = formatoVal * 1000;
-    if(unidadVal === 'Gl') basePerUnitMin = formatoVal * 3785;
-    min = basePerUnitMin > 0 ? minRaw / basePerUnitMin : minRaw;
-  } else {
-    min = minRaw;
-  }
+  const stock  = Math.max(0, parseFloat(document.getElementById('np-stock').value)||0);
+  const min    = Math.max(0, parseFloat(document.getElementById('np-min').value)||0);
   const cost   = parseFloat(document.getElementById('np-cost').value)||0;
-  const formato     = parseFloat(document.getElementById('np-formato').value)||1;
-  const unidad      = document.getElementById('np-unidad').value||'u';
-  const nombrePres  = (document.getElementById('np-nombre-pres')?.value||'').trim().toLowerCase();
-  products.push({id, name, cat, stock, min, cost, formato, unidad, nombrePres});
+  const unidad = document.getElementById('np-unidad').value||'u';
+  products.push({id, name, cat, stock, min, cost, unidad});
   document.getElementById('add-product-form').style.display='none';
-  // Reset to Simple mode after save
-  const _simpleR = document.getElementById('np-modo-simple');
-  if(_simpleR) { _simpleR.checked = true; npToggleModo(); }
   ['np-id','np-name','np-cat'].forEach(x=>document.getElementById(x).value='');
-  document.getElementById('np-formato').value='1';
   document.getElementById('np-unidad').value='u';
-  if(document.getElementById('np-nombre-pres')) document.getElementById('np-nombre-pres').value='';
-  if(document.getElementById('np-stock-unit')) document.getElementById('np-stock-unit').value='pres';
-  if(document.getElementById('np-stock-equiv')) document.getElementById('np-stock-equiv').textContent='';
-  if(document.getElementById('np-min-unit')) document.getElementById('np-min-unit').value='pres';
-  if(document.getElementById('np-min-equiv')) document.getElementById('np-min-equiv').textContent='';
-  if(document.getElementById('np-nombre-pres-wrap')) document.getElementById('np-nombre-pres-wrap').style.display='none';
-  if(document.getElementById('np-conversion-wrap')) document.getElementById('np-conversion-wrap').style.display='none';
-  if(document.getElementById('np-costo-base')) document.getElementById('np-costo-base').textContent='';
+  document.getElementById('np-stock').value='0';
+  document.getElementById('np-min').value='1';
+  document.getElementById('np-cost').value='0';
   renderInventory();updateHeader();
   registrarAuditoria('PRODUCTO_CREADO', { id, name, cat, stock, min, cost });
   lsGuardar();
   showToast('✓ '+name+' ('+id+') agregado','success');
 }
 
-// ── Auto-calcular costo/unidad base en el formulario ──
-function npCalcCostoBase() {
-  const cost      = parseFloat(document.getElementById('np-cost').value)||0;
-  const formato   = parseFloat(document.getElementById('np-formato').value)||1;
-  const unidad    = document.getElementById('np-unidad').value||'u';
-  const nomPresEl = document.getElementById('np-nombre-pres');
-  const nomPres   = nomPresEl ? nomPresEl.value.trim().toLowerCase() : '';
-
-  // Show/hide nombre presentación field when formato > 1 and unidad is base (not 'u')
-  const hasPres = formato > 1 && unidad !== 'u';
-  const presWrap = document.getElementById('np-nombre-pres-wrap');
-  if(presWrap) presWrap.style.display = hasPres ? 'block' : 'none';
-
-  // Conversion to base unit
-  let base = formato;
-  let lblBase = unidad;
-  if(unidad === 'L')  { base = formato * 1000; lblBase = 'ml'; }
-  if(unidad === 'kg') { base = formato * 1000; lblBase = 'gr'; }
-
-  const costoBase = (cost > 0 && base > 0) ? cost / base : 0;
-
-  // Build conversion label: "1 bolsa = 28 gr = $1.157 ($41,3 x gr)"
-  const convWrap   = document.getElementById('np-conversion-wrap');
-  const convLabel  = document.getElementById('np-conversion-label');
-  const costoBasEl = document.getElementById('np-costo-base');
-  const simpleEl   = document.getElementById('np-costo-base-simple');
-
-  if(hasPres && cost > 0) {
-    const presName = nomPres || 'unidad';
-    const costoStr = fmtNum(Math.round(cost));
-    const costoBaseStr = costoBase.toFixed(costoBase < 1 ? 4 : 2);
-    if(convLabel) convLabel.textContent =
-      '1 ' + presName + ' = ' + formato + ' ' + lblBase +
-      ' = $' + costoStr + ' ($' + costoBaseStr + ' x ' + lblBase + ')';
-    if(costoBasEl) costoBasEl.textContent =
-      'Stock en presentaciones · Registra movimientos en "' + presName + '" o en ' + lblBase;
-    if(convWrap)  convWrap.style.display  = 'block';
-    if(simpleEl)  simpleEl.style.display  = 'none';
-  } else {
-    if(convWrap)  convWrap.style.display  = 'none';
-    if(simpleEl)  simpleEl.style.display  = 'flex';
-    // Update the simple costo/base display (the static div inside simpleEl)
-    const simpValEl = simpleEl ? simpleEl.querySelector('div:last-child') : null;
-    if(simpValEl) simpValEl.textContent = costoBase > 0
-      ? '$' + costoBase.toFixed(costoBase < 1 ? 4 : 2) + ' / ' + lblBase
-      : '—';
-  }
-
-  // Update stock unit selector and labels
-  const presLabel = hasPres ? (nomPres || 'unid.') : (unidad !== 'u' ? unidad : 'unidades');
-  const lbl2 = document.getElementById('np-min-lbl');
-  if(lbl2) lbl2.textContent = '(' + presLabel + ')';
-
-  // Populate stock unit selector
-  const stockUnitSel = document.getElementById('np-stock-unit');
-  if(stockUnitSel) {
-    if(hasPres) {
-      stockUnitSel.style.display = '';
-      stockUnitSel.options[0].text = nomPres || 'unid.';
-      stockUnitSel.options[1].text = lblBase;
-    } else {
-      stockUnitSel.style.display = 'none';
-    }
-  }
-  // Populate min unit selector (same options)
-  const minUnitSel = document.getElementById('np-min-unit');
-  if(minUnitSel) {
-    if(hasPres) {
-      minUnitSel.style.display = '';
-      minUnitSel.options[0].text = nomPres || 'unid.';
-      minUnitSel.options[1].text = lblBase;
-    } else {
-      minUnitSel.style.display = 'none';
-    }
-  }
-  npUpdateStockEquiv();
-  npUpdateMinEquiv();
-}
-
-// Shared helper: get base info from form
-function _npGetPresInfo() {
-  const formato  = parseFloat(document.getElementById('np-formato').value)||1;
-  const unidad   = document.getElementById('np-unidad').value||'u';
-  const nomPres  = (document.getElementById('np-nombre-pres')?.value||'').trim().toLowerCase();
-  const hasPres  = formato > 1 && unidad !== 'u';
-  let base = formato, lblBase = unidad;
-  if(unidad === 'L')  { base = formato * 1000; lblBase = 'ml'; }
-  if(unidad === 'kg') { base = formato * 1000; lblBase = 'gr'; }
-  if(unidad === 'Gl') { base = formato * 3785; lblBase = 'ml'; }
-  return { hasPres, base, lblBase, pn: nomPres || 'unid.' };
-}
-
-function npUpdateStockEquiv() {
-  const { hasPres, base, lblBase, pn } = _npGetPresInfo();
-  const stockVal  = parseFloat(document.getElementById('np-stock')?.value)||0;
-  const stockUnit = document.getElementById('np-stock-unit')?.value || 'pres';
-  const equivEl   = document.getElementById('np-stock-equiv');
-  if(!equivEl || !hasPres || stockVal <= 0) { if(equivEl) equivEl.textContent=''; return; }
-  if(stockUnit === 'base') {
-    const inUnits = stockVal / base;
-    equivEl.textContent = '= ' + inUnits.toLocaleString('es-CL',{maximumFractionDigits:3}) + ' ' + pn + ' (' + stockVal + ' ' + lblBase + ')';
-  } else {
-    const inBase = stockVal * base;
-    equivEl.textContent = '= ' + inBase.toLocaleString('es-CL',{maximumFractionDigits:0}) + ' ' + lblBase;
-  }
-}
-
-function npUpdateMinEquiv() {
-  const { hasPres, base, lblBase, pn } = _npGetPresInfo();
-  const minVal  = parseFloat(document.getElementById('np-min')?.value)||0;
-  const minUnit = document.getElementById('np-min-unit')?.value || 'pres';
-  const equivEl = document.getElementById('np-min-equiv');
-  if(!equivEl || !hasPres || minVal <= 0) { if(equivEl) equivEl.textContent=''; return; }
-  if(minUnit === 'base') {
-    const inUnits = minVal / base;
-    equivEl.textContent = '= ' + inUnits.toLocaleString('es-CL',{maximumFractionDigits:3}) + ' ' + pn + ' (' + minVal + ' ' + lblBase + ')';
-  } else {
-    const inBase = minVal * base;
-    equivEl.textContent = '= ' + inBase.toLocaleString('es-CL',{maximumFractionDigits:0}) + ' ' + lblBase;
-  }
-}
 // ── EDITOR DE PRODUCTOS (mat + urnas) ──
 function abrirEditarProductos(){
   const seccion=document.getElementById('seccion-urnas').style.display!=='none'?'urnas':'mat';
@@ -3105,6 +2704,10 @@ function _renderEditorProductos(){
           <input id="ep-m-min-${i}" type="number" value="${p.min}" min="0" style="width:100%;padding:6px 9px;border-radius:7px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:.83rem;"></div>
         <div><label style="font-size:.65rem;color:var(--muted);">Costo unitario ($)</label>
           <input id="ep-m-cost-${i}" type="number" value="${p.cost}" min="0" step="0.01" style="width:100%;padding:6px 9px;border-radius:7px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:.83rem;"></div>
+        <div><label style="font-size:.65rem;color:var(--muted);">Unidad</label>
+          <select id="ep-m-unidad-${i}" style="width:100%;padding:6px 9px;border-radius:7px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:.83rem;">
+            ${['u','gr','ml','L','kg','m','m2','Gl'].map(u=>`<option value="${u}" ${(p.unidad||'u')===u?'selected':''}>${u}</option>`).join('')}
+          </select></div>
       </div>
       <button onclick="guardarEdicionMat(${i})" class="btn btn-primary" style="font-size:.75rem;padding:6px 14px;">Guardar</button>
     </div>`).join('')}
@@ -3117,8 +2720,9 @@ function guardarEdicionMat(i){
   const cat=document.getElementById(`ep-m-cat-${i}`)?.value.trim();
   const min=Math.max(0, parseFloat(document.getElementById(`ep-m-min-${i}`)?.value)||0);
   const cost=Math.max(0, parseFloat(document.getElementById(`ep-m-cost-${i}`)?.value)||0);
+  const unidad=document.getElementById(`ep-m-unidad-${i}`)?.value||'u';
   if(!nombre) return showToast('El nombre no puede estar vacío','error');
-  p.name=nombre; p.cat=cat; p.min=min; p.cost=cost;
+  p.name=nombre; p.cat=cat; p.min=min; p.cost=cost; p.unidad=unidad;
   lsGuardar(); renderInventory(); _renderEditorProductos();
   showToast('✓ '+nombre+' actualizado','success');
 }
@@ -3508,8 +3112,6 @@ function updateHeader(){
 
 // ── Valor unitario de un material (precio por unidad de stock) ──
 // Stock se guarda en unidades de presentación (tambores, bolsas, etc.)
-// → valor = stock × costo por presentación (cost)
-// Para todos los productos, costo ya es el precio de la presentación completa.
 function pValorUnitario(p) {
   return p.cost || 0;
 }
@@ -5076,21 +4678,11 @@ function cNavTo(name) {
 }
 
 // ── helpers ───────────────────────────────────────────
-function cFormatoToBase(formato, unidad) {
-  if(unidad === 'L')  return formato * 1000;  // L → ml
-  if(unidad === 'kg') return formato * 1000;  // kg → gr
-  if(unidad === 'Gl') return formato * 3785;  // Gl → ml (US galón)
-  return formato;
-}
 function cCostoUnitBase(prod) {
-  const base = cFormatoToBase(prod.formato || 1, prod.unidad || 'u');
-  return base > 0 ? (prod.cost || 0) / base : 0;
+  return prod.cost || 0;
 }
 function cLabelUnidadBase(unidad) {
-  if(unidad === 'L')  return 'ml';
-  if(unidad === 'kg') return 'gr';
-  if(unidad === 'Gl') return 'ml';
-  return unidad;
+  return unidad || 'u';
 }
 
 // ── Tab: PROCESO (barniz/enzincado/telas/terminacion) ──
@@ -6899,9 +6491,8 @@ function renderPerfilTrabajador(w, nm){
           <tbody>
             ${entMat.length ? [...entMat].sort((a,b)=>b.date.localeCompare(a.date)).map(m=>{
               const prod = products.find(p=>p.id===m.prodId);
-              const hasPres = prod && prod.formato>1 && prod.unidad && prod.unidad!=='u';
-              const presName = hasPres ? (prod.nombrePres||prod.unidad) : (prod?.unidad&&prod.unidad!=='u'?prod.unidad:'uds');
-              const qtyLabel = m.qtyLabel || (m.qty + ' ' + presName);
+              const uLabel = prod?.unidad && prod.unidad!=='u' ? prod.unidad : 'uds';
+              const qtyLabel = m.qtyLabel || (Number(m.qty.toFixed(3)).toLocaleString('es-CL',{maximumFractionDigits:3}) + ' ' + uLabel);
               return `<tr>
                 <td class="td-mono">${fmtFecha(m.date)}</td>
                 <td>${sanitizar(m.prodName||'—')}</td>
@@ -7598,6 +7189,10 @@ function _renderEditorProductosConEliminar() {
           <input id="ep-m-min-${i}" type="number" value="${p.min}" min="0" style="width:100%;padding:6px 9px;border-radius:7px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:.83rem;"></div>
         <div><label style="font-size:.65rem;color:var(--muted);">Costo unitario ($)</label>
           <input id="ep-m-cost-${i}" type="number" value="${p.cost}" min="0" step="0.01" style="width:100%;padding:6px 9px;border-radius:7px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:.83rem;"></div>
+        <div><label style="font-size:.65rem;color:var(--muted);">Unidad</label>
+          <select id="ep-m-unidad-${i}" style="width:100%;padding:6px 9px;border-radius:7px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:.83rem;">
+            ${['u','gr','ml','L','kg','m','m2','Gl'].map(u=>`<option value="${u}" ${(p.unidad||'u')===u?'selected':''}>${u}</option>`).join('')}
+          </select></div>
       </div>
       <button onclick="guardarEdicionMat(${i})" class="btn btn-primary" style="font-size:.75rem;padding:6px 14px;">Guardar</button>
     </div>`).join('')}
@@ -7709,21 +7304,8 @@ function matRenderAjuste() {
 
   c.innerHTML = lista.map(p => {
     const idx     = products.indexOf(p);
-    const hasPres = p.formato > 1 && p.unidad && p.unidad !== 'u';
-    const baseU   = p.unidad === 'L' ? 'ml' : p.unidad === 'kg' ? 'gr' : p.unidad === 'Gl' ? 'ml' : p.unidad;
-    const presName = hasPres ? (p.nombrePres || 'unid.') : (p.unidad && p.unidad !== 'u' ? p.unidad : 'uds');
-    const stockDisp = hasPres
-      ? Number(p.stock.toFixed(3)).toLocaleString('es-CL', {maximumFractionDigits:3}) + ' ' + presName
-      : p.stock + ' ' + presName;
-
-    // Base equiv label
-    const basePerUnit = p.unidad === 'L' ? p.formato * 1000
-                      : p.unidad === 'kg' ? p.formato * 1000
-                      : p.unidad === 'Gl' ? p.formato * 3785
-                      : p.formato;
-    const equivLabel = hasPres
-      ? ' <span style="font-size:.62rem;color:var(--muted);">(' + Math.round(p.stock * basePerUnit).toLocaleString('es-CL') + ' ' + baseU + ')</span>'
-      : '';
+    const uLabel  = p.unidad && p.unidad !== 'u' ? p.unidad : 'uds';
+    const stockDisp = Number(p.stock.toFixed(3)).toLocaleString('es-CL', {maximumFractionDigits:3}) + ' ' + uLabel;
 
     return `<div style="background:var(--surface2);border-radius:10px;padding:11px 13px;">
       <!-- Header: nombre + stock actual -->
@@ -7734,25 +7316,17 @@ function matRenderAjuste() {
         </div>
         <div style="text-align:right;flex-shrink:0;">
           <div style="font-size:.7rem;color:var(--muted);">Stock actual</div>
-          <div style="font-family:'Space Mono',monospace;font-size:.88rem;font-weight:700;color:var(--accent);">${stockDisp}${equivLabel}</div>
+          <div style="font-family:'Space Mono',monospace;font-size:.88rem;font-weight:700;color:var(--accent);">${stockDisp}</div>
         </div>
       </div>
 
-      <!-- Nuevo stock + unidad + razón -->
-      <div style="display:grid;grid-template-columns:1fr auto 1fr;gap:6px;align-items:end;">
+      <!-- Nuevo stock + razón -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;align-items:end;">
         <div>
-          <label style="font-size:.68rem;color:var(--muted);">Nuevo stock</label>
+          <label style="font-size:.68rem;color:var(--muted);">Nuevo stock (${uLabel})</label>
           <input type="number" id="adj-qty-${idx}" min="0" step="any" placeholder="—"
             style="width:100%;text-align:center;font-family:'Space Mono',monospace;font-size:.88rem;font-weight:700;"
             oninput="adjRecalc(${idx})">
-        </div>
-        <div>
-          <label style="font-size:.68rem;color:var(--muted);">Unidad</label>
-          <select id="adj-unit-${idx}" style="font-size:.72rem;font-family:'Space Mono',monospace;color:var(--accent);"
-            onchange="adjRecalc(${idx})">
-            <option value="pres">${presName}</option>
-            ${hasPres ? `<option value="base">${baseU}</option>` : ''}
-          </select>
         </div>
         <div>
           <label style="font-size:.68rem;color:var(--muted);">Razón del ajuste</label>
@@ -7761,7 +7335,7 @@ function matRenderAjuste() {
         </div>
       </div>
 
-      <!-- Equivalencia y diferencia -->
+      <!-- Diferencia -->
       <div id="adj-preview-${idx}" style="margin-top:6px;font-size:.68rem;font-family:'Space Mono',monospace;color:var(--accent2);min-height:14px;"></div>
     </div>`;
   }).join('');
@@ -7770,30 +7344,17 @@ function matRenderAjuste() {
 function adjRecalc(idx) {
   const p        = products[idx];
   const rawVal   = parseFloat(document.getElementById('adj-qty-'+idx)?.value);
-  const unitMode = document.getElementById('adj-unit-'+idx)?.value || 'pres';
   const previewEl= document.getElementById('adj-preview-'+idx);
   if(!previewEl) return;
   if(isNaN(rawVal) || rawVal < 0) { previewEl.textContent = ''; return; }
 
-  const hasPres    = p.formato > 1 && p.unidad && p.unidad !== 'u';
-  const basePerUnit= p.unidad === 'L' ? p.formato * 1000
-                   : p.unidad === 'kg' ? p.formato * 1000
-                   : p.unidad === 'Gl' ? p.formato * 3785
-                   : p.formato;
-  const baseU   = p.unidad === 'L' ? 'ml' : p.unidad === 'kg' ? 'gr' : p.unidad === 'Gl' ? 'ml' : p.unidad;
-  const presName = p.nombrePres || (p.unidad !== 'u' ? p.unidad : 'uds');
-
-  // Convert input to presentation units
-  const nuevoEnUnits = (hasPres && unitMode === 'base') ? rawVal / basePerUnit : rawVal;
-  const diff         = nuevoEnUnits - p.stock;
+  const uLabel = p.unidad && p.unidad !== 'u' ? p.unidad : 'uds';
+  const diff   = rawVal - p.stock;
   if(diff === 0) { previewEl.textContent = '= sin cambio'; previewEl.style.color = 'var(--muted)'; return; }
 
   const signo  = diff > 0 ? '+' : '';
-  const diffDisp = signo + diff.toLocaleString('es-CL', {maximumFractionDigits:3});
-  let txt = 'Diferencia: ' + diffDisp + ' ' + presName;
-  if(hasPres) txt += ' (' + signo + Math.round(diff * basePerUnit).toLocaleString('es-CL') + ' ' + baseU + ')';
-
-  previewEl.textContent = txt;
+  const diffDisp = signo + Number(diff.toFixed(3)).toLocaleString('es-CL', {maximumFractionDigits:3});
+  previewEl.textContent = 'Diferencia: ' + diffDisp + ' ' + uLabel;
   previewEl.style.color = diff > 0 ? 'var(--accent)' : 'var(--danger)';
 }
 
@@ -7809,45 +7370,30 @@ function matConfirmarAjuste() {
     const rawVal  = parseFloat(input.value);
     if(isNaN(rawVal) || rawVal < 0) return;
 
-    const unitMode   = document.getElementById('adj-unit-'+idx)?.value || 'pres';
-    const obsInput   = document.getElementById('adj-obs-'+idx);
-    const hasPres    = p.formato > 1 && p.unidad && p.unidad !== 'u';
-    const basePerUnit= p.unidad === 'L' ? p.formato * 1000
-                     : p.unidad === 'kg' ? p.formato * 1000
-                     : p.unidad === 'Gl' ? p.formato * 3785
-                     : p.formato;
-    const baseU   = p.unidad === 'L' ? 'ml' : p.unidad === 'kg' ? 'gr' : p.unidad === 'Gl' ? 'ml' : p.unidad;
-    const presName = p.nombrePres || (p.unidad && p.unidad !== 'u' ? p.unidad : 'uds');
-
-    // Nuevo stock en unidades de presentación
-    const nuevoEnUnits = (hasPres && unitMode === 'base') ? rawVal / basePerUnit : rawVal;
-    const diff = nuevoEnUnits - p.stock;
-    if(Math.abs(diff) < 0.0001) return;   // no change
+    const obsInput = document.getElementById('adj-obs-'+idx);
+    const uLabel   = p.unidad && p.unidad !== 'u' ? p.unidad : 'uds';
+    const diff     = rawVal - p.stock;
+    if(Math.abs(diff) < 0.0001) return;
 
     const obs = (obsInput?.value.trim() || 'Ajuste manual');
-
-    // Build qtyLabel: "2 latas (56 gr)" or "+1,5 latas"
     const signo = diff > 0 ? '+' : '';
-    const diffDisp = diff.toLocaleString('es-CL', {maximumFractionDigits:3});
-    let qtyLabel = signo + diffDisp + ' ' + presName;
-    if(hasPres) qtyLabel += ' (' + signo + Math.round(diff * basePerUnit).toLocaleString('es-CL') + ' ' + baseU + ')';
+    const diffDisp = Number(diff.toFixed(3)).toLocaleString('es-CL', {maximumFractionDigits:3});
+    const qtyLabel = signo + diffDisp + ' ' + uLabel;
 
-    // Register movement
     const movId = _genId('MOV-');
     movements.unshift({
       id: movId, batchId, date: hoy,
       prodId: p.id, prodName: p.name,
       type: 'Ajuste',
       qty: diff,
-      qtyBase: hasPres ? diff * basePerUnit : null,
       qtyLabel,
-      unidad: presName,
+      unidad: uLabel,
       cost: 0,
       worker: user,
       obs,
     });
 
-    p.stock = Math.max(0, nuevoEnUnits);
+    p.stock = Math.max(0, rawVal);
     cambios++;
   });
 
