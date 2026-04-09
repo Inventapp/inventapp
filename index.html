@@ -2795,45 +2795,7 @@ function abrirEditarProductos(){
   }
 }
 
-function _renderEditorProductos(){
-  let panel=document.getElementById('ep-panel-mat');
-  if(!panel){
-    document.getElementById('page-inventory').insertAdjacentHTML('beforeend',
-      '<div id="ep-panel-mat" class="card" style="padding:0;overflow:hidden;margin-top:10px;border-color:var(--accent);"></div>');
-    panel=document.getElementById('ep-panel-mat');
-  }
-  const cats=[...new Set(products.map(p=>p.cat).filter(Boolean))];
-  panel.innerHTML=`
-    <div style="padding:12px 17px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">
-      <div class="card-title" style="margin:0;">✏️ Editar productos — Materiales</div>
-      <button onclick="document.getElementById('ep-panel-mat').remove()" style="background:none;border:none;cursor:pointer;font-size:1.1rem;color:var(--muted);">✕</button>
-    </div>
-    <div style="padding:8px 14px 4px;font-size:.7rem;color:var(--muted);">Edita y pulsa Guardar en cada fila. El SKU no se puede cambiar para mantener el historial.</div>
-    ${products.map((p,i)=>`
-    <div style="padding:11px 14px;border-bottom:1px solid var(--border);">
-      <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;">
-        <span style="font-family:'Space Mono',monospace;font-size:.7rem;background:var(--surface2);padding:2px 7px;border-radius:4px;color:var(--muted);">${p.id}</span>
-        <span style="font-size:.75rem;color:var(--muted);">→ editar campos:</span>
-      </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:6px;">
-        <div><label style="font-size:.65rem;color:var(--muted);">Nombre</label>
-          <input id="ep-m-name-${i}" type="text" value="${sanitizar(p.name)}" style="width:100%;padding:6px 9px;border-radius:7px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:.83rem;"></div>
-        <div><label style="font-size:.65rem;color:var(--muted);">Categoría</label>
-          <input id="ep-m-cat-${i}" type="text" value="${sanitizar(p.cat||'')}" list="ep-cat-dl" placeholder="ej: Adhesivos" style="width:100%;padding:6px 9px;border-radius:7px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:.83rem;"></div>
-        <div><label style="font-size:.65rem;color:var(--muted);">Stock mínimo</label>
-          <input id="ep-m-min-${i}" type="number" value="${p.min}" min="0" style="width:100%;padding:6px 9px;border-radius:7px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:.83rem;"></div>
-        <div><label style="font-size:.65rem;color:var(--muted);">Costo unitario ($)</label>
-          <input id="ep-m-cost-${i}" type="number" value="${p.cost}" min="0" step="0.01" style="width:100%;padding:6px 9px;border-radius:7px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:.83rem;"></div>
-        <div><label style="font-size:.65rem;color:var(--muted);">Unidad</label>
-          <select id="ep-m-unidad-${i}" style="width:100%;padding:6px 9px;border-radius:7px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:.83rem;">
-            ${['u','gr','ml','L','kg','m','m2','Gl'].map(u=>`<option value="${u}" ${(p.unidad||'u')===u?'selected':''}>${u}</option>`).join('')}
-          </select></div>
-      </div>
-      <button onclick="guardarEdicionMat(${i})" class="btn btn-primary" style="font-size:.75rem;padding:6px 14px;">Guardar</button>
-    </div>`).join('')}
-    <datalist id="ep-cat-dl">${cats.map(c=>`<option value="${c}">`).join('')}</datalist>`;
-  panel.scrollIntoView({behavior:'smooth'});
-}
+function _renderEditorProductos() { _renderEditorProductosConEliminar(); }
 function guardarEdicionMat(i){
   const p=products[i]; if(!p) return;
   const nombre=document.getElementById(`ep-m-name-${i}`)?.value.trim();
@@ -2843,61 +2805,12 @@ function guardarEdicionMat(i){
   const unidad=document.getElementById(`ep-m-unidad-${i}`)?.value||'u';
   if(!nombre) return showToast('El nombre no puede estar vacío','error');
   p.name=nombre; p.cat=cat; p.min=min; p.cost=cost; p.unidad=unidad;
-  lsGuardar(); renderInventory(); _renderEditorProductos();
+  lsGuardar(); renderInventory(); _renderEditorProductosConEliminar();
   showToast('✓ '+nombre+' actualizado','success');
 }
 
-function _renderEditorProductosUrnas(){
-  let panel=document.getElementById('ep-panel-urn');
-  if(!panel){
-    document.getElementById('page-uinventory').insertAdjacentHTML('beforeend',
-      '<div id="ep-panel-urn" class="card" style="padding:0;overflow:hidden;margin-top:10px;border-color:var(--accent);"></div>');
-    panel=document.getElementById('ep-panel-urn');
-  }
-  const TERMS=['Barniz-Oscura','Barniz-Clara','Cera-Oscura','Cera-Clara','Bruto'];
-  panel.innerHTML=`
-    <div style="padding:12px 17px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">
-      <div class="card-title" style="margin:0;">✏️ Editar productos — Urnas</div>
-      <button onclick="document.getElementById('ep-panel-urn').remove()" style="background:none;border:none;cursor:pointer;font-size:1.1rem;color:var(--muted);">✕</button>
-    </div>
-    <div style="padding:8px 14px 4px;font-size:.7rem;color:var(--muted);">Edita y pulsa Guardar en cada fila.</div>
-    ${uProducts.map((p,i)=>{
-      const term=p.terminacion||'Bruto';
-      const tColor=term==='Bruto'?'#888':term.startsWith('Barniz')?'#8B5CF6':'#D97706';
-      const tBg=term==='Bruto'?'rgba(136,136,136,.12)':term.startsWith('Barniz')?'rgba(139,92,246,.12)':'rgba(217,119,6,.12)';
-      return `<div style="padding:11px 14px;border-bottom:1px solid var(--border);">
-        <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;">
-          <span style="font-family:'Space Mono',monospace;font-size:.7rem;background:var(--surface2);padding:2px 7px;border-radius:4px;color:var(--muted);">${p.id}</span>
-          <span style="font-size:.7rem;padding:2px 8px;border-radius:5px;background:${tBg};color:${tColor};font-family:'Space Mono',monospace;">${term}</span>
-        </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:6px;">
-          <div><label style="font-size:.65rem;color:var(--muted);">Nombre</label>
-            <input id="ep-u-name-${i}" type="text" value="${sanitizar(p.name)}" style="width:100%;padding:6px 9px;border-radius:7px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:.83rem;"></div>
-          <div><label style="font-size:.65rem;color:var(--muted);">Terminación</label>
-            <select id="ep-u-term-${i}" style="width:100%;padding:6px 9px;border-radius:7px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:.83rem;">
-              ${TERMS.map(t=>`<option value="${t}" ${term===t?'selected':''}>${t}</option>`).join('')}
-            </select></div>
-          <div><label style="font-size:.65rem;color:var(--muted);">Stock mínimo</label>
-            <input id="ep-u-min-${i}" type="number" value="${p.min}" min="0" style="width:100%;padding:6px 9px;border-radius:7px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:.83rem;"></div>
-          <div><label style="font-size:.65rem;color:var(--muted);">Costo unitario ($)</label>
-            <input id="ep-u-cost-${i}" type="number" value="${p.cost}" min="0" step="1" style="width:100%;padding:6px 9px;border-radius:7px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:.83rem;"></div>
-        </div>
-        <button onclick="guardarEdicionUrna(${i})" class="btn btn-primary" style="font-size:.75rem;padding:6px 14px;">Guardar</button>
-      </div>`;
-    }).join('')}`;
-  panel.scrollIntoView({behavior:'smooth'});
-}
-function guardarEdicionUrna(i){
-  const p=uProducts[i]; if(!p) return;
-  const nombre=document.getElementById(`ep-u-name-${i}`)?.value.trim();
-  const term=document.getElementById(`ep-u-term-${i}`)?.value;
-  const min=Math.max(0, parseFloat(document.getElementById(`ep-u-min-${i}`)?.value)||0);
-  const cost=Math.max(0, parseFloat(document.getElementById(`ep-u-cost-${i}`)?.value)||0);
-  if(!nombre) return showToast('El nombre no puede estar vacío','error');
-  p.name=nombre; p.terminacion=term; p.min=min; p.cost=cost;
-  lsGuardarU(); uRenderInventory(); _renderEditorProductosUrnas();
-  showToast('✓ '+nombre+' actualizado','success');
-}
+function _renderEditorProductosUrnas() { _renderEditorInventarioUrnas(); }
+function guardarEdicionUrna(i) { urnGuardarEdicion(i); }
 
 function removeProduct(idx){
   const p = products[idx];
@@ -7466,34 +7379,61 @@ function _renderEditorProductosConEliminar() {
       <div class="card-title" style="margin:0;">📋 Editar inventario — Materiales</div>
       <button onclick="document.getElementById('ep-panel-mat').remove()" style="background:none;border:none;cursor:pointer;font-size:1.1rem;color:var(--muted);">✕</button>
     </div>
-    <div style="padding:8px 14px 4px;font-size:.7rem;color:var(--muted);">Edita campos y pulsa Guardar. Para eliminar usa el botón 🗑 de cada fila.</div>
+    <div style="padding:8px 14px 4px;font-size:.7rem;color:var(--muted);">Toca un producto para expandir y editar.</div>
+    <datalist id="ep-cat-dl2">${cats.map(c => `<option value="${c}">`).join('')}</datalist>
     ${products.map((p,i) => `
-    <div style="padding:10px 14px;border-bottom:1px solid var(--border);">
-      <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;justify-content:space-between;">
-        <div style="display:flex;align-items:center;gap:6px;">
-          <span style="font-family:'Space Mono',monospace;font-size:.7rem;background:var(--surface2);padding:2px 7px;border-radius:4px;color:var(--muted);">${p.id}</span>
-          ${p.cat ? `<span style="font-size:.65rem;padding:1px 6px;border-radius:4px;background:var(--surface2);color:var(--muted);">${p.cat}</span>` : ''}
+    <div class="ep-mat-row" style="border-bottom:1px solid var(--border);">
+      <div onclick="_epMatToggle(${i})" style="padding:10px 14px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:8px;-webkit-tap-highlight-color:transparent;" class="ep-mat-header">
+        <div style="display:flex;align-items:center;gap:8px;min-width:0;">
+          <span style="font-family:'Space Mono',monospace;font-size:.7rem;background:var(--surface2);padding:2px 7px;border-radius:4px;color:var(--muted);flex-shrink:0;">${sanitizar(p.id)}</span>
+          <span style="font-size:.82rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${sanitizar(p.name)}</span>
         </div>
-        <button onclick="matEliminarProducto(${i})" style="background:none;border:1px solid var(--danger);border-radius:6px;padding:2px 9px;cursor:pointer;font-size:.65rem;color:var(--danger);">🗑 Eliminar</button>
+        <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
+          ${p.cat ? `<span style="font-size:.62rem;padding:1px 6px;border-radius:4px;background:var(--surface2);color:var(--muted);">${sanitizar(p.cat)}</span>` : ''}
+          <span style="font-size:.72rem;color:var(--muted);font-family:'Space Mono',monospace;">${p.stock}${(p.unidad&&p.unidad!=='u')?' '+p.unidad:''}</span>
+          <span id="ep-mat-arrow-${i}" style="color:var(--muted);font-size:.7rem;transition:transform .2s;">▶</span>
+        </div>
       </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:6px;">
-        <div><label style="font-size:.65rem;color:var(--muted);">Nombre</label>
-          <input id="ep-m-name-${i}" type="text" value="${sanitizar(p.name)}" style="width:100%;padding:6px 9px;border-radius:7px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:.83rem;"></div>
-        <div><label style="font-size:.65rem;color:var(--muted);">Categoría</label>
-          <input id="ep-m-cat-${i}" type="text" value="${sanitizar(p.cat||'')}" list="ep-cat-dl2" placeholder="ej: Adhesivos" style="width:100%;padding:6px 9px;border-radius:7px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:.83rem;"></div>
-        <div><label style="font-size:.65rem;color:var(--muted);">Stock mínimo</label>
-          <input id="ep-m-min-${i}" type="number" value="${p.min}" min="0" style="width:100%;padding:6px 9px;border-radius:7px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:.83rem;"></div>
-        <div><label style="font-size:.65rem;color:var(--muted);">Costo unitario ($)</label>
-          <input id="ep-m-cost-${i}" type="number" value="${p.cost}" min="0" step="0.01" style="width:100%;padding:6px 9px;border-radius:7px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:.83rem;"></div>
-        <div><label style="font-size:.65rem;color:var(--muted);">Unidad</label>
-          <select id="ep-m-unidad-${i}" style="width:100%;padding:6px 9px;border-radius:7px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:.83rem;">
-            ${['u','gr','ml','L','kg','m','m2','Gl'].map(u=>`<option value="${u}" ${(p.unidad||'u')===u?'selected':''}>${u}</option>`).join('')}
-          </select></div>
+      <div id="ep-mat-body-${i}" style="display:none;padding:0 14px 12px;">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px;">
+          <div><label style="font-size:.65rem;color:var(--muted);">Nombre</label>
+            <input id="ep-m-name-${i}" type="text" value="${sanitizar(p.name)}" style="width:100%;padding:6px 9px;border-radius:7px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:.83rem;"></div>
+          <div><label style="font-size:.65rem;color:var(--muted);">Categoría</label>
+            <input id="ep-m-cat-${i}" type="text" value="${sanitizar(p.cat||'')}" list="ep-cat-dl2" placeholder="ej: Adhesivos" style="width:100%;padding:6px 9px;border-radius:7px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:.83rem;"></div>
+          <div><label style="font-size:.65rem;color:var(--muted);">Stock mínimo</label>
+            <input id="ep-m-min-${i}" type="number" value="${p.min}" min="0" style="width:100%;padding:6px 9px;border-radius:7px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:.83rem;"></div>
+          <div><label style="font-size:.65rem;color:var(--muted);">Costo unitario ($)</label>
+            <input id="ep-m-cost-${i}" type="number" value="${p.cost}" min="0" step="0.01" style="width:100%;padding:6px 9px;border-radius:7px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:.83rem;"></div>
+          <div><label style="font-size:.65rem;color:var(--muted);">Unidad</label>
+            <select id="ep-m-unidad-${i}" style="width:100%;padding:6px 9px;border-radius:7px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:.83rem;">
+              ${['u','gr','ml','L','kg','m','m2','Gl'].map(u=>`<option value="${u}" ${(p.unidad||'u')===u?'selected':''}>${u}</option>`).join('')}
+            </select></div>
+        </div>
+        <div style="display:flex;gap:8px;">
+          <button onclick="guardarEdicionMat(${i})" class="btn btn-primary" style="font-size:.75rem;padding:6px 14px;">Guardar</button>
+          <button onclick="matEliminarProducto(${i})" style="background:none;border:1px solid var(--danger);border-radius:6px;padding:6px 12px;cursor:pointer;font-size:.72rem;color:var(--danger);">🗑 Eliminar</button>
+        </div>
       </div>
-      <button onclick="guardarEdicionMat(${i})" class="btn btn-primary" style="font-size:.75rem;padding:6px 14px;">Guardar</button>
-    </div>`).join('')}
-    <datalist id="ep-cat-dl2">${cats.map(c => `<option value="${c}">`).join('')}</datalist>`;
+    </div>`).join('')}`;
   panel.scrollIntoView({behavior:'smooth'});
+}
+let _epMatOpen = -1;
+function _epMatToggle(i) {
+  // Close previous
+  if(_epMatOpen >= 0 && _epMatOpen !== i) {
+    const prev = document.getElementById('ep-mat-body-'+_epMatOpen);
+    const prevArr = document.getElementById('ep-mat-arrow-'+_epMatOpen);
+    if(prev) prev.style.display = 'none';
+    if(prevArr) prevArr.style.transform = '';
+  }
+  const body = document.getElementById('ep-mat-body-'+i);
+  const arrow = document.getElementById('ep-mat-arrow-'+i);
+  if(!body) return;
+  const opening = body.style.display === 'none';
+  body.style.display = opening ? 'block' : 'none';
+  if(arrow) arrow.style.transform = opening ? 'rotate(90deg)' : '';
+  _epMatOpen = opening ? i : -1;
+  if(opening) body.scrollIntoView({behavior:'smooth', block:'nearest'});
 }
 
 function matEliminarProducto(idx) {
@@ -7717,27 +7657,31 @@ function _renderEditorInventarioUrnas() {
       '<div id="ep-panel-urn" class="card" style="padding:0;overflow:hidden;margin-top:10px;border-color:var(--accent);"></div>');
     panel = document.getElementById('ep-panel-urn');
   }
-  // TERMS is category-aware — computed per product inside the map
   panel.innerHTML = `
     <div style="padding:12px 17px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">
       <div class="card-title" style="margin:0;">📋 Editar inventario — Urnas</div>
       <button onclick="document.getElementById('ep-panel-urn').remove()" style="background:none;border:none;cursor:pointer;font-size:1.1rem;color:var(--muted);">✕</button>
     </div>
-    <div style="padding:8px 14px 4px;font-size:.7rem;color:var(--muted);">Edita campos y pulsa Guardar. Eliminar SKU no borra unidades serializadas.</div>
+    <div style="padding:8px 14px 4px;font-size:.7rem;color:var(--muted);">Toca un producto para expandir y editar.</div>
     ${uProducts.map((p,i) => {
       const term = p.terminacion || 'Bruto';
       const TERMS_P = (p.categoria||'estandar')==='restos'
         ? ['Barniz-Oscura','Paño','Bruto']
         : ['Barniz-Oscura','Barniz-Clara','Cera-Oscura','Cera-Clara','Bruto'];
-      return `<div style="padding:10px 14px;border-bottom:1px solid var(--border);">
-        <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;justify-content:space-between;">
-          <div style="display:flex;align-items:center;gap:6px;">
-            <span style="font-family:'Space Mono',monospace;font-size:.7rem;background:var(--surface2);padding:2px 7px;border-radius:4px;color:var(--muted);">${p.id}</span>
-            <span style="font-size:.65rem;padding:1px 6px;border-radius:4px;background:${uTermBg(term)};color:${uTermColor(term)};">${term}</span>
-          </div>
-          <button onclick="urnEliminarProducto(${i})" style="background:none;border:1px solid var(--danger);border-radius:6px;padding:2px 9px;cursor:pointer;font-size:.65rem;color:var(--danger);">🗑 Eliminar</button>
+      return `
+    <div class="ep-urn-row" style="border-bottom:1px solid var(--border);">
+      <div onclick="_epUrnToggle(${i})" style="padding:10px 14px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:8px;-webkit-tap-highlight-color:transparent;">
+        <div style="display:flex;align-items:center;gap:8px;min-width:0;">
+          <span style="font-family:'Space Mono',monospace;font-size:.7rem;background:var(--surface2);padding:2px 7px;border-radius:4px;color:var(--muted);flex-shrink:0;">${sanitizar(p.id)}</span>
+          <span style="font-size:.82rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${sanitizar(p.name)}</span>
         </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:6px;">
+        <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
+          <span style="font-size:.62rem;padding:1px 6px;border-radius:4px;background:${uTermBg(term)};color:${uTermColor(term)};">${sanitizar(term)}</span>
+          <span id="ep-urn-arrow-${i}" style="color:var(--muted);font-size:.7rem;transition:transform .2s;">▶</span>
+        </div>
+      </div>
+      <div id="ep-urn-body-${i}" style="display:none;padding:0 14px 12px;">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px;">
           <div><label style="font-size:.65rem;color:var(--muted);">Nombre</label>
             <input id="epu-name-${i}" type="text" value="${sanitizar(p.name)}" style="width:100%;padding:6px 9px;border-radius:7px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:.83rem;"></div>
           <div><label style="font-size:.65rem;color:var(--muted);">Terminación</label>
@@ -7749,10 +7693,31 @@ function _renderEditorInventarioUrnas() {
           <div><label style="font-size:.65rem;color:var(--muted);">Costo ($)</label>
             <input id="epu-cost-${i}" type="number" value="${p.cost||0}" min="0" step="1" style="width:100%;padding:6px 9px;border-radius:7px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:.83rem;"></div>
         </div>
-        <button onclick="urnGuardarEdicion(${i})" class="btn btn-primary" style="font-size:.75rem;padding:6px 14px;">Guardar</button>
-      </div>`;
+        <div style="display:flex;gap:8px;">
+          <button onclick="urnGuardarEdicion(${i})" class="btn btn-primary" style="font-size:.75rem;padding:6px 14px;">Guardar</button>
+          <button onclick="urnEliminarProducto(${i})" style="background:none;border:1px solid var(--danger);border-radius:6px;padding:6px 12px;cursor:pointer;font-size:.72rem;color:var(--danger);">🗑 Eliminar</button>
+        </div>
+      </div>
+    </div>`;
     }).join('')}`;
   panel.scrollIntoView({behavior:'smooth'});
+}
+let _epUrnOpen = -1;
+function _epUrnToggle(i) {
+  if(_epUrnOpen >= 0 && _epUrnOpen !== i) {
+    const prev = document.getElementById('ep-urn-body-'+_epUrnOpen);
+    const prevArr = document.getElementById('ep-urn-arrow-'+_epUrnOpen);
+    if(prev) prev.style.display = 'none';
+    if(prevArr) prevArr.style.transform = '';
+  }
+  const body = document.getElementById('ep-urn-body-'+i);
+  const arrow = document.getElementById('ep-urn-arrow-'+i);
+  if(!body) return;
+  const opening = body.style.display === 'none';
+  body.style.display = opening ? 'block' : 'none';
+  if(arrow) arrow.style.transform = opening ? 'rotate(90deg)' : '';
+  _epUrnOpen = opening ? i : -1;
+  if(opening) body.scrollIntoView({behavior:'smooth', block:'nearest'});
 }
 function urnGuardarEdicion(i) {
   const p = uProducts[i]; if(!p) return;
