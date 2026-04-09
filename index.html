@@ -850,7 +850,13 @@ body.modal-open{overflow:hidden;}
 <!-- U-SCAN -->
 <div class="page active" id="page-uscan">
   <div class="card">
-    <div class="card-title">Escanear / Ingresar Serial</div>
+    <div class="card-title">Escanear</div>
+    <!-- Modo del escáner -->
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:14px;">
+      <button id="u-sm-ingreso"  onclick="uSetScanMode('ingreso')"  class="btn btn-primary"   style="justify-content:center;font-size:.7rem;padding:9px 4px;flex-direction:column;gap:2px;">📦<span>Ingresar</span></button>
+      <button id="u-sm-traslado" onclick="uSetScanMode('traslado')" class="btn btn-secondary" style="justify-content:center;font-size:.7rem;padding:9px 4px;flex-direction:column;gap:2px;">🚚<span>Trasladar</span></button>
+      <button id="u-sm-venta"    onclick="uSetScanMode('venta')"    class="btn btn-secondary" style="justify-content:center;font-size:.7rem;padding:9px 4px;flex-direction:column;gap:2px;">💰<span>Vender</span></button>
+    </div>
     <div class="scanner-wrap" id="u-scanner-wrap">
       <video id="u-live-video" playsinline autoplay muted></video>
       <div class="scan-reticle"><div class="reticle-box"><span></span><div class="scan-line"></div></div></div>
@@ -915,6 +921,11 @@ body.modal-open{overflow:hidden;}
         <label style="font-size:.65rem;color:var(--muted);">Notas</label>
         <div id="u-ficha-notas" style="font-size:.8rem;color:var(--muted);font-style:italic;"></div>
       </div>
+      <!-- Ubicación actual (se muestra siempre) -->
+      <div id="u-ficha-ubicacion-row" style="display:none;margin-bottom:10px;">
+        <label style="font-size:.65rem;color:var(--muted);">Ubicación actual</label>
+        <div id="u-ficha-ubicacion" style="font-size:.82rem;font-weight:600;"></div>
+      </div>
       <!-- Panel venta (solo si En Stock) -->
       <div id="u-ficha-venta-panel" style="display:none;border-top:1px solid var(--border);padding-top:12px;margin-top:4px;">
         <div style="font-family:'Space Mono',monospace;font-size:.65rem;color:var(--muted);margin-bottom:8px;">REGISTRAR VENTA</div>
@@ -923,6 +934,11 @@ body.modal-open{overflow:hidden;}
           <input type="text" id="u-venta-cliente" placeholder="Observaciones (opcional)" style="width:100%;">
         </div>
         <button class="btn btn-primary btn-full" style="margin-top:13px;" onclick="uConfirmarVenta()">✓ Confirmar venta</button>
+        <button class="btn btn-secondary btn-full" style="margin-top:8px;" onclick="uAbrirTrasladoModal(uCurrentSerial)">🚚 Trasladar</button>
+      </div>
+      <!-- Traslado: para unidades En Proceso -->
+      <div id="u-ficha-traslado-panel" style="display:none;border-top:1px solid var(--border);padding-top:12px;margin-top:4px;">
+        <button class="btn btn-secondary btn-full" onclick="uAbrirTrasladoModal(uCurrentSerial)">🚚 Trasladar</button>
       </div>
       <!-- Info si ya fue vendido/dañado -->
       <div id="u-ficha-info-extra" style="display:none;border-top:1px solid var(--border);padding-top:10px;margin-top:4px;">
@@ -1063,11 +1079,19 @@ body.modal-open{overflow:hidden;}
 
 <!-- U-UNIDADES (lista serializada) -->
 <div class="page" id="page-uunidades">
-  <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px;">
+  <!-- Filtros de estado -->
+  <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:7px;">
     <button onclick="uSetEstadoFiltro(null)"         id="u-ef-all"     class="btn btn-secondary" style="font-size:.68rem;padding:5px 11px;border-color:var(--accent);color:var(--accent);">Todos</button>
     <button onclick="uSetEstadoFiltro('En Stock')"   id="u-ef-stock"   class="btn btn-secondary" style="font-size:.68rem;padding:5px 11px;">● En Stock</button>
     <button onclick="uSetEstadoFiltro('Vendido')"    id="u-ef-vendido" class="btn btn-secondary" style="font-size:.68rem;padding:5px 11px;">● Vendido</button>
     <button onclick="uSetEstadoFiltro('En Proceso')" id="u-ef-proceso" class="btn btn-secondary" style="font-size:.68rem;padding:5px 11px;">● En Proceso</button>
+  </div>
+  <!-- Filtros de ubicación -->
+  <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px;">
+    <button onclick="uSetUbicacionFiltro(null)"          id="u-uf-all"       class="btn btn-secondary" style="font-size:.68rem;padding:5px 11px;border-color:var(--accent);color:var(--accent);">📍 Todas</button>
+    <button onclick="uSetUbicacionFiltro('Fábrica')"     id="u-uf-fabrica"   class="btn btn-secondary" style="font-size:.68rem;padding:5px 11px;">🏭 Fábrica</button>
+    <button onclick="uSetUbicacionFiltro('Funeraria')"   id="u-uf-funeraria" class="btn btn-secondary" style="font-size:.68rem;padding:5px 11px;">⛪ Funeraria</button>
+    <button onclick="uSetUbicacionFiltro('Metro')"       id="u-uf-metro"     class="btn btn-secondary" style="font-size:.68rem;padding:5px 11px;">🏪 Metro</button>
   </div>
   <div class="card" style="padding:0;overflow:hidden;">
     <div style="padding:11px 17px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);">
@@ -1076,7 +1100,7 @@ body.modal-open{overflow:hidden;}
     </div>
     <div class="table-wrap" style="border:none;border-radius:0;">
       <table>
-        <thead><tr><th>Código</th><th>Nombre</th><th>Terminación</th><th>●</th><th>Ingreso</th><th>Notas</th><th></th></tr></thead>
+        <thead><tr><th>Código</th><th>Nombre</th><th>Terminación</th><th>●</th><th>Ubicación</th><th>Ingreso</th><th></th></tr></thead>
         <tbody id="u-unidades-tbody"></tbody>
       </table>
     </div>
@@ -1210,6 +1234,26 @@ body.modal-open{overflow:hidden;}
       <input type="text" id="u-vm-notas" placeholder="Observaciones (opcional)" style="width:100%;margin-top:4px;">
     </div>
     <button class="btn btn-primary btn-full" onclick="uConfirmarVentaModal()">✓ Confirmar venta</button>
+  </div>
+</div>
+
+<!-- MODAL TRASLADO URNAS -->
+<div id="u-traslado-modal-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:9000;align-items:center;justify-content:center;" onclick="if(event.target===this)uCerrarTrasladoModal()">
+  <div style="background:var(--surface);border:1px solid var(--accent);border-radius:14px;padding:20px;width:90%;max-width:420px;box-shadow:0 8px 40px rgba(0,0,0,.5);">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+      <div style="font-family:'Space Mono',monospace;font-size:.65rem;color:var(--muted);">REGISTRAR TRASLADO</div>
+      <button onclick="uCerrarTrasladoModal()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:1.1rem;">✕</button>
+    </div>
+    <div id="u-tm-info" style="background:var(--surface2);border-radius:8px;padding:10px 12px;margin-bottom:14px;font-size:.82rem;"></div>
+    <div style="margin-bottom:16px;">
+      <label style="font-family:'Space Mono',monospace;font-size:.62rem;color:var(--muted);display:block;margin-bottom:10px;">DESTINO</label>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">
+        <button id="u-td-fabrica"   onclick="uSelDestinoTraslado('Fábrica')"   class="btn btn-secondary" style="flex-direction:column;gap:4px;padding:12px 6px;justify-content:center;font-size:.72rem;min-height:64px;">🏭<span>Fábrica</span></button>
+        <button id="u-td-funeraria" onclick="uSelDestinoTraslado('Funeraria')" class="btn btn-secondary" style="flex-direction:column;gap:4px;padding:12px 6px;justify-content:center;font-size:.72rem;min-height:64px;">⛪<span>Funeraria</span></button>
+        <button id="u-td-metro"     onclick="uSelDestinoTraslado('Metro')"     class="btn btn-secondary" style="flex-direction:column;gap:4px;padding:12px 6px;justify-content:center;font-size:.72rem;min-height:64px;">🏪<span>Metro</span></button>
+      </div>
+    </div>
+    <button class="btn btn-primary btn-full" onclick="uConfirmarTraslado()">🚚 Confirmar traslado</button>
   </div>
 </div>
 
@@ -3219,7 +3263,10 @@ let uUnidades  = [];   // unidades serializadas
 let uCurrentSKU  = null;  // SKU activo en ingreso
 let uCurrentTerm = null;  // terminación activa en ingreso
 let uCurrentSerial = null; // serial activo en ficha
-let _uEstadoFiltro = null;
+let _uEstadoFiltro    = null;
+let _uUbicacionFiltro = null;
+let _uScanMode        = 'ingreso'; // 'ingreso' | 'traslado' | 'venta'
+let _uTrasladoDestino = null;
 
 function _idbBackupUrn() {
   _IDB.set(LS_U_PRODUCTS,  uProducts);
@@ -3346,12 +3393,33 @@ const _urnScanner = _makeScanner({
 function uToggleScanner() { _urnScanner.toggle(); }
 function uStartScanner()  { _urnScanner.start();  }
 function uStopScanner()   { _urnScanner.stop();   }
+function uSetScanMode(mode) {
+  _uScanMode = mode;
+  const MAP = { ingreso:'u-sm-ingreso', traslado:'u-sm-traslado', venta:'u-sm-venta' };
+  Object.entries(MAP).forEach(([m, id]) => {
+    const btn = document.getElementById(id); if(!btn) return;
+    btn.className = m === mode ? 'btn btn-primary' : 'btn btn-secondary';
+  });
+  // Clear sub-panels when switching modes
+  document.getElementById('u-ficha-serial').style.display = 'none';
+  if(mode !== 'ingreso') document.getElementById('u-ingreso-form').style.display = 'none';
+}
 function uHandleScan(text) {
   const serial = (text || '').trim().toUpperCase();
-  // Try to find as existing unit serial
   const unidad = uUnidades.find(u => u.id === serial);
+  if(_uScanMode === 'traslado') {
+    if(!unidad) return showToast('Serial no encontrado: ' + serial, 'error');
+    uAbrirTrasladoModal(serial);
+    return;
+  }
+  if(_uScanMode === 'venta') {
+    if(!unidad) return showToast('Serial no encontrado: ' + serial, 'error');
+    if(unidad.estado !== 'En Stock') return showToast('Unidad no disponible para venta', 'error');
+    uAbrirVentaModal(serial);
+    return;
+  }
+  // Modo ingreso (default)
   if(unidad) { uMostrarFicha(serial); showToast('✓ ' + serial, 'success'); return; }
-  // Try as SKU for new ingreso
   const sku = uProducts.find(p => p.id.toUpperCase() === serial);
   if(sku) { uIniciarIngreso(sku); showToast('SKU detectado: ' + sku.name, 'success'); return; }
   showToast('No encontrado: ' + text, 'error');
@@ -3371,12 +3439,8 @@ function uToggleAlt(id) {
 function uLookupSerial() {
   const serial = document.getElementById('u-manual-id').value.trim().toUpperCase();
   if(!serial) return showToast('Ingresa un serial', 'error');
-  const unidad = uUnidades.find(u => u.id === serial);
-  if(unidad) { uMostrarFicha(serial); return; }
-  // Could be a SKU → open ingreso instead
-  const sku = uProducts.find(p => p.id.toUpperCase() === serial);
-  if(sku) { uIniciarIngreso(sku); return; }
-  showToast('Serial no encontrado: ' + serial, 'error');
+  // Delegate to same handler as camera scan
+  uHandleScan(serial);
 }
 
 // ── FICHA DE UNIDAD ───────────────────────────────────
@@ -3400,21 +3464,30 @@ function uMostrarFicha(serial) {
   document.getElementById('u-ficha-term').textContent = u.terminacion || '—';
   document.getElementById('u-ficha-ingreso').textContent = u.fechaIngreso || '—';
   document.getElementById('u-ficha-costo').textContent = u.costoIngreso > 0 ? '$' + fmtNum(u.costoIngreso) : '—';
+  // Ubicación
+  const UB_ICON = { 'Fábrica':'🏭', 'Funeraria':'⛪', 'Metro':'🏪' };
+  const ub = u.ubicacion || 'Fábrica';
+  const ubRow = document.getElementById('u-ficha-ubicacion-row');
+  const ubEl  = document.getElementById('u-ficha-ubicacion');
+  if(ubRow && ubEl) { ubEl.textContent = (UB_ICON[ub]||'') + ' ' + ub; ubRow.style.display = 'block'; }
   const notasRow = document.getElementById('u-ficha-notas-row');
   if(u.notas) { document.getElementById('u-ficha-notas').textContent = u.notas; notasRow.style.display='block'; }
   else notasRow.style.display = 'none';
-  const ventaPanel = document.getElementById('u-ficha-venta-panel');
-  const infoExtra  = document.getElementById('u-ficha-info-extra');
+  const ventaPanel    = document.getElementById('u-ficha-venta-panel');
+  const trasladoPanel = document.getElementById('u-ficha-traslado-panel');
+  const infoExtra     = document.getElementById('u-ficha-info-extra');
   if(u.estado === 'En Stock') {
     ventaPanel.style.display = 'block'; infoExtra.style.display = 'none';
-    document.getElementById('u-venta-precio').value = '';
+    if(trasladoPanel) trasladoPanel.style.display = 'none';
     document.getElementById('u-venta-contrato').value = '';
     document.getElementById('u-venta-cliente').value = '';
   } else {
     ventaPanel.style.display = 'none'; infoExtra.style.display = 'block';
+    // Show traslado button for non-sold units
+    if(trasladoPanel) trasladoPanel.style.display = (u.estado !== 'Vendido') ? 'block' : 'none';
     let txt = '';
     if(u.estado === 'Vendido') txt = `Vendido el ${u.fechaSalida || '—'}${u.cliente ? ' · Cliente: ' + u.cliente : ''}${u.precioVenta ? ' · $' + fmtNum(u.precioVenta) : ''}`;
-    else if(u.estado === 'En Proceso') txt = 'Asignado a Orden de Producción activa.';
+    else if(u.estado === 'En Proceso') txt = 'En Proceso · Ubicación: ' + ub;
     else if(u.estado === 'Dañado') txt = 'Unidad dada de baja. ' + (u.notas || '');
     document.getElementById('u-ficha-info-extra-content').textContent = txt;
   }
@@ -3471,6 +3544,65 @@ function uCerrarVentaModal() {
   _modalHide('u-venta-modal-overlay');
   uCurrentSerial = null;
 }
+
+// ── TRASLADO DE UNIDADES ────────────────────────────────
+function uAbrirTrasladoModal(serial) {
+  const u = uUnidades.find(x => x.id === serial);
+  if(!u) return showToast('Serial no encontrado', 'error');
+  if(u.estado === 'Vendido') return showToast('Unidad vendida – no trasladable', 'error');
+  uCurrentSerial = serial;
+  _uTrasladoDestino = null;
+  // Reset destination buttons
+  ['u-td-fabrica','u-td-funeraria','u-td-metro'].forEach(id => {
+    const btn = document.getElementById(id); if(!btn) return;
+    btn.style.borderColor = 'var(--border)'; btn.style.color = 'var(--muted)'; btn.style.background = 'transparent';
+  });
+  const ubicActual = u.ubicacion || 'Fábrica';
+  document.getElementById('u-tm-info').innerHTML = `
+    <div style="font-family:'Space Mono',monospace;font-size:.85rem;color:var(--accent);font-weight:700;margin-bottom:4px;">${sanitizar(u.id)}</div>
+    <div style="font-size:.8rem;font-weight:600;">${sanitizar(u.nombre)}</div>
+    <div style="font-size:.72rem;color:var(--muted);margin-top:2px;">${sanitizar(u.terminacion||'—')} · Estado: ${sanitizar(u.estado)}</div>
+    <div style="font-size:.72rem;margin-top:4px;">📍 Actualmente en: <b>${sanitizar(ubicActual)}</b></div>`;
+  _modalShow('u-traslado-modal-overlay');
+}
+function uCerrarTrasladoModal() {
+  _modalHide('u-traslado-modal-overlay');
+  uCurrentSerial = null; _uTrasladoDestino = null;
+}
+function uSelDestinoTraslado(destino) {
+  _uTrasladoDestino = destino;
+  const MAP = { 'Fábrica':'u-td-fabrica', 'Funeraria':'u-td-funeraria', 'Metro':'u-td-metro' };
+  Object.entries(MAP).forEach(([d, id]) => {
+    const btn = document.getElementById(id); if(!btn) return;
+    btn.style.borderColor = d === destino ? 'var(--accent)' : 'var(--border)';
+    btn.style.color       = d === destino ? 'var(--accent)' : 'var(--muted)';
+    btn.style.background  = 'transparent';
+  });
+}
+function uConfirmarTraslado() {
+  if(!_uTrasladoDestino) return showToast('Selecciona el destino', 'error');
+  const serial = uCurrentSerial;
+  const u = uUnidades.find(x => x.id === serial);
+  if(!u) return showToast('Serial no encontrado', 'error');
+  const desde = u.ubicacion || 'Fábrica';
+  if(desde === _uTrasladoDestino) return showToast('Ya está en ' + _uTrasladoDestino, 'error');
+  const hoy   = new Date().toISOString().split('T')[0];
+  const movId = _genId('UMOV-');
+  u.ubicacion = _uTrasladoDestino;
+  uMovements.unshift({
+    id: movId, type: 'Traslado', date: hoy,
+    serial, skuId: u.skuId, nombre: u.nombre, terminacion: u.terminacion,
+    desde, hacia: _uTrasladoDestino,
+  });
+  registrarAuditoria('URNA_TRASLADADA', { serial, desde, hacia: _uTrasladoDestino });
+  lsGuardarU();
+  uCerrarTrasladoModal();
+  showToast('🚚 ' + serial + ': ' + desde + ' → ' + _uTrasladoDestino, 'success');
+  if(document.getElementById('page-uunidades')?.classList.contains('active')) uRenderUnidades();
+  if(document.getElementById('page-uresumen')?.classList.contains('active')) uRenderResumen();
+  if(document.getElementById('page-uinventory')?.classList.contains('active')) uRenderInventory();
+}
+
 function uConfirmarVentaModal() {
   const serial = uCurrentSerial;
   const u = uUnidades.find(x => x.id === serial);
@@ -3596,6 +3728,7 @@ function uConfirmarIngreso() {
       nombre:       uCurrentSKU.name,
       terminacion:  uCurrentTerm,
       estado:       'En Stock',
+      ubicacion:    'Fábrica',
       fechaIngreso: hoy,
       fechaSalida:  null,
       movIngresoId: movId,
@@ -3649,6 +3782,17 @@ function uSetEstadoFiltro(estado) {
     el.style.borderColor = 'var(--border)'; el.style.color = 'var(--muted)'; el.style.background = 'transparent';
   });
   const activeId = estado === null ? 'u-ef-all' : estado === 'En Stock' ? 'u-ef-stock' : estado === 'Vendido' ? 'u-ef-vendido' : 'u-ef-proceso';
+  const active = document.getElementById(activeId);
+  if(active) { active.style.borderColor = 'var(--accent)'; active.style.color = 'var(--accent)'; }
+  uRenderUnidades();
+}
+function uSetUbicacionFiltro(ub) {
+  _uUbicacionFiltro = ub;
+  ['u-uf-all','u-uf-fabrica','u-uf-funeraria','u-uf-metro'].forEach(id => {
+    const el = document.getElementById(id); if(!el) return;
+    el.style.borderColor = 'var(--border)'; el.style.color = 'var(--muted)'; el.style.background = 'transparent';
+  });
+  const activeId = ub === null ? 'u-uf-all' : ub === 'Fábrica' ? 'u-uf-fabrica' : ub === 'Funeraria' ? 'u-uf-funeraria' : 'u-uf-metro';
   const active = document.getElementById(activeId);
   if(active) { active.style.borderColor = 'var(--accent)'; active.style.color = 'var(--accent)'; }
   uRenderUnidades();
@@ -3785,17 +3929,18 @@ function uTermBg(t)    { return t==='Bruto'?'rgba(136,136,136,.12)':t&&t.startsW
 function uRenderUnidades() {
   let lista = [...uUnidades].reverse(); // newest first
   if(_uEstadoFiltro) lista = lista.filter(u => u.estado === _uEstadoFiltro);
+  if(_uUbicacionFiltro) lista = lista.filter(u => (u.ubicacion || 'Fábrica') === _uUbicacionFiltro);
   const cnt = document.getElementById('u-unidades-count');
   if(cnt) cnt.textContent = lista.length + ' unidad' + (lista.length !== 1 ? 'es' : '');
   const tbody = document.getElementById('u-unidades-tbody');
   if(!tbody) return;
   tbody.innerHTML = '';
   if(!lista.length) {
-    tbody.innerHTML = '<tr><td colspan="8"><div class="empty"><div class="empty-icon">🔢</div>Sin unidades' + (_uEstadoFiltro ? ' con ese estado' : '') + '</div></td></tr>';
+    tbody.innerHTML = '<tr><td colspan="7"><div class="empty"><div class="empty-icon">🔢</div>Sin unidades' + (_uEstadoFiltro || _uUbicacionFiltro ? ' con ese filtro' : '') + '</div></td></tr>';
     return;
   }
+  const UB_ICON = { 'Fábrica':'🏭', 'Funeraria':'⛪', 'Metro':'🏪' };
   lista.forEach(u => {
-    // Estado: círculo de color
     const circulo = u.estado === 'En Stock'
       ? '<span title="En Stock" style="display:inline-block;width:11px;height:11px;border-radius:50%;background:var(--accent);"></span>'
       : u.estado === 'Vendido'
@@ -3803,16 +3948,17 @@ function uRenderUnidades() {
       : u.estado === 'En Proceso'
       ? '<span title="En Proceso" style="display:inline-block;width:11px;height:11px;border-radius:50%;background:var(--warn);"></span>'
       : '<span title="Dañado" style="display:inline-block;width:11px;height:11px;border-radius:50%;background:var(--muted);border:1px solid var(--border);"></span>';
-    const acciones = u.estado === 'En Stock'
-      ? `<button onclick="uAbrirVentaModal('${u.id}')" style="background:none;border:1px solid var(--accent);border-radius:6px;padding:2px 8px;cursor:pointer;font-size:.65rem;color:var(--accent);">Vender</button>`
-      : '';
+    const ub = u.ubicacion || 'Fábrica';
+    let acciones = '';
+    if(u.estado === 'En Stock') acciones = `<button onclick="uAbrirVentaModal('${u.id}')" style="background:none;border:1px solid var(--accent);border-radius:6px;padding:2px 8px;cursor:pointer;font-size:.65rem;color:var(--accent);">Vender</button> <button onclick="uAbrirTrasladoModal('${u.id}')" style="background:none;border:1px solid var(--border);border-radius:6px;padding:2px 8px;cursor:pointer;font-size:.65rem;color:var(--muted);">🚚</button>`;
+    else if(u.estado !== 'Vendido') acciones = `<button onclick="uAbrirTrasladoModal('${u.id}')" style="background:none;border:1px solid var(--border);border-radius:6px;padding:2px 8px;cursor:pointer;font-size:.65rem;color:var(--muted);">🚚</button>`;
     tbody.insertAdjacentHTML('beforeend', `<tr>
       <td><span style="font-family:'Space Mono',monospace;font-size:.78rem;color:var(--accent);font-weight:700;">${sanitizar(u.id)}</span></td>
       <td style="font-size:.82rem;">${sanitizar(u.nombre)}</td>
       <td><span style="font-size:.68rem;padding:1px 7px;border-radius:5px;background:${uTermBg(u.terminacion)};color:${uTermColor(u.terminacion)};font-family:'Space Mono',monospace;">${sanitizar(u.terminacion||'—')}</span></td>
       <td style="text-align:center;">${circulo}</td>
+      <td style="font-size:.72rem;white-space:nowrap;">${UB_ICON[ub]||''} ${sanitizar(ub)}</td>
       <td class="td-mono" style="font-size:.72rem;">${fmtFecha(u.fechaIngreso)}</td>
-      <td style="font-size:.72rem;color:var(--muted);max-width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${sanitizar(u.notas||'')}">${sanitizar(u.notas||'—')}</td>
       <td style="text-align:right;white-space:nowrap;">${acciones}</td>
     </tr>`);
   });
