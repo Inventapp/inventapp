@@ -286,8 +286,10 @@ tr:hover td{background:rgba(255,255,255,.02);}
 .empty-icon{font-size:2rem;margin-bottom:9px;opacity:.4;}
 
 /* TOAST */
-#toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%) translateY(100px);background:var(--surface2);border:1px solid var(--border);padding:10px 17px;border-radius:10px;font-family:'Space Mono',monospace;font-size:.76rem;z-index:999;transition:transform .28s ease;white-space:nowrap;}
+#toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%) translateY(100px);background:var(--surface2);border:1px solid var(--border);padding:10px 17px;border-radius:10px;font-family:'Space Mono',monospace;font-size:.76rem;z-index:999;transition:transform .28s ease;white-space:nowrap;max-width:90vw;overflow:hidden;text-overflow:ellipsis;}
 #toast.show{transform:translateX(-50%) translateY(0);}
+@media(max-width:600px){#toast{bottom:auto;top:64px;transform:translateX(-50%) translateY(-100px);}#toast.show{transform:translateX(-50%) translateY(0);}
+#sw-update-banner{bottom:auto!important;top:0!important;border-top:none!important;border-bottom:2px solid var(--accent)!important;}}
 #toast.success{border-color:var(--accent);color:var(--accent);}
 #toast.error{border-color:var(--danger);color:var(--danger);}
 
@@ -330,6 +332,7 @@ tr:hover td{background:rgba(255,255,255,.02);}
 /* MODAL ESTADO OP */
 .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:400;align-items:center;justify-content:center;touch-action:manipulation;-webkit-tap-highlight-color:transparent;}
 .modal-overlay.open{display:flex;}
+body.modal-open{overflow:hidden;}
 .modal-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:22px;width:88%;max-width:340px;}
 .modal-title{font-family:'Space Mono',monospace;font-size:.8rem;color:var(--muted);margin-bottom:16px;text-transform:uppercase;}
 .estado-opt{display:flex;align-items:center;gap:12px;padding:13px 14px;border-radius:10px;border:2px solid var(--border);margin-bottom:8px;cursor:pointer;transition:all .2s;font-family:'Space Mono',monospace;font-size:.78rem;}
@@ -348,6 +351,8 @@ tr:hover td{background:rgba(255,255,255,.02);}
 .menu-section-label { font-family:'Space Mono',monospace; font-size:.58rem; color:var(--muted); padding:2px 4px 6px; letter-spacing:.06em; }
 /* ── MOBILE RESPONSIVE ─────────────────────── */
 @media(max-width:600px){
+  /* Header: reduce blur for mobile GPU performance */
+  header { backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); }
   /* Header: ocultar nombre usuario, solo mostrar rol+salir */
   #hdr-user span#hdr-user { display:none; }
   #hdr-rol { display:none; }
@@ -1189,7 +1194,7 @@ tr:hover td{background:rgba(255,255,255,.02);}
 </main>
 
 <!-- MODAL VENTA INLINE URNAS -->
-<div id="u-venta-modal-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:9000;display:none;align-items:center;justify-content:center;" onclick="if(event.target===this)uCerrarVentaModal()">
+<div id="u-venta-modal-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:9000;align-items:center;justify-content:center;" onclick="if(event.target===this)uCerrarVentaModal()">
   <div style="background:var(--surface);border:1px solid var(--accent);border-radius:14px;padding:20px;width:90%;max-width:420px;box-shadow:0 8px 40px rgba(0,0,0,.5);">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
       <div style="font-family:'Space Mono',monospace;font-size:.65rem;color:var(--muted);">REGISTRAR VENTA</div>
@@ -1957,15 +1962,19 @@ function limpiarMovimientosMenu(){
   else clearMovements();
 }
 
+// ── Modal scroll lock ──
+function _modalShow(id) { document.getElementById(id).style.display = 'flex'; document.body.classList.add('modal-open'); }
+function _modalHide(id) { document.getElementById(id).style.display = 'none'; document.body.classList.remove('modal-open'); }
+
 // ── RESET STOCK MODAL ──
 let _rstTab='mat';
 function abrirModalResetStock(){
   closeMenu();
-  document.getElementById('modal-reset-stock').classList.add('open');
+  document.getElementById('modal-reset-stock').classList.add('open'); document.body.classList.add('modal-open');
   rstTab('mat');
 }
 function cerrarModalResetStock(){
-  document.getElementById('modal-reset-stock').classList.remove('open');
+  document.getElementById('modal-reset-stock').classList.remove('open'); document.body.classList.remove('modal-open');
 }
 function rstTab(tab){
   _rstTab=tab;
@@ -3455,12 +3464,11 @@ function uAbrirVentaModal(serial) {
     <div style="font-family:'Space Mono',monospace;font-size:.85rem;color:var(--accent);font-weight:700;margin-bottom:4px;">${sanitizar(u.id)}</div>
     <div style="font-size:.8rem;font-weight:600;">${sanitizar(u.nombre)}</div>
     <div style="font-size:.72rem;color:var(--muted);margin-top:2px;">${sanitizar(u.terminacion||'—')} · Ingreso: ${fmtFecha(u.fechaIngreso)}</div>`;
-  const overlay = document.getElementById('u-venta-modal-overlay');
-  overlay.style.display = 'flex';
+  _modalShow('u-venta-modal-overlay');
   setTimeout(() => document.getElementById('u-vm-contrato').focus(), 80);
 }
 function uCerrarVentaModal() {
-  document.getElementById('u-venta-modal-overlay').style.display = 'none';
+  _modalHide('u-venta-modal-overlay');
   uCurrentSerial = null;
 }
 function uConfirmarVentaModal() {
@@ -3949,7 +3957,15 @@ function uRenderQR() {
     }
   });
 }
-function uPrintAllQR() { window.print(); }
+function uPrintAllQR() {
+  const area = document.getElementById('print-area');
+  const items = uProducts.filter(p => uStockDe(p.id, uUnidades) > 0 || uEnProcesoDe(p.id, uUnidades) > 0);
+  if (!items.length) return showToast('No hay productos con unidades para imprimir', 'error');
+  area.style.display = 'flex';
+  area.innerHTML = items.map((p, i) => `<div class="qr-print-item"><div id="upqr${i}" style="background:#fff;padding:6px;display:inline-block;"></div><p><b>${sanitizar(p.name)}</b></p><p>${sanitizar(p.id)}</p></div>`).join('');
+  items.forEach((p, i) => new QRCode(document.getElementById('upqr' + i), { text: p.id, width: 140, height: 140, colorDark: '#000000', colorLight: '#ffffff' }));
+  setTimeout(() => { window.print(); area.style.display = 'none'; area.innerHTML = ''; }, 400);
+}
 
 // ── RESUMEN ────────────────────────────────────────────
 function uRenderResumen() {
@@ -4281,7 +4297,7 @@ function uAbrirNuevaOP() {
   document.getElementById('op-form-notas').value = '';
   document.getElementById('op-aviso-terminada').style.display = 'none';
   opRenderLineas();
-  document.getElementById('modal-op-form').style.display = 'flex';
+  _modalShow('modal-op-form');
 }
 
 // ── MODAL: abrir editar OP ─────────────────────────────
@@ -4298,11 +4314,11 @@ function uAbrirEditarOP(opId) {
   document.getElementById('op-form-notas').value = op.notas||'';
   opEstadoChange();
   opRenderLineas();
-  document.getElementById('modal-op-form').style.display = 'flex';
+  _modalShow('modal-op-form');
 }
 
 function uCerrarOpForm() {
-  document.getElementById('modal-op-form').style.display = 'none';
+  _modalHide('modal-op-form');
   _opEditId = null; _opLineas = [];
 }
 
@@ -4697,7 +4713,7 @@ function cCopiarReceta() {
   }).join('');
   const sel = `<select id="c-copy-dest" style="width:100%;font-size:.85rem;margin-top:8px;">${opts}</select>`;
   document.getElementById('c-wizard').insertAdjacentHTML('afterbegin',
-    `<div id="c-copy-modal" style="position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;padding:20px;">
+    `<div id="c-copy-modal" style="position:fixed;inset:0;z-index:9000;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;padding:20px;">
       <div style="background:var(--surface);border-radius:14px;padding:20px;width:100%;max-width:360px;">
         <div style="font-weight:700;margin-bottom:8px;">📋 Copiar receta a:</div>
         <div style="font-size:.75rem;color:var(--muted);margin-bottom:6px;">Los materiales del producto actual se copiarán al producto destino.</div>
@@ -5083,7 +5099,8 @@ function vRenderFlota() {
     if(kmAceit  !== null && kmAceit  <= 2000) alertas.push({txt: (kmAceit<=0?'Aceite VENCIDO':'Aceite en '+fmtNum(kmAceit)+' km'), c: kmAceit<=0?'var(--danger)':'var(--warn)'});
     const costoTotal = (v.eventos||[]).reduce((s,e) => s+(e.costo||0)+(e.costoTotal||0),0);
     const ultKm = v.km || 0;
-    return `<div onclick="vAbrirFicha('${escJs(v.patente)}')" style="background:var(--surface);border:1px solid ${v.estado==='En reparación'?'var(--danger)':v.estado==='Inactivo'?'var(--border)':'var(--border)'};border-radius:12px;padding:14px 16px;margin-bottom:10px;cursor:pointer;transition:border-color .2s;" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='${v.estado==='En reparación'?'var(--danger)':'var(--border)'}'">
+    const _vBorderDefault = v.estado==='En reparación'?'var(--danger)':'var(--border)';
+    return `<div onclick="vAbrirFicha('${escJs(v.patente)}')" style="background:var(--surface);border:1px solid ${_vBorderDefault};border-radius:12px;padding:14px 16px;margin-bottom:10px;cursor:pointer;transition:border-color .2s;" onpointerenter="this.style.borderColor='var(--accent)'" onpointerleave="this.style.borderColor='${_vBorderDefault}'">
       <div style="display:flex;align-items:flex-start;gap:12px;">
         <div style="font-size:2rem;flex-shrink:0;line-height:1;">${icon}</div>
         <div style="flex:1;min-width:0;">
@@ -5411,10 +5428,10 @@ function vAbrirModalVehiculo(patente) {
   // Conductores datalist
   const dl = document.getElementById('vf-conductores-dl');
   if(dl) dl.innerHTML = vGetWorkerNames().map(n=>`<option value="${n}">`).join('');
-  document.getElementById('modal-veh-vehiculo').style.display = 'flex';
+  _modalShow('modal-veh-vehiculo');
 }
 function vCerrarModalVehiculo() {
-  document.getElementById('modal-veh-vehiculo').style.display = 'none';
+  _modalHide('modal-veh-vehiculo');
 }
 function vGuardarVehiculo() {
   const patente = document.getElementById('vf-patente').value.trim().toUpperCase();
@@ -5477,10 +5494,10 @@ function vAbrirModalEvento() {
   // Conductores
   const dl = document.getElementById('vev-conductores-dl');
   if(dl) dl.innerHTML = vGetWorkerNames().map(n=>`<option value="${n}">`).join('');
-  document.getElementById('modal-veh-evento').style.display='flex';
+  _modalShow('modal-veh-evento');
 }
 function vCerrarModalEvento() {
-  document.getElementById('modal-veh-evento').style.display='none';
+  _modalHide('modal-veh-evento');
 }
 function vSelTipo(tipo) {
   _vevTipo = tipo;
@@ -5587,12 +5604,12 @@ function vAbrirRegistroKm() {
   document.getElementById('vkm-preview').textContent = '';
   const dl = document.getElementById('vkm-conductores-dl');
   if(dl) dl.innerHTML = vGetWorkerNames().map(n=>`<option value="${n}">`).join('');
-  document.getElementById('modal-veh-km').style.display = 'flex';
+  _modalShow('modal-veh-km');
   setTimeout(() => document.getElementById('vkm-km').focus(), 80);
 }
 
 function vCerrarRegistroKm() {
-  document.getElementById('modal-veh-km').style.display = 'none';
+  _modalHide('modal-veh-km');
 }
 
 function vKmPreview() {
@@ -5949,7 +5966,7 @@ function provAbrirModal(prodIdPreset) {
   document.getElementById('prov-form-contacto').value = '';
   document.getElementById('prov-form-notas').value    = '';
   _provPopulateSelect(prodIdPreset || '');
-  document.getElementById('modal-proveedor').style.display = 'flex';
+  _modalShow('modal-proveedor');
   setTimeout(() => document.getElementById('prov-form-nombre').focus(), 80);
 }
 
@@ -5979,7 +5996,7 @@ function _provPopulateSelect(selectedProdId) {
 function provModalCatChange() { /* placeholder */ }
 
 function provCerrarModal() {
-  document.getElementById('modal-proveedor').style.display = 'none';
+  _modalHide('modal-proveedor');
   _provEditId = null;
 }
 
@@ -5996,7 +6013,7 @@ function provEditar(pvId) {
   document.getElementById('prov-form-unidad').value   = pv.unidad   || '';
   document.getElementById('prov-form-contacto').value = pv.contacto || '';
   document.getElementById('prov-form-notas').value    = pv.notas    || '';
-  document.getElementById('modal-proveedor').style.display = 'flex';
+  _modalShow('modal-proveedor');
 }
 
 // ── Guardar ──────────────────────────────────────────
@@ -6062,10 +6079,10 @@ function abrirEditarUnidades() {
   closeMenu();
   document.getElementById('eu-search').value = '';
   euFiltrar();
-  document.getElementById('modal-editar-unidades').style.display = 'flex';
+  _modalShow('modal-editar-unidades');
 }
 function cerrarEditarUnidades() {
-  document.getElementById('modal-editar-unidades').style.display = 'none';
+  _modalHide('modal-editar-unidades');
 }
 function euFiltrar() {
   const q = document.getElementById('eu-search').value.toLowerCase();
@@ -6118,10 +6135,10 @@ function euAbrirEditar(serial) {
   document.getElementById('eu-edit-notas').value = u.cliente || '';
   document.getElementById('eu-edit-fechaIngreso').value = u.fechaIngreso || '';
   document.getElementById('eu-edit-fechaSalida').value = u.fechaSalida || '';
-  document.getElementById('modal-editar-unidad').style.display = 'flex';
+  _modalShow('modal-editar-unidad');
 }
 function cerrarEditarUnidad() {
-  document.getElementById('modal-editar-unidad').style.display = 'none';
+  _modalHide('modal-editar-unidad');
   _euSerial = null;
 }
 function euGuardarUnidad() {
@@ -6153,10 +6170,10 @@ function abrirEliminarUnidades() {
   closeMenu();
   document.getElementById('elim-u-search').value = '';
   elimUFiltrar();
-  document.getElementById('modal-elim-unidades').style.display = 'flex';
+  _modalShow('modal-elim-unidades');
 }
 function cerrarEliminarUnidades() {
-  document.getElementById('modal-elim-unidades').style.display = 'none';
+  _modalHide('modal-elim-unidades');
 }
 function elimUFiltrar() {
   const q = (document.getElementById('elim-u-search').value || '').toLowerCase();
@@ -6216,10 +6233,10 @@ function abrirEliminarVentas() {
   closeMenu();
   document.getElementById('elim-v-search').value = '';
   elimVFiltrar();
-  document.getElementById('modal-elim-ventas').style.display = 'flex';
+  _modalShow('modal-elim-ventas');
 }
 function cerrarEliminarVentas() {
-  document.getElementById('modal-elim-ventas').style.display = 'none';
+  _modalHide('modal-elim-ventas');
 }
 function elimVFiltrar() {
   const q = (document.getElementById('elim-v-search').value || '').toLowerCase();
@@ -6305,11 +6322,11 @@ function trabAbrirModal(idx) {
   // Populate area datalist
   const dl = document.getElementById('trab-area-dl');
   if(dl) dl.innerHTML = [...new Set(workers.map(w=>w.area||'').filter(Boolean))].sort().map(a=>`<option value="${a}">`).join('');
-  document.getElementById('modal-trabajador').style.display = 'flex';
+  _modalShow('modal-trabajador');
   setTimeout(()=>document.getElementById('trab-modal-name').focus(), 80);
 }
 function trabCerrarModal() {
-  document.getElementById('modal-trabajador').style.display = 'none';
+  _modalHide('modal-trabajador');
   _trabEditIdx = null;
 }
 function trabGuardar() {
@@ -7098,7 +7115,7 @@ async function abrirAdminUsuarios() {
   // Load all users from Firestore
   const modal = document.getElementById('modal-admin-usuarios');
   if(!modal) return;
-  modal.style.display = 'flex';
+  _modalShow('modal-admin-usuarios');
   document.getElementById('admin-users-list').innerHTML = '<div style="text-align:center;padding:20px;color:var(--muted);">Cargando...</div>';
   try {
     // Get all user docs — requires admin privileges in rules
@@ -7336,13 +7353,13 @@ function menuMatAjustarStock() {
   setTimeout(() => matAjustarStock(), 120);
 }
 function matAjustarStock() {
-  document.getElementById('modal-ajuste-mat').style.display = 'flex';
+  _modalShow('modal-ajuste-mat');
   const searchEl = document.getElementById('ajuste-search');
   if(searchEl) searchEl.value = '';
   matRenderAjuste();
 }
 function cerrarAjusteMat() {
-  document.getElementById('modal-ajuste-mat').style.display = 'none';
+  _modalHide('modal-ajuste-mat');
 }
 function matRenderAjuste() {
   const c  = document.getElementById('ajuste-mat-lista');
@@ -8047,13 +8064,13 @@ function menuUrnEditarOPs() {
 </div>
 
 <!-- MODAL ADMIN USUARIOS -->
-<div class="modal-overlay" id="modal-admin-usuarios" onclick="if(event.target===this)this.style.display='none'" style="display:none;">
+<div class="modal-overlay" id="modal-admin-usuarios" onclick="if(event.target===this)_modalHide('modal-admin-usuarios')" style="display:none;">
   <div class="modal-box" style="max-width:480px;width:94%;max-height:88vh;display:flex;flex-direction:column;">
     <div class="modal-title" style="flex-shrink:0;">👥 Gestionar usuarios</div>
     <p style="font-size:.75rem;color:var(--muted);margin-bottom:14px;flex-shrink:0;">Los nuevos usuarios deben registrarse con su email en Firebase Authentication. Luego aparecerán aquí al iniciar sesión por primera vez.</p>
     <div id="admin-users-list" style="overflow-y:auto;flex:1;"></div>
     <div style="margin-top:14px;flex-shrink:0;">
-      <button class="btn btn-secondary btn-full" onclick="document.getElementById('modal-admin-usuarios').style.display='none'">Cerrar</button>
+      <button class="btn btn-secondary btn-full" onclick="_modalHide('modal-admin-usuarios')">Cerrar</button>
     </div>
   </div>
 </div>
