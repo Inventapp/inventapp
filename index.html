@@ -4139,156 +4139,271 @@ function uRenderResumen() {
 function _uRenderResumenImpl() {
   const container = document.getElementById('u-resumen-content');
   if(!container) return;
-  const now       = new Date();
-  const hace30    = new Date(now - 30*86400000).toISOString().split('T')[0];
-  const hace7     = new Date(now - 7*86400000).toISOString().split('T')[0];
+  const now   = new Date();
+  const hoy   = now.toISOString().split('T')[0];
+  const mesActual = hoy.slice(0,7); // YYYY-MM
+  const mesAnteriorD = new Date(now.getFullYear(), now.getMonth()-1, 1);
+  const mesAnterior  = mesAnteriorD.toISOString().split('T')[0].slice(0,7);
+  const hace30 = new Date(now - 30*86400000).toISOString().split('T')[0];
 
-  const ventas   = uMovements.filter(m => m.type === 'Salida');
+  // ── Datos base ──
+  const ventas    = uMovements.filter(m => m.type === 'Salida');
+  const ingresos  = uMovements.filter(m => m.type === 'Ingreso');
+  const traslados = uMovements.filter(m => m.type === 'Traslado');
+  const ventasMes = ventas.filter(m => m.date && m.date.slice(0,7) === mesActual);
+  const ventasMesAnt = ventas.filter(m => m.date && m.date.slice(0,7) === mesAnterior);
+  const ingresosMes  = ingresos.filter(m => m.date && m.date.slice(0,7) === mesActual);
+  const trasladosMes = traslados.filter(m => m.date && m.date.slice(0,7) === mesActual);
   const ventas30 = ventas.filter(m => m.date >= hace30);
-  const ventas7  = ventas.filter(m => m.date >= hace7);
-  const sal30    = ventas30.length;
-  const sal7     = ventas7.length;
-  const pdv      = sal30 / 30; // promedio diario ventas
 
-  const enStock   = uUnidades.filter(u => u.estado === 'En Stock').length;
-  const enProc    = uUnidades.filter(u => u.estado === 'En Proceso').length;
+  const enStock  = uUnidades.filter(u => u.estado === 'En Stock');
+  const enProc   = uUnidades.filter(u => u.estado === 'En Proceso');
+  const vendidas = uUnidades.filter(u => u.estado === 'Vendido');
   const opsActivas = uOPs ? uOPs.filter(o => o.estado !== 'Completada').length : 0;
 
-  const brutos       = uProducts.filter(p => (p.terminacion||'').toLowerCase() === 'bruto');
-  const terminados   = uProducts.filter(p => (p.terminacion||'').toLowerCase() !== 'bruto');
-  const stockBruto   = brutos.reduce((s,p) => s + uStockDe(p.id), 0);
-  const stockTerm    = terminados.reduce((s,p) => s + uStockDe(p.id), 0);
-  const minTotal     = terminados.reduce((s,p) => s + (p.min||0), 0);
-  const semsEst      = pdv > 0 ? Math.round(stockTerm/pdv/7) : null;
-  const capOk        = stockBruto >= minTotal;
+  // Velocidad de venta semanal (últimos 30d)
+  const velSemanal = ventas30.length > 0 ? (ventas30.length / 30 * 7).toFixed(1) : '0';
+
+  // Días promedio en stock (unidades vendidas con fechas)
+  let diasPromedio = null;
+  const conFechas = vendidas.filter(u => u.fechaIngreso && u.fechaSalida);
+  if(conFechas.length > 0) {
+    const totalDias = conFechas.reduce((s, u) => {
+      const ing = new Date(u.fechaIngreso);
+      const sal = new Date(u.fechaSalida);
+      return s + Math.max(0, Math.round((sal - ing) / 86400000));
+    }, 0);
+    diasPromedio = Math.round(totalDias / conFechas.length);
+  }
+
+  // Tendencia mes vs mes anterior
+  const diffVentas = ventasMes.length - ventasMesAnt.length;
+  const trendIcon = diffVentas > 0 ? '▲' : diffVentas < 0 ? '▼' : '—';
+  const trendColor = diffVentas > 0 ? 'var(--accent)' : diffVentas < 0 ? 'var(--danger)' : 'var(--muted)';
+
+  // ── Stock por ubicación ──
+  const UB_NAMES = ['Fábrica','Funeraria','Metro'];
+  const UB_ICONS = {'Fábrica':'🏭','Funeraria':'⛪','Metro':'🏪'};
+  const stockPorUb = {};
+  UB_NAMES.forEach(ub => { stockPorUb[ub] = enStock.filter(u => (u.ubicacion||'Fábrica') === ub).length; });
+  const ubSinStock = UB_NAMES.filter(ub => stockPorUb[ub] === 0);
+
+  // ── Top modelos vendidos ──
+  const ventasPorModelo = {};
+  ventas.forEach(m => { const n = m.nombre || '?'; ventasPorModelo[n] = (ventasPorModelo[n]||0) + 1; });
+  const topModelos = Object.entries(ventasPorModelo).sort((a,b) => b[1]-a[1]).slice(0,5);
+
+  // ── Terminación más demandada ──
+  const ventasPorTerm = {};
+  ventas.forEach(m => { const t = m.terminacion || '?'; ventasPorTerm[t] = (ventasPorTerm[t]||0) + 1; });
+  const topTerms = Object.entries(ventasPorTerm).sort((a,b) => b[1]-a[1]).slice(0,4);
+
+  // ── Stock inmovilizado (>30 días sin movimiento) ──
+  const inmovilizados = enStock.filter(u => {
+    const lastMov = uMovements.filter(m => m.serial === u.id || (m.seriales && m.seriales.includes(u.id)))
+      .sort((a,b) => b.date > a.date ? 1 : -1)[0];
+    const lastDate = lastMov ? lastMov.date : u.fechaIngreso;
+    return lastDate && lastDate < hace30;
+  });
+
+  // ── Cobertura en días por modelo ──
+  const byName = {};
+  uProducts.forEach(p => { if(!byName[p.name]) byName[p.name]=[]; byName[p.name].push(p); });
+  const coberturas = [];
+  Object.entries(byName).forEach(([nombre, skus]) => {
+    const stockM = skus.reduce((s,p) => s + uStockDe(p.id), 0);
+    const ventasMes30 = ventas30.filter(m => skus.some(p => p.id === m.skuId)).length;
+    const velDia = ventasMes30 / 30;
+    const dias = velDia > 0 ? Math.round(stockM / velDia) : stockM > 0 ? 999 : 0;
+    coberturas.push({ nombre, stock: stockM, dias, velDia });
+  });
+  coberturas.sort((a,b) => a.dias - b.dias);
+
+  // ── Alertas ──
   const varSinStock  = uProducts.filter(p => uStockDe(p.id) === 0);
   const varEnReorden = uProducts.filter(p => { const s = uStockDe(p.id); return s > 0 && s <= (p.min||0); });
 
-  // Ordered product groups (by category → name)
-  const _seen = new Set();
-  const _nombres = [];
-  ['estandar','especial','restos'].forEach(cat => {
-    uProducts.filter(p => (p.categoria||'estandar') === cat).forEach(p => {
-      if(!_seen.has(p.name)){ _seen.add(p.name); _nombres.push(p.name); }
-    });
-  });
-  const byName = {};
-  uProducts.forEach(p => { if(!byName[p.name]) byName[p.name]=[]; byName[p.name].push(p); });
+  // ── Gráfico de ventas por mes (últimos 6 meses) ──
+  const meses = [];
+  for(let i = 5; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    meses.push(d.toISOString().split('T')[0].slice(0,7));
+  }
+  const ventasPorMes = meses.map(m => ventas.filter(v => v.date && v.date.slice(0,7) === m).length);
+  const maxVentas = Math.max(...ventasPorMes, 1);
+  const MESES_LABEL = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
 
-  // ── helpers ─────────────────────────────────────────────
+  // ── Helpers ──
   const kpi = (label, value, sub, color='var(--text)') =>
     `<div class="card" style="padding:12px;">
        <div style="font-family:'Space Mono',monospace;font-size:.57rem;color:var(--muted);letter-spacing:.06em;margin-bottom:3px;">${label}</div>
        <div style="font-family:'Space Mono',monospace;font-size:1.35rem;font-weight:700;color:${color};line-height:1.1;">${value}</div>
        ${sub ? `<div style="font-size:.6rem;color:var(--muted);margin-top:3px;">${sub}</div>` : ''}
      </div>`;
+  const secTitle = (title) =>
+    `<div style="font-family:'Space Mono',monospace;font-size:.6rem;color:var(--muted);letter-spacing:.08em;margin:18px 0 8px;">${title}</div>`;
 
-  // ── Alertas (shown at top if any) ─────────────────────────
+  // ══════════════════════════════════════════════════
+  // RENDER
+  // ══════════════════════════════════════════════════
+  let html = '';
+
+  // ── GRUPO 5: ALERTAS (arriba) ──
   const alertas = [];
   if(varSinStock.length)
     alertas.push(`<div style="display:flex;align-items:center;gap:8px;padding:9px 13px;background:rgba(255,71,87,.09);border-radius:8px;border:1px solid var(--danger);">
       <span style="font-size:1rem;">🔴</span>
-      <div><span style="font-weight:700;font-size:.82rem;color:var(--danger);">${varSinStock.length} variación${varSinStock.length>1?'es':''} sin stock</span>
-      <span style="font-size:.7rem;color:var(--muted);"> · ${varSinStock.map(p=>sanitizar(p.name)).join(', ')}</span></div>
-    </div>`);
-  if(!capOk)
-    alertas.push(`<div style="display:flex;align-items:center;gap:8px;padding:9px 13px;background:rgba(255,165,2,.09);border-radius:8px;border:1px solid var(--warn);">
-      <span style="font-size:1rem;">⚠️</span>
-      <div style="font-size:.82rem;font-weight:700;color:var(--warn);">Materia prima insuficiente</div>
-      <div style="font-size:.7rem;color:var(--muted);">Brutos: ${stockBruto} / Mínimos totales: ${minTotal}</div>
+      <div><span style="font-weight:700;font-size:.82rem;color:var(--danger);">${varSinStock.length} SKU sin stock</span>
+      <span style="font-size:.7rem;color:var(--muted);"> · ${varSinStock.slice(0,5).map(p=>sanitizar(p.name)).join(', ')}${varSinStock.length>5?' ...':''}</span></div>
     </div>`);
   if(varEnReorden.length)
     alertas.push(`<div style="display:flex;align-items:center;gap:8px;padding:9px 13px;background:rgba(255,165,2,.06);border-radius:8px;border:1px solid var(--warn);">
       <span style="font-size:1rem;">🔔</span>
-      <div><span style="font-weight:700;font-size:.82rem;color:var(--warn);">${varEnReorden.length} en punto de reorden</span>
-      <span style="font-size:.7rem;color:var(--muted);"> · stock bajo mínimo</span></div>
+      <div><span style="font-weight:700;font-size:.82rem;color:var(--warn);">${varEnReorden.length} bajo mínimo</span>
+      <span style="font-size:.7rem;color:var(--muted);"> · necesitan reposición</span></div>
     </div>`);
+  if(ubSinStock.length)
+    alertas.push(`<div style="display:flex;align-items:center;gap:8px;padding:9px 13px;background:rgba(255,71,87,.09);border-radius:8px;border:1px solid var(--danger);">
+      <span style="font-size:1rem;">📍</span>
+      <div><span style="font-weight:700;font-size:.82rem;color:var(--danger);">Sucursal sin stock:</span>
+      <span style="font-size:.7rem;color:var(--muted);"> ${ubSinStock.join(', ')}</span></div>
+    </div>`);
+  if(inmovilizados.length)
+    alertas.push(`<div style="display:flex;align-items:center;gap:8px;padding:9px 13px;background:rgba(255,165,2,.06);border-radius:8px;border:1px solid var(--warn);">
+      <span style="font-size:1rem;">🧊</span>
+      <div><span style="font-weight:700;font-size:.82rem;color:var(--warn);">${inmovilizados.length} unidad${inmovilizados.length>1?'es':''} inmovilizada${inmovilizados.length>1?'s':''}</span>
+      <span style="font-size:.7rem;color:var(--muted);"> · sin movimiento en +30 días</span></div>
+    </div>`);
+  if(alertas.length)
+    html += `<div style="display:flex;flex-direction:column;gap:6px;margin-bottom:14px;">${alertas.join('')}</div>`;
 
-  // ── Detalle por producto ─────────────────────────────────
-  const detCards = _nombres.map((nombre, gi) => {
-    const skus = byName[nombre] || [];
-    const stockTotal  = skus.reduce((s,p)=>s+uStockDe(p.id),0);
-    const vend30      = ventas30.filter(m=>skus.some(p=>p.id===m.skuId)).length;
-    const sinStk      = skus.filter(p=>uStockDe(p.id)===0).length;
-    const totalVentas = ventas.filter(m=>skus.some(p=>p.id===m.skuId)).length;
+  // ── GRUPO 1: FLUJO DE UNIDADES ──
+  html += secTitle('FLUJO DE UNIDADES');
+  html += `<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
+    ${kpi('VENTAS ESTE MES', ventasMes.length+'', `<span style="color:${trendColor};font-weight:700;">${trendIcon} ${Math.abs(diffVentas)}</span> vs mes anterior`, 'var(--accent)')}
+    ${kpi('INGRESOS ESTE MES', ingresosMes.length+'', 'unidades incorporadas', 'var(--text)')}
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
+    ${kpi('VELOCIDAD VENTA', velSemanal, 'uds/semana (30d)', 'var(--accent)')}
+    ${kpi('DÍAS PROM. EN STOCK', diasPromedio !== null ? diasPromedio+'' : '—', diasPromedio !== null ? 'ingreso → venta' : 'sin datos aún', diasPromedio !== null && diasPromedio <= 30 ? 'var(--accent)' : 'var(--warn)')}
+  </div>`;
 
-    const brutoSkus   = skus.filter(p=>(p.terminacion||'').toLowerCase()==='bruto');
-    const stBruto     = brutoSkus.reduce((s,p)=>s+uStockDe(p.id),0);
-    const minBruto    = brutoSkus.reduce((s,p)=>s+(p.min||0),0);
+  // ── GRÁFICO DE BARRAS: Ventas por mes ──
+  html += `<div class="card" style="padding:14px;margin-bottom:8px;">
+    <div style="font-family:'Space Mono',monospace;font-size:.57rem;color:var(--muted);letter-spacing:.06em;margin-bottom:12px;">VENTAS POR MES</div>
+    <div style="display:flex;align-items:flex-end;gap:6px;height:120px;">
+      ${meses.map((m, i) => {
+        const v = ventasPorMes[i];
+        const pct = Math.max(4, (v / maxVentas) * 100);
+        const mesIdx = parseInt(m.split('-')[1]) - 1;
+        const isCurrent = m === mesActual;
+        return `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;">
+          <div style="font-family:'Space Mono',monospace;font-size:.65rem;font-weight:700;color:${isCurrent?'var(--accent)':'var(--text)'};">${v}</div>
+          <div style="width:100%;height:${pct}%;background:${isCurrent?'var(--accent)':'var(--surface2)'};border-radius:4px 4px 0 0;min-height:3px;transition:height .3s;"></div>
+          <div style="font-size:.55rem;color:${isCurrent?'var(--accent)':'var(--muted)'};">${MESES_LABEL[mesIdx]}</div>
+        </div>`;
+      }).join('')}
+    </div>
+  </div>`;
 
-    const termSkus = skus
-      .filter(p=>(p.terminacion||'').toLowerCase()!=='bruto')
-      .sort((a,b)=>(a.terminacion||'').localeCompare(b.terminacion||'','es'));
-
-    const brutoRow = brutoSkus.length ? `
-      <div style="display:flex;align-items:center;justify-content:space-between;padding:9px 13px;background:var(--surface2);border-radius:8px;margin-bottom:8px;">
-        <div>
-          <div style="font-family:'Space Mono',monospace;font-size:.55rem;color:var(--muted);margin-bottom:2px;">BRUTO (MATERIA PRIMA)</div>
-          <div style="font-family:'Space Mono',monospace;font-size:1.1rem;font-weight:700;color:${stBruto===0?'var(--danger)':stBruto<=minBruto?'var(--warn)':'var(--accent)'};">${stBruto} <span style="font-size:.65rem;">uds</span></div>
-        </div>
-        <div style="text-align:right;font-size:.62rem;color:var(--muted);">Mín: ${minBruto}</div>
-      </div>` : '';
-
-    const termRows = termSkus.map(p => {
-      const s = uStockDe(p.id);
-      const pct = p.min > 0 ? Math.round(s/p.min*100) : 100;
-      const sc = s===0?'var(--danger)':s<=(p.min||0)?'var(--warn)':'var(--accent)';
-      const badgeTxt = s===0 ? 'SIN STOCK' : s<=(p.min||0) ? 'REORDEN' : null;
-      const vendP30 = ventas30.filter(m=>m.skuId===p.id).length;
-      return `<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);">
-        <div style="flex:1;min-width:0;">
-          <div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;">
-            <span style="font-size:.73rem;padding:2px 7px;border-radius:5px;background:${uTermBg(p.terminacion)};color:${uTermColor(p.terminacion)};font-family:'Space Mono',monospace;">${p.terminacion}</span>
-            ${badgeTxt?`<span style="font-family:'Space Mono',monospace;font-size:.57rem;font-weight:700;color:${sc};">${badgeTxt}</span>`:''}
-          </div>
-          <div style="font-size:.6rem;color:var(--muted);margin-top:3px;">Min: ${p.min||0} · ${pct}% · ${vendP30} vendidos 30d</div>
-        </div>
-        <div style="font-family:'Space Mono',monospace;font-size:1rem;font-weight:700;color:${sc};flex-shrink:0;margin-left:10px;">${s}</div>
+  // ── GRUPO 2: STOCK POR UBICACIÓN ──
+  html += secTitle('STOCK POR UBICACIÓN');
+  const totalEnStock = enStock.length;
+  html += `<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:8px;">
+    ${UB_NAMES.map(ub => {
+      const cnt = stockPorUb[ub];
+      const pct = totalEnStock > 0 ? Math.round(cnt/totalEnStock*100) : 0;
+      return `<div class="card" style="padding:12px;text-align:center;">
+        <div style="font-size:1.3rem;">${UB_ICONS[ub]}</div>
+        <div style="font-family:'Space Mono',monospace;font-size:1.1rem;font-weight:700;color:${cnt===0?'var(--danger)':'var(--accent)'};">${cnt}</div>
+        <div style="font-size:.62rem;color:var(--muted);">${ub}</div>
+        <div style="font-size:.55rem;color:var(--muted);margin-top:2px;">${pct}%</div>
       </div>`;
-    }).join('');
+    }).join('')}
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
+    ${kpi('TRASLADOS ESTE MES', trasladosMes.length+'', 'movimientos entre sucursales')}
+    ${kpi('TOTAL EN STOCK', totalEnStock+'', enProc.length+' en proceso', totalEnStock===0?'var(--danger)':'var(--accent)')}
+  </div>`;
 
-    const cardId = 'udet-' + gi;
-    const hasCrit = sinStk > 0;
-    return `<div class="card" style="padding:0;margin-bottom:8px;overflow:hidden;${hasCrit?'border-color:var(--danger)':''}">
-      <div onclick="uToggleDetCard('${cardId}')" style="padding:12px 14px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:8px;">
-        <div style="flex:1;min-width:0;">
-          <div style="font-weight:700;font-size:.88rem;">🪦 ${sanitizar(nombre)}</div>
-          <div style="font-size:.62rem;color:var(--muted);margin-top:2px;">
-            ${stockTotal} en stock
-            <span style="margin:0 4px;color:var(--border);">·</span>
-            ${vend30} vendidos 30d
-            <span style="margin:0 4px;color:var(--border);">·</span>
-            ${totalVentas} total
-            ${hasCrit?`<span style="color:var(--danger);font-weight:700;margin-left:4px;">${sinStk} sin stock</span>`:''}
+  // ── GRUPO 3: POR MODELO Y TERMINACIÓN ──
+  html += secTitle('POR MODELO Y TERMINACIÓN');
+
+  // Top modelos
+  if(topModelos.length) {
+    html += `<div class="card" style="padding:0;overflow:hidden;margin-bottom:8px;">
+      <div style="padding:10px 14px;font-family:'Space Mono',monospace;font-size:.57rem;color:var(--muted);letter-spacing:.06em;border-bottom:1px solid var(--border);">TOP MODELOS VENDIDOS</div>
+      ${topModelos.map(([nombre, cnt], i) => {
+        const pct = Math.round(cnt/ventas.length*100);
+        return `<div style="display:flex;align-items:center;gap:10px;padding:8px 14px;border-bottom:1px solid var(--border);">
+          <span style="font-family:'Space Mono',monospace;font-size:.7rem;color:var(--muted);width:14px;">${i+1}</span>
+          <div style="flex:1;min-width:0;">
+            <div style="font-size:.82rem;font-weight:600;">${sanitizar(nombre)}</div>
+            <div style="margin-top:3px;height:4px;background:var(--surface2);border-radius:2px;overflow:hidden;">
+              <div style="height:100%;width:${Math.max(4,pct)}%;background:var(--accent);border-radius:2px;"></div>
+            </div>
           </div>
-        </div>
-        <span id="${cardId}-arrow" style="color:var(--muted);font-size:.75rem;flex-shrink:0;">▼</span>
-      </div>
-      <div id="${cardId}-body" style="display:none;padding:0 13px 12px;border-top:1px solid var(--border);">
-        <div style="margin-top:10px;">${brutoRow}</div>
-        ${termSkus.length ? `<div style="font-family:'Space Mono',monospace;font-size:.55rem;color:var(--muted);letter-spacing:.06em;margin:0 0 4px;">TERMINADAS</div>${termRows}` : ''}
+          <span style="font-family:'Space Mono',monospace;font-size:.85rem;font-weight:700;color:var(--accent);">${cnt}</span>
+        </div>`;
+      }).join('')}
+    </div>`;
+  }
+
+  // Terminaciones más vendidas
+  if(topTerms.length) {
+    html += `<div class="card" style="padding:0;overflow:hidden;margin-bottom:8px;">
+      <div style="padding:10px 14px;font-family:'Space Mono',monospace;font-size:.57rem;color:var(--muted);letter-spacing:.06em;border-bottom:1px solid var(--border);">TERMINACIÓN MÁS DEMANDADA</div>
+      <div style="display:flex;flex-wrap:wrap;gap:6px;padding:12px 14px;">
+        ${topTerms.map(([term, cnt]) =>
+          `<span style="padding:4px 10px;border-radius:6px;background:${uTermBg(term)};color:${uTermColor(term)};font-family:'Space Mono',monospace;font-size:.72rem;">${sanitizar(term)} <b>${cnt}</b></span>`
+        ).join('')}
       </div>
     </div>`;
-  }).join('');
+  }
 
-  // ── Render ──────────────────────────────────────────────
-  container.innerHTML = `
-    ${alertas.length ? `<div style="display:flex;flex-direction:column;gap:6px;margin-bottom:14px;">${alertas.join('')}</div>` : ''}
+  // Cobertura en días
+  const cobCriticas = coberturas.filter(c => c.dias < 999 && c.stock > 0);
+  if(cobCriticas.length) {
+    html += `<div class="card" style="padding:0;overflow:hidden;margin-bottom:8px;">
+      <div style="padding:10px 14px;font-family:'Space Mono',monospace;font-size:.57rem;color:var(--muted);letter-spacing:.06em;border-bottom:1px solid var(--border);">COBERTURA EN DÍAS</div>
+      ${cobCriticas.slice(0,6).map(c => {
+        const dc = c.dias <= 14 ? 'var(--danger)' : c.dias <= 30 ? 'var(--warn)' : 'var(--accent)';
+        return `<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 14px;border-bottom:1px solid var(--border);">
+          <div style="font-size:.8rem;">${sanitizar(c.nombre)} <span style="color:var(--muted);font-size:.65rem;">(${c.stock} uds)</span></div>
+          <span style="font-family:'Space Mono',monospace;font-size:.85rem;font-weight:700;color:${dc};">${c.dias}d</span>
+        </div>`;
+      }).join('')}
+    </div>`;
+  }
 
-    <!-- KPIs principales: 4 en cuadrícula 2×2 -->
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
-      ${kpi('VENDIDOS 30 DÍAS', sal30+' <span style="font-size:.7rem;">uds</span>', pdv>0?'~'+pdv.toFixed(1)+' por día':'sin ventas', 'var(--accent)')}
-      ${kpi('ESTA SEMANA', sal7+' <span style="font-size:.7rem;">uds</span>', opsActivas+' OP'+(opsActivas!==1?'s':'')+' activas')}
-    </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px;">
-      ${kpi('TERMINADOS EN STOCK', stockTerm+' <span style="font-size:.7rem;">uds</span>', semsEst!==null?semsEst+' sem estimadas':'sin datos', stockTerm===0?'var(--danger)':'var(--accent)')}
-      ${kpi('BRUTO DISPONIBLE', stockBruto+' <span style="font-size:.7rem;">uds</span>', enProc+' en proceso OPs', stockBruto===0?'var(--danger)':capOk?'var(--accent)':'var(--warn)')}
-    </div>
+  // Stock inmovilizado detalle
+  if(inmovilizados.length) {
+    html += `<div class="card" style="padding:0;overflow:hidden;margin-bottom:8px;border-color:var(--warn);">
+      <div style="padding:10px 14px;font-family:'Space Mono',monospace;font-size:.57rem;color:var(--warn);letter-spacing:.06em;border-bottom:1px solid var(--border);">STOCK INMOVILIZADO (+30 DÍAS)</div>
+      ${inmovilizados.slice(0,8).map(u => {
+        const dias = Math.round((now - new Date(u.fechaIngreso)) / 86400000);
+        return `<div style="display:flex;align-items:center;justify-content:space-between;padding:7px 14px;border-bottom:1px solid var(--border);font-size:.78rem;">
+          <div><span style="font-family:'Space Mono',monospace;color:var(--accent);font-size:.72rem;">${sanitizar(u.id)}</span> ${sanitizar(u.nombre)}</div>
+          <span style="font-family:'Space Mono',monospace;color:var(--warn);font-size:.72rem;">${dias}d</span>
+        </div>`;
+      }).join('')}
+      ${inmovilizados.length > 8 ? `<div style="padding:7px 14px;font-size:.68rem;color:var(--muted);">y ${inmovilizados.length-8} más...</div>` : ''}
+    </div>`;
+  }
 
-    <!-- Detalle por producto -->
-    <div style="font-family:'Space Mono',monospace;font-size:.6rem;color:var(--muted);letter-spacing:.08em;margin-bottom:8px;">DETALLE POR PRODUCTO</div>
-    ${detCards || '<div class="empty"><div class="empty-icon">⚰️</div>Sin productos registrados</div>'}
-  `;
+  // ── GRUPO 4: PRODUCCIÓN ──
+  html += secTitle('PRODUCCIÓN');
+  html += `<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:8px;">
+    ${kpi('OPs ACTIVAS', opsActivas+'', '', opsActivas>0?'var(--accent)':'var(--muted)')}
+    ${kpi('EN PROCESO', enProc.length+'', 'unidades', enProc.length>0?'var(--warn)':'var(--muted)')}
+    ${kpi('PRODUCIDOS MES', ingresosMes.length+'', 'ingresos', 'var(--text)')}
+  </div>`;
+
+  // ── Sin datos ──
+  if(!uProducts.length && !ventas.length)
+    html += '<div class="empty"><div class="empty-icon">📊</div>Sin datos aún. Escanea unidades para comenzar.</div>';
+
+  container.innerHTML = html;
 }
 
 
