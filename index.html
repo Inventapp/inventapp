@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://www.gstatic.com https://cdnjs.cloudflare.com https://unpkg.com; style-src 'self' 'unsafe-inline'; connect-src 'self' https://*.googleapis.com https://*.firebase.io https://*.firebaseio.com wss://*.firebaseio.com https://*.firebaseapp.com; img-src 'self' data: blob:; font-src 'self' data: https://fonts.gstatic.com; worker-src 'self'; object-src 'none'; base-uri 'self';">
 <title>InventApp · FAZOCAR</title>
 <!-- PWA -->
@@ -129,7 +129,7 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;bac
 header{position:sticky;top:0;z-index:100;background:rgba(13,15,20,.94);backdrop-filter:blur(16px);border-bottom:1px solid var(--border);height:56px;padding:0 10px;display:flex;align-items:center;justify-content:space-between;min-width:0;overflow:hidden;}
 .logo{font-family:'Space Mono',monospace;font-size:1.05rem;color:var(--accent);}
 .logo span{color:var(--text);}
-.header-right{display:flex;align-items:center;gap:6px;flex-shrink:0;min-width:0;max-width:65%;}
+.header-right{display:flex;align-items:center;gap:6px;flex-shrink:0;min-width:0;max-width:72%;}
 .stat-chip{font-family:'Space Mono',monospace;font-size:.7rem;color:var(--muted);display:flex;align-items:center;gap:5px;}
 .stat-chip b{color:var(--text);}
 
@@ -353,19 +353,19 @@ body.modal-open{overflow:hidden;}
 @media(max-width:600px){
   /* Header: reduce blur for mobile GPU performance */
   header { backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); }
-  /* Header: ocultar nombre usuario, solo mostrar rol+salir */
-  #hdr-user span#hdr-user { display:none; }
-  #hdr-rol { display:none; }
-  /* Botón salir más compacto */
-  #hdr-user-chip button { font-size:.58rem; padding:3px 6px; }
-  /* Ocultar stat-chips */
+  /* Header: mostrar nombre truncado + rol badge compacto */
+  #hdr-user { display:inline-block!important; max-width:60px; font-size:.7rem; }
+  #hdr-rol { font-size:.62rem!important; padding:2px 6px!important; }
+  #hdr-user-chip button { font-size:.65rem; padding:5px 9px; min-height:32px; }
+  #hdr-user-chip { gap:4px; }
+  /* Ocultar stat-chips en mobile */
   .stat-chip { display:none!important; }
   /* Header logo más pequeño */
   .logo { font-size:.85rem; }
   /* Nav tabs: scroll horizontal */
   nav { padding:8px 8px 0; gap:2px; overflow-x:auto; -webkit-overflow-scrolling:touch; scrollbar-width:none; flex-wrap:nowrap; }
   nav::-webkit-scrollbar { display:none; }
-  .tab { font-size:.65rem; padding:10px 10px; white-space:nowrap; flex-shrink:0; min-height:44px; }
+  .tab { font-size:.72rem; padding:10px 9px; white-space:nowrap; flex-shrink:0; min-height:44px; }
   /* Gear dropdown: full-width bottom-anchored on mobile */
   .gear-wrap { position:static; margin-left:auto; }
   .gear-dropdown { position:fixed!important; top:auto!important; bottom:0; left:0; right:0; min-width:100%; border-radius:20px 20px 0 0!important; max-height:80vh; overflow-y:auto; z-index:9100; }
@@ -373,6 +373,7 @@ body.modal-open{overflow:hidden;}
   .gear-overlay.open { display:block; }
   /* Prevent iOS zoom on focused inputs (font-size >= 16px) */
   input[type="text"], input[type="number"], input[type="email"], input[type="password"], select, textarea { font-size:16px!important; }
+  label { font-size:.82rem!important; }
   /* Main: menos padding */
   main { padding:12px 10px 80px; }
   /* Cards */
@@ -382,12 +383,13 @@ body.modal-open{overflow:hidden;}
   .dash-metrics { grid-template-columns:1fr 1fr; }
   /* Form rows: una columna */
   .form-row { grid-template-columns:1fr; }
-  /* Tablas: scroll horizontal interno */
+  /* Tablas: scroll horizontal, ancho reducido */
   .table-wrap { overflow-x:auto; -webkit-overflow-scrolling:touch; }
-  .table-wrap table { font-size:.72rem; min-width:420px; }
-  /* Modales: pantalla completa en móvil */
-  .modal-box { width:100%!important; max-width:100%!important; margin:0; border-radius:16px 16px 0 0; max-height:92vh!important; }
+  .table-wrap table { font-size:.78rem; min-width:340px; }
+  .table-wrap td, .table-wrap th { padding:8px 7px; }
+  /* Modales: bottom sheet pantalla completa */
   .modal-overlay { align-items:flex-end!important; }
+  .modal-box { width:100%!important; max-width:100%!important; border-radius:20px 20px 0 0!important; margin:0!important; max-height:92vh!important; }
   /* Home grid: 2 columnas iguales */
   .home-grid { grid-template-columns:1fr 1fr; gap:10px; }
   .home-btn { padding:20px 10px; }
@@ -396,12 +398,9 @@ body.modal-open{overflow:hidden;}
   /* Botones action-row */
   .action-row { flex-wrap:wrap; gap:8px; }
   .action-row .btn { flex:1; min-width:120px; justify-content:center; }
-  /* Modales: bottom sheet */
-  .modal-overlay { align-items:flex-end!important; }
-  .modal-box { width:100%!important; max-width:100%!important; border-radius:20px 20px 0 0!important; margin:0!important; max-height:92vh!important; }
-  /* Ocultar nombre usuario en header — ya está en el menú */
-  #hdr-user { display:none!important; }
-  #hdr-rol { font-size:.55rem!important; padding:1px 4px!important; }
+  /* Menu opciones labels */
+  .menu-section-label { font-size:.65rem; }
+  .menu-label { font-size:.62rem; }
 }
 /* ── Rol estandar: inventory read-only ── */
 #page-uinventory.inv-restricted .sku-add-btn { display:none!important; }
@@ -456,7 +455,7 @@ body.modal-open{overflow:hidden;}
     <div id="hdr-user-chip" style="display:flex;align-items:center;gap:5px;font-size:.68rem;color:var(--muted);overflow:hidden;">
       <span id="hdr-user" style="color:var(--text);font-weight:600;max-width:70px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></span>
       <span id="hdr-rol" style="font-family:'Space Mono',monospace;font-size:.58rem;padding:1px 5px;border-radius:4px;background:var(--surface2);color:var(--accent);white-space:nowrap;"></span>
-      <button onclick="cerrarSesion()" title="Cerrar sesion" style="background:none;border:1px solid var(--border);border-radius:6px;padding:3px 7px;cursor:pointer;color:var(--muted);font-size:.6rem;flex-shrink:0;white-space:nowrap;">&#x21A9; Salir</button>
+      <button onclick="cerrarSesion()" title="Cerrar sesion" style="background:none;border:1px solid var(--border);border-radius:6px;padding:6px 10px;cursor:pointer;color:var(--muted);font-size:.65rem;flex-shrink:0;white-space:nowrap;min-height:32px;">&#x21A9; Salir</button>
     </div>
     <div class="stat-chip" id="hdr-chip" style="display:none">Productos <b id="hdr-products">0</b></div>
     <div class="stat-chip" id="hdr-alert-wrap" style="display:none"><span style="color:var(--warn)">⚠ <b id="hdr-alerts">0</b></span></div>
