@@ -353,15 +353,19 @@ body.modal-open{overflow:hidden;}
 @media(max-width:600px){
   /* Header: reduce blur for mobile GPU performance */
   header { backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); }
-  /* Header: mostrar nombre truncado + rol badge compacto */
-  #hdr-user { display:inline-block!important; max-width:60px; font-size:.7rem; }
+  /* Header: logo normal flow (no absolute) para evitar overlap con user chip */
+  .logo, #header-seccion { position:static!important; left:auto!important; transform:none!important; }
+  .logo { font-size:.85rem; margin-left:auto; }
+  #header-seccion { margin-left:auto; }
+  /* Header: nombre truncado + rol badge */
+  #hdr-user { display:inline-block!important; max-width:55px; font-size:.7rem; }
   #hdr-rol { font-size:.62rem!important; padding:2px 6px!important; }
-  #hdr-user-chip button { font-size:.65rem; padding:5px 9px; min-height:32px; }
+  /* Salir: solo icono en mobile */
+  #hdr-user-chip button .salir-text { display:none; }
+  #hdr-user-chip button { font-size:.75rem; padding:5px 8px; min-height:32px; }
   #hdr-user-chip { gap:4px; }
   /* Ocultar stat-chips en mobile */
   .stat-chip { display:none!important; }
-  /* Header logo más pequeño */
-  .logo { font-size:.85rem; }
   /* Nav tabs: scroll horizontal */
   nav { padding:8px 8px 0; gap:2px; overflow-x:auto; -webkit-overflow-scrolling:touch; scrollbar-width:none; flex-wrap:nowrap; }
   nav::-webkit-scrollbar { display:none; }
@@ -455,7 +459,7 @@ body.modal-open{overflow:hidden;}
     <div id="hdr-user-chip" style="display:flex;align-items:center;gap:5px;font-size:.68rem;color:var(--muted);overflow:hidden;">
       <span id="hdr-user" style="color:var(--text);font-weight:600;max-width:70px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></span>
       <span id="hdr-rol" style="font-family:'Space Mono',monospace;font-size:.58rem;padding:1px 5px;border-radius:4px;background:var(--surface2);color:var(--accent);white-space:nowrap;"></span>
-      <button onclick="cerrarSesion()" title="Cerrar sesion" style="background:none;border:1px solid var(--border);border-radius:6px;padding:6px 10px;cursor:pointer;color:var(--muted);font-size:.65rem;flex-shrink:0;white-space:nowrap;min-height:32px;">&#x21A9; Salir</button>
+      <button onclick="cerrarSesion()" title="Cerrar sesión" style="background:none;border:1px solid var(--border);border-radius:6px;padding:6px 10px;cursor:pointer;color:var(--muted);font-size:.65rem;flex-shrink:0;white-space:nowrap;min-height:32px;">&#x21A9;<span class="salir-text"> Salir</span></button>
     </div>
     <div class="stat-chip" id="hdr-chip" style="display:none">Productos <b id="hdr-products">0</b></div>
     <div class="stat-chip" id="hdr-alert-wrap" style="display:none"><span style="color:var(--warn)">⚠ <b id="hdr-alerts">0</b></span></div>
