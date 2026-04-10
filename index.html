@@ -63,7 +63,7 @@
         // First login: create user doc with admin role if first user
         const allUsersSnap = await getDoc(doc(fbDb, 'meta', 'stats'));
         const isFirst = !allUsersSnap.exists();
-        const rol = isFirst ? 'admin' : 'viewer';
+        const rol = isFirst ? 'admin' : 'estandar';
         var nombre = user.email.split('@')[0];
         await setDoc(uRef, { email: user.email, nombre: nombre, rol: rol, activo: true });
         if (isFirst) await setDoc(doc(fbDb, 'meta', 'stats'), { creado: new Date().toISOString() });
@@ -7282,13 +7282,17 @@ async function abrirAdminUsuarios() {
   document.getElementById('admin-users-list').innerHTML = '<div style="text-align:center;padding:20px;color:var(--muted);">Cargando...</div>';
   try {
     // Get all user docs — requires admin privileges in rules
-    // For simplicity we'll use a known-users collection
     const snap = await window._fbGetDoc(window._fbDoc(window._fbDb, 'meta', 'userList'));
-    const uids = snap.exists() ? (snap.data().uids || []) : [];
+    let uids = snap.exists() ? (snap.data().uids || []) : [];
+    // Ensure current admin is in the list
+    const myUid = window._currentUser.uid;
+    if(!uids.includes(myUid)) {
+      uids.push(myUid);
+      try { await window._fbSetDoc(window._fbDoc(window._fbDb, 'meta', 'userList'), { uids }); } catch(_){}
+    }
     const userDocs = await Promise.all(
       uids.map(uid => window._fbGetDoc(window._fbDoc(window._fbDb, 'users', uid)))
     );
-    // Also add current user's own uid if not in list
     const allUsers = userDocs.filter(d => d.exists()).map(d => ({uid: d.id, ...d.data()}));
     adminRenderUsers(allUsers);
   } catch(e) {
