@@ -1814,15 +1814,15 @@ function setSeccionHeader(nombre, color){
 function aplicarRol(rol) {
   // Definir qué secciones puede ver cada rol
   const permisos = {
-    admin:      ['materiales','urnas','trabajadores'],
-    ventas:     ['materiales','urnas'],
+    admin:      ['materiales','urnas','trabajadores','costos','vehiculos'],
+    ventas:     ['materiales','urnas','vehiculos'],
     instalacion:['urnas'],
     estandar:   ['urnas'],
-    viewer:     ['materiales','urnas','trabajadores'],
+    viewer:     ['materiales','urnas','trabajadores','costos','vehiculos'],
   };
 
   const permitidas = permisos[rol] || permisos['viewer'];
-  const todas = ['materiales','urnas','trabajadores'];
+  const todas = ['materiales','urnas','trabajadores','costos','vehiculos'];
 
   // Home buttons
   todas.forEach(sec => {
@@ -3594,11 +3594,12 @@ function uMostrarHistorial(serial) {
   if(!movs.length) {
     timeline.innerHTML = '<div style="padding:10px 0;font-size:.78rem;color:var(--muted);font-style:italic;">Sin movimientos registrados.</div>';
   } else {
+    const _hideCosto = window._currentUser && window._currentUser.rol === 'estandar';
     timeline.innerHTML = movs.map(m => {
       let icon = '📦', color = 'var(--accent)', desc = '';
       if(m.type === 'Ingreso') {
         icon = '📥'; color = 'var(--accent)';
-        desc = `Ingreso · Costo: $${fmtNum(m.costo || 0)}`;
+        desc = _hideCosto ? 'Ingreso' : `Ingreso · Costo: $${fmtNum(m.costo || 0)}`;
       } else if(m.type === 'Traslado') {
         icon = '🚚'; color = 'var(--warn)';
         desc = `Traslado: ${sanitizar(m.desde||'?')} → ${sanitizar(m.hacia||'?')}`;
@@ -3824,11 +3825,12 @@ function uRenderInventory() {
   const sinStock  = uProducts.filter(p => _stock(p.id) === 0).length;
   const stockBajo = uProducts.filter(p => { const s=_stock(p.id); return s>0 && s<=(p.min||0); }).length;
   const valorTotal = uProducts.reduce((s, p) => s + _stock(p.id)*(p.cost||0), 0);
+  const _hideValor = window._currentUser && window._currentUser.rol === 'estandar';
   document.getElementById('u-inv-summary').innerHTML = `
     <div class="sum-card accent"><div class="sum-val">${uProducts.length}</div><div class="sum-lbl">Productos</div></div>
     <div class="sum-card danger"><div class="sum-val">${sinStock}</div><div class="sum-lbl">Sin stock</div></div>
     <div class="sum-card warn"><div class="sum-val">${stockBajo}</div><div class="sum-lbl">Stock bajo</div></div>
-    <div class="sum-card blue"><div class="sum-val">$${fmtNum(valorTotal)}</div><div class="sum-lbl">Valor total</div></div>`;
+    ${_hideValor ? '' : `<div class="sum-card blue"><div class="sum-val">$${fmtNum(valorTotal)}</div><div class="sum-lbl">Valor total</div></div>`}`;
 
   // Render each category into its own tbody
   const CATS = [
