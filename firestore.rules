@@ -49,7 +49,7 @@ service cloud.firestore {
       allow create: if autenticado()
         && request.auth.uid == uid
         && request.resource.data.keys().hasAll(['email', 'rol', 'activo'])
-        && request.resource.data.rol in ['viewer', 'ventas', 'instalacion']
+        && request.resource.data.rol in ['estandar', 'viewer', 'ventas', 'instalacion']
         && request.resource.data.activo == true;
 
       // Actualizar: el propio usuario (solo nombre) o admin (cualquier campo)
@@ -69,10 +69,13 @@ service cloud.firestore {
     match /meta/{doc} {
       // Cualquier usuario autenticado puede leer (necesario para onboarding)
       allow read: if autenticado();
-      // Solo admin puede escribir (excepto stats que lo escribe el primer usuario)
+      // Admin puede escribir cualquier meta doc.
+      // stats: lo escribe el primer usuario (onboarding).
+      // userList: cualquier usuario autenticado puede agregar su UID (registro).
       allow write: if esAdmin()
         || (doc == 'stats' && autenticado()
-            && !exists(/databases/$(database)/documents/meta/stats));
+            && !exists(/databases/$(database)/documents/meta/stats))
+        || (doc == 'userList' && autenticado());
     }
 
     // ── Colección: inventario ──────────────────────────
@@ -84,7 +87,7 @@ service cloud.firestore {
 
       // Escritura (create/update): usuarios con rol que puede registrar movimientos
       // viewer solo puede leer, nunca escribir
-      allow write: if rolPermitido(['admin', 'ventas', 'instalacion']);
+      allow write: if rolPermitido(['admin', 'ventas', 'instalacion', 'estandar']);
     }
 
     // ── Colección: auditoria ───────────────────────────
