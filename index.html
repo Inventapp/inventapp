@@ -403,6 +403,12 @@ body.modal-open{overflow:hidden;}
   #hdr-user { display:none!important; }
   #hdr-rol { font-size:.55rem!important; padding:1px 4px!important; }
 }
+/* ── Rol estandar: inventory read-only ── */
+#page-uinventory.inv-restricted .sku-add-btn { display:none!important; }
+#page-uinventory.inv-restricted th:nth-child(n+3),
+#page-uinventory.inv-restricted td:nth-child(n+3),
+#page-uinventory.inv-restricted table table td:nth-child(n+3) { display:none!important; }
+#page-uinventory.inv-restricted .table-wrap table { min-width:0; }
 </style>
 </head>
 <body>
@@ -482,7 +488,7 @@ body.modal-open{overflow:hidden;}
   <a id="mnav-vehiculos"  onclick="entrarSeccionMenu('vehiculos')">🚗 Vehículos</a>
 
   <!-- HERRAMIENTAS -->
-  <div style="border-top:1px solid var(--border);">
+  <div id="menu-herramientas" style="border-top:1px solid var(--border);">
     <span class="menu-label">HERRAMIENTAS</span>
     <a onclick="irQRsMenu()">🔲 Mis QRs</a>
     <a onclick="closeMenu();exportExcel()">📊 Exportar Excel</a>
@@ -490,7 +496,7 @@ body.modal-open{overflow:hidden;}
   </div>
 
   <!-- DATOS -->
-  <div style="border-top:1px solid var(--border);">
+  <div id="menu-datos" style="border-top:1px solid var(--border);">
     <span class="menu-label">DATOS</span>
     <a onclick="exportarBackup()">💾 Exportar backup</a>
     <a onclick="document.getElementById('import-file').click()">📂 Importar backup</a>
@@ -983,7 +989,7 @@ body.modal-open{overflow:hidden;}
   <div class="card" style="padding:0;overflow:hidden;">
     <div style="padding:11px 17px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);">
       <div class="card-title" style="margin:0;">Stock por modelo</div>
-      <button class="btn btn-secondary" style="font-size:.68rem;padding:6px 12px;" onclick="uShowAddProduct()">+ SKU</button>
+      <button class="btn btn-secondary sku-add-btn" style="font-size:.68rem;padding:6px 12px;" onclick="uShowAddProduct()">+ SKU</button>
     </div>
     <div class="table-wrap" style="border:none;border-radius:0;">
       <table>
@@ -1039,7 +1045,7 @@ body.modal-open{overflow:hidden;}
       <div class="card" style="padding:0;overflow:hidden;">
         <div style="padding:8px 14px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);">
           <span style="font-size:.75rem;color:var(--muted);font-family:'Space Mono',monospace;">ESPECIALES</span>
-          <button class="btn btn-secondary" style="font-size:.65rem;padding:4px 9px;" onclick="uShowAddProductCat('especial')">+ SKU</button>
+          <button class="btn btn-secondary sku-add-btn" style="font-size:.65rem;padding:4px 9px;" onclick="uShowAddProductCat('especial')">+ SKU</button>
         </div>
         <div class="table-wrap" style="border:none;border-radius:0;">
           <table>
@@ -1064,7 +1070,7 @@ body.modal-open{overflow:hidden;}
       <div class="card" style="padding:0;overflow:hidden;">
         <div style="padding:8px 14px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);">
           <span style="font-size:.75rem;color:var(--muted);font-family:'Space Mono',monospace;">RESTOS Y PÁRVULO</span>
-          <button class="btn btn-secondary" style="font-size:.65rem;padding:4px 9px;" onclick="uShowAddProductCat('restos')">+ SKU</button>
+          <button class="btn btn-secondary sku-add-btn" style="font-size:.65rem;padding:4px 9px;" onclick="uShowAddProductCat('restos')">+ SKU</button>
         </div>
         <div class="table-wrap" style="border:none;border-radius:0;">
           <table>
@@ -1811,6 +1817,7 @@ function aplicarRol(rol) {
     admin:      ['materiales','urnas','trabajadores'],
     ventas:     ['materiales','urnas'],
     instalacion:['urnas'],
+    estandar:   ['urnas'],
     viewer:     ['materiales','urnas','trabajadores'],
   };
 
@@ -1829,6 +1836,13 @@ function aplicarRol(rol) {
     if(lnk) lnk.style.display = permitidas.includes(sec) ? '' : 'none';
   });
 
+  // Estandar: hide herramientas, datos, admin menu sections
+  const hideMenu = rol === 'estandar';
+  const mHerr = document.getElementById('menu-herramientas');
+  const mDatos = document.getElementById('menu-datos');
+  if(mHerr) mHerr.style.display = hideMenu ? 'none' : '';
+  if(mDatos) mDatos.style.display = hideMenu ? 'none' : '';
+
   // Si el rol instalacion entra a Urnas, ir directo a pestaña Inventario
   // (se maneja en entrarSeccion)
 
@@ -1846,6 +1860,7 @@ function rolPuedeVer(seccion) {
     admin:      ['materiales','urnas','trabajadores','costos','vehiculos'],
     ventas:     ['materiales','urnas','vehiculos'],
     instalacion:['urnas'],
+    estandar:   ['urnas'],
     viewer:     ['materiales','urnas','trabajadores','costos','vehiculos'],
   };
   const permitidas = permisos[u.rol] || permisos['viewer'];
@@ -1887,6 +1902,13 @@ function entrarSeccion(nombre) {
     const _r = window._currentUser ? window._currentUser.rol : '';
     uNavTo(_r === 'instalacion' ? 'uinventory' : 'uscan');
     document.getElementById('gear-urn-wrap').style.display = _r === 'admin' ? 'flex' : 'none';
+    // Estandar: hide restricted tabs, restrict inventory view
+    const _isEstandar = _r === 'estandar';
+    ['utab-umovements','utab-op','utab-resumen'].forEach(id => {
+      const el = document.getElementById(id); if(el) el.style.display = _isEstandar ? 'none' : '';
+    });
+    const invPage = document.getElementById('page-uinventory');
+    if(invPage) { _isEstandar ? invPage.classList.add('inv-restricted') : invPage.classList.remove('inv-restricted'); }
   } else if (nombre === 'trabajadores') {
     if(!rolPuedeVer('trabajadores')){ volverHome(); return; }
     document.getElementById('seccion-trabajadores').style.display = 'block';
@@ -3289,6 +3311,9 @@ const U_NAV_LABELS = {
   uqrcodes:'Mis QRs', 'u-delete-products':'Eliminar SKU'
 };
 function uNavTo(name) {
+  // Estandar: block restricted tabs
+  const _r = window._currentUser ? window._currentUser.rol : '';
+  if(_r === 'estandar' && ['umovements','uop','uresumen'].includes(name)) { name = 'uscan'; }
   uCloseMenu();
   document.querySelectorAll('#seccion-urnas .page').forEach(p => p.classList.remove('active'));
   document.getElementById('page-' + name).classList.add('active');
@@ -7273,7 +7298,8 @@ async function abrirAdminUsuarios() {
 function adminRenderUsers(users) {
   const c = document.getElementById('admin-users-list');
   if(!users.length) { c.innerHTML = '<div style="padding:14px;color:var(--muted);">Sin usuarios registrados.</div>'; return; }
-  const ROLES = ['admin','instalacion','ventas','viewer'];
+  const ROLES = ['admin','estandar','instalacion','ventas','viewer'];
+  const ROLE_LABELS = {admin:'Admin',estandar:'Estándar',instalacion:'Instalación',ventas:'Ventas',viewer:'Solo lectura'};
   c.innerHTML = users.map(u => `
     <div style="padding:12px 0;border-bottom:1px solid var(--border);">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:8px;">
@@ -7305,7 +7331,7 @@ function adminRenderUsers(users) {
           <div style="font-size:.6rem;color:var(--muted);margin-bottom:3px;">ROL</div>
           <select data-uid="${sanitizar(u.uid)}" onchange="adminCambiarRol(this.dataset.uid, this.value)"
             style="width:100%;padding:6px 8px;border-radius:7px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:.78rem;">
-            ${ROLES.map(r=>`<option value="${r}" ${r===u.rol?'selected':''}>${r==='admin'?'Admin':r==='instalacion'?'Instalacion':r==='ventas'?'Ventas':'Solo lectura'}</option>`).join('')}
+            ${ROLES.map(r=>`<option value="${r}" ${r===u.rol?'selected':''}>${ROLE_LABELS[r]||r}</option>`).join('')}
           </select>
         </div>
       </div>
