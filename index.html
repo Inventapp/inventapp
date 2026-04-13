@@ -353,17 +353,20 @@ body.modal-open{overflow:hidden;}
 @media(max-width:600px){
   /* Header: reduce blur for mobile GPU performance */
   header { backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); }
-  /* Header: logo normal flow (no absolute) para evitar overlap con user chip */
-  .logo, #header-seccion { position:static!important; left:auto!important; transform:none!important; }
-  .logo { font-size:.85rem; margin-left:auto; }
-  #header-seccion { margin-left:auto; }
-  /* Header: nombre truncado + rol badge */
+  /* Header: layout en flex sin absolute */
+  header { gap:6px; }
+  .logo, #header-seccion { position:static!important; left:auto!important; transform:none!important; flex:1; text-align:center; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .logo { font-size:.85rem; }
+  .header-right { flex-shrink:0; max-width:none; }
+  /* Header: nombre truncado + rol badge (solo visible en home) */
   #hdr-user { display:inline-block!important; max-width:55px; font-size:.7rem; }
   #hdr-rol { font-size:.62rem!important; padding:2px 6px!important; }
   /* Salir: solo icono en mobile */
   #hdr-user-chip button .salir-text { display:none; }
   #hdr-user-chip button { font-size:.75rem; padding:5px 8px; min-height:32px; }
   #hdr-user-chip { gap:4px; }
+  /* En secciones: ocultar user chip del header (está en el menú hamburguesa) */
+  header.in-section #hdr-user-chip { display:none!important; }
   /* Ocultar stat-chips en mobile */
   .stat-chip { display:none!important; }
   /* Nav tabs: scroll horizontal */
@@ -1875,6 +1878,7 @@ function entrarSeccion(nombre) {
   document.getElementById('back-btn').style.display = 'block';
   document.getElementById('hamburger-btn').style.display = 'flex';
   document.getElementById('hdr-alert-wrap').style.display = 'none';
+  document.querySelector('header').classList.add('in-section');
   // Hide all sections first
   ['seccion-materiales','seccion-urnas','seccion-trabajadores','seccion-costos','seccion-vehiculos'].forEach(s=>{
     const el=document.getElementById(s); if(el) el.style.display='none';
@@ -1935,6 +1939,7 @@ function volverHome() {
   document.getElementById('hdr-chip').style.display = 'none';
   document.getElementById('hdr-alert-wrap').style.display = 'none';
   document.getElementById('hamburger-btn').style.display = 'none';
+  document.querySelector('header').classList.remove('in-section');
 }
 
 // ── NAV ── (sin depender de `event`)
