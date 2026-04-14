@@ -497,11 +497,11 @@ body.modal-open{overflow:hidden;}
   <div id="menu-herramientas" style="border-top:1px solid var(--border);">
     <span class="menu-label">HERRAMIENTAS</span>
     <a onclick="irQRsMenu()">🔲 Mis QRs</a>
-    <a onclick="closeMenu();exportExcel()">📊 Exportar Excel</a>
-    <a onclick="closeMenu();exportCSV()">📋 Exportar CSV</a>
+    <a id="menu-export-excel" onclick="closeMenu();exportExcel()">📊 Exportar Excel</a>
+    <a id="menu-export-csv" onclick="closeMenu();exportCSV()">📋 Exportar CSV</a>
   </div>
 
-  <!-- DATOS -->
+  <!-- DATOS (solo admin: export/import de backup) -->
   <div id="menu-datos" style="border-top:1px solid var(--border);">
     <span class="menu-label">DATOS</span>
     <a onclick="exportarBackup()">💾 Exportar backup</a>
@@ -759,7 +759,7 @@ body.modal-open{overflow:hidden;}
   <div class="card" style="padding:0;overflow:hidden;">
     <div style="padding:11px 17px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);">
       <div class="card-title" style="margin:0">Movimientos</div>
-      <div style="display:flex;gap:7px;">
+      <div id="mov-export-btns" style="display:flex;gap:7px;">
         <button class="btn btn-export" style="padding:6px 11px;font-size:.68rem;" onclick="exportCSV()">⬇ CSV</button>
         <button class="btn btn-export" style="padding:6px 11px;font-size:.68rem;" onclick="exportExcel()">⬇ Excel</button>
       </div>
@@ -1842,12 +1842,22 @@ function aplicarRol(rol) {
     if(lnk) lnk.style.display = permitidas.includes(sec) ? '' : 'none';
   });
 
-  // Estandar: hide herramientas, datos, admin menu sections
-  const hideMenu = rol === 'estandar';
+  // Estandar: hide herramientas completa (no tiene ni Mis QRs)
+  const hideHerr = rol === 'estandar';
   const mHerr = document.getElementById('menu-herramientas');
+  if(mHerr) mHerr.style.display = hideHerr ? 'none' : '';
+
+  // Export/Import: solo admin puede exportar/importar datos.
+  // Ocultamos links del menú y botones del tab Movimientos para todos los no-admin.
+  const esAdmin = rol === 'admin';
   const mDatos = document.getElementById('menu-datos');
-  if(mHerr) mHerr.style.display = hideMenu ? 'none' : '';
-  if(mDatos) mDatos.style.display = hideMenu ? 'none' : '';
+  if(mDatos) mDatos.style.display = esAdmin ? '' : 'none';
+  const mExcel = document.getElementById('menu-export-excel');
+  if(mExcel) mExcel.style.display = esAdmin ? '' : 'none';
+  const mCsv = document.getElementById('menu-export-csv');
+  if(mCsv) mCsv.style.display = esAdmin ? '' : 'none';
+  const movExp = document.getElementById('mov-export-btns');
+  if(movExp) movExp.style.display = esAdmin ? 'flex' : 'none';
 
   // Si el rol instalacion entra a Urnas, ir directo a pestaña Inventario
   // (se maneja en entrarSeccion)
@@ -3056,7 +3066,15 @@ function printAllQR(){
 }
 
 // ── EXPORTS ──
+// Guard: solo admin puede exportar/importar datos (evita filtraciones).
+function _esAdminActual(){ return window._currentUser && window._currentUser.rol === 'admin'; }
+function _guardAdmin(accion){
+  if(_esAdminActual()) return true;
+  showToast('Solo el administrador puede ' + (accion || 'realizar esta acción'), 'error');
+  return false;
+}
 function exportCSV(){
+  if(!_guardAdmin('exportar datos')) return;
   const h=['#','Fecha','ID','Producto','Tipo','Cantidad','Entregado a','Costo Unit.','Costo Total','Obs.'];
   const r=movements.map((m,i)=>[movements.length-i,m.date,m.prodId,m.prodName,m.type,m.qty,m.worker||'',m.type==='Ingreso'?m.cost:'',m.type==='Ingreso'?m.qty*m.cost:'',m.obs||'']);
   const csv=[h,...r].map(row=>row.map(v=>'"'+String(v===null||v===undefined?'':v).replace(/"/g,'""')+'"').join(',')).join('\n');
@@ -3064,6 +3082,7 @@ function exportCSV(){
   showToast('CSV descargado','success');
 }
 async function exportExcel(){
+  if(!_guardAdmin('exportar datos')) return;
   // Carga xlsx bajo demanda para no bloquear la carga inicial (~400KB)
   if(!window.XLSX) {
     showToast('Preparando exportación…', 'success');
@@ -3093,6 +3112,7 @@ function dl(f,d){const a=document.createElement('a');a.href=d;a.download=f;a.cli
 // ── BACKUP ──
 function exportarBackup(){
   closeMenu();
+  if(!_guardAdmin('exportar un backup')) return;
   const backup = {
     version: 2,
     fecha: new Date().toISOString().split('T')[0],
@@ -3110,6 +3130,7 @@ function exportarBackup(){
 }
 function importarBackup(input){
   closeMenu();
+  if(!_guardAdmin('importar un backup')) { input.value=''; return; }
   const file = input.files[0];
   if (!file) return;
   const reader = new FileReader();
@@ -7467,6 +7488,7 @@ function adminRenderUsers(users) {
     </div>`).join('');
 }
 async function adminEliminarUsuario(uid, nombre) {
+  if(!_guardAdmin('eliminar usuarios')) return;
   if(!confirm('¿Eliminar a ' + nombre + ' de la app? Esto borra su perfil y acceso.')) return;
   try {
     // Borrar doc de users
@@ -7482,12 +7504,14 @@ async function adminEliminarUsuario(uid, nombre) {
   } catch(e) { showToast('Error: '+e.message,'error'); }
 }
 async function adminCambiarRol(uid, rol) {
+  if(!_guardAdmin('cambiar roles')) return;
   try {
     await window._fbSetDoc(window._fbDoc(window._fbDb,'users',uid), {rol}, {merge:true});
     showToast('✓ Rol actualizado a '+rol,'success');
   } catch(e) { showToast('Error: '+e.message,'error'); }
 }
 async function adminCambiarNombre(uid, nombre) {
+  if(!_guardAdmin('editar perfiles')) return;
   if(!nombre.trim()) return;
   try {
     await window._fbSetDoc(window._fbDoc(window._fbDb,'users',uid), {nombre:nombre.trim()}, {merge:true});
@@ -7495,6 +7519,7 @@ async function adminCambiarNombre(uid, nombre) {
   } catch(e) { showToast('Error: '+e.message,'error'); }
 }
 async function adminToggleActivo(uid, activo) {
+  if(!_guardAdmin('activar/desactivar usuarios')) return;
   try {
     await window._fbSetDoc(window._fbDoc(window._fbDb,'users',uid), {activo:!activo}, {merge:true});
     showToast('✓ Usuario '+(activo?'desactivado':'activado'),'success');
@@ -7511,6 +7536,7 @@ async function adminToggleActivo(uid, activo) {
 // ── MATERIALES: Editar Inventario ────────────────────
 function menuMatEditarInventario() {
   closeMenu();
+  if(!_guardAdmin('editar el inventario')) return;
   entrarSeccion('materiales');
   navTo('inventory');
   setTimeout(() => {
@@ -7797,6 +7823,7 @@ function matConfirmarAjuste() {
 // ── URNAS: Editar Inventario ─────────────────────────
 function menuUrnEditarInventario() {
   closeMenu();
+  if(!_guardAdmin('editar el inventario')) return;
   entrarSeccion('urnas');
   uNavTo('uinventory');
   setTimeout(() => {
