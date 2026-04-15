@@ -10,6 +10,9 @@ import {
   validarBackup,
   sanitizar,
   workerName,
+  pPagosPorOrden,
+  pEstadoDevolucion,
+  pCalcularSaldos,
 } from './business.js';
 
 // ══════════════════════════════════════════════
@@ -265,5 +268,110 @@ describe('validarBackup', () => {
   it('backup con arrays vacíos es válido (app recién iniciada)', () => {
     const { ok } = validarBackup({ products: [], movements: [], workers: [] });
     expect(ok).toBe(true);
+  });
+});
+
+// ══════════════════════════════════════════════
+// PAGOS — Órdenes de compra y devoluciones
+// ══════════════════════════════════════════════
+describe('pPagosPorOrden', () => {
+  it('suma todos los pagos asociados a una orden', () => {
+    const pagos = [
+      { id: 'p1', ordenId: 'OC-1', monto: 10000 },
+      { id: 'p2', ordenId: 'OC-1', monto: 5000 },
+      { id: 'p3', ordenId: 'OC-2', monto: 20000 },
+    ];
+    expect(pPagosPorOrden('OC-1', pagos)).toBe(15000);
+    expect(pPagosPorOrden('OC-2', pagos)).toBe(20000);
+  });
+  it('retorna 0 si no hay pagos asociados', () => {
+    expect(pPagosPorOrden('OC-99', [])).toBe(0);
+    expect(pPagosPorOrden('OC-99', [{ id: 'p1', ordenId: 'OC-1', monto: 100 }])).toBe(0);
+  });
+  it('ignora pagos con monto no numérico', () => {
+    const pagos = [
+      { id: 'p1', ordenId: 'OC-1', monto: 1000 },
+      { id: 'p2', ordenId: 'OC-1', monto: 'abc' },
+      { id: 'p3', ordenId: 'OC-1', monto: null },
+    ];
+    expect(pPagosPorOrden('OC-1', pagos)).toBe(1000);
+  });
+});
+
+describe('pEstadoDevolucion', () => {
+  const orden = { id: 'OC-1', monto: 50000 };
+  it("'sin-devolver' cuando no hay pagos", () => {
+    expect(pEstadoDevolucion(orden, [])).toBe('sin-devolver');
+  });
+  it("'parcial' cuando el pago es menor al monto", () => {
+    const pagos = [{ id: 'p1', ordenId: 'OC-1', monto: 20000 }];
+    expect(pEstadoDevolucion(orden, pagos)).toBe('parcial');
+  });
+  it("'devuelto' cuando los pagos igualan el monto", () => {
+    const pagos = [{ id: 'p1', ordenId: 'OC-1', monto: 50000 }];
+    expect(pEstadoDevolucion(orden, pagos)).toBe('devuelto');
+  });
+  it("'devuelto' cuando los pagos exceden el monto (sobrepago)", () => {
+    const pagos = [{ id: 'p1', ordenId: 'OC-1', monto: 60000 }];
+    expect(pEstadoDevolucion(orden, pagos)).toBe('devuelto');
+  });
+  it("'devuelto' cuando varios pagos suman el total", () => {
+    const pagos = [
+      { id: 'p1', ordenId: 'OC-1', monto: 20000 },
+      { id: 'p2', ordenId: 'OC-1', monto: 30000 },
+    ];
+    expect(pEstadoDevolucion(orden, pagos)).toBe('devuelto');
+  });
+});
+
+describe('pCalcularSaldos', () => {
+  it('calcula saldo pendiente por persona', () => {
+    const ordenes = [
+      { id: 'OC-1', pagadoPor: 'Juan', monto: 100000 },
+      { id: 'OC-2', pagadoPor: 'Juan', monto: 50000 },
+      { id: 'OC-3', pagadoPor: 'María', monto: 30000 },
+    ];
+    const pagos = [
+      { id: 'p1', destinatario: 'Juan', monto: 80000 },
+    ];
+    const saldos = pCalcularSaldos(ordenes, pagos);
+    expect(saldos.Juan.adelantado).toBe(150000);
+    expect(saldos.Juan.devuelto).toBe(80000);
+    expect(saldos.Juan.pendiente).toBe(70000);
+    expect(saldos['María'].adelantado).toBe(30000);
+    expect(saldos['María'].devuelto).toBe(0);
+    expect(saldos['María'].pendiente).toBe(30000);
+  });
+  it('saldo en cero cuando adelantado === devuelto', () => {
+    const ordenes = [{ id: 'OC-1', pagadoPor: 'Juan', monto: 50000 }];
+    const pagos   = [{ id: 'p1', destinatario: 'Juan', monto: 50000 }];
+    const saldos  = pCalcularSaldos(ordenes, pagos);
+    expect(saldos.Juan.pendiente).toBe(0);
+  });
+  it('saldo negativo cuando se devolvió más de lo adelantado', () => {
+    const ordenes = [{ id: 'OC-1', pagadoPor: 'Juan', monto: 10000 }];
+    const pagos   = [{ id: 'p1', destinatario: 'Juan', monto: 15000 }];
+    const saldos  = pCalcularSaldos(ordenes, pagos);
+    expect(saldos.Juan.pendiente).toBe(-5000);
+  });
+  it('ignora órdenes / pagos sin persona asignada', () => {
+    const ordenes = [
+      { id: 'OC-1', pagadoPor: '',    monto: 50000 },
+      { id: 'OC-2', pagadoPor: 'Ana', monto: 10000 },
+    ];
+    const pagos = [{ id: 'p1', destinatario: '', monto: 1000 }];
+    const saldos = pCalcularSaldos(ordenes, pagos);
+    expect(Object.keys(saldos)).toEqual(['Ana']);
+    expect(saldos.Ana.adelantado).toBe(10000);
+  });
+  it('retorna objeto vacío si no hay datos', () => {
+    expect(pCalcularSaldos([], [])).toEqual({});
+  });
+  it('persona con solo pagos recibidos (sin haber adelantado) aparece con saldo negativo', () => {
+    // Caso borde: alguien recibió un pago pero nunca adelantó nada
+    const saldos = pCalcularSaldos([], [{ id: 'p1', destinatario: 'Luis', monto: 5000 }]);
+    expect(saldos.Luis.adelantado).toBe(0);
+    expect(saldos.Luis.devuelto).toBe(5000);
+    expect(saldos.Luis.pendiente).toBe(-5000);
   });
 });
