@@ -16,7 +16,7 @@
 <!-- Firebase SDK -->
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-  import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged }
+  import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail }
     from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
   import { getFirestore, doc, getDoc, setDoc, deleteDoc, onSnapshot, collection }
     from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
@@ -46,6 +46,7 @@
   window._fbSignIn = (email, pass) => signInWithEmailAndPassword(fbAuth, email, pass);
   window._fbSignOut = () => signOut(fbAuth);
   window._fbOnAuth  = (cb) => onAuthStateChanged(fbAuth, cb);
+  window._fbResetPass = (email) => sendPasswordResetEmail(fbAuth, email);
 
   // Boot the app once Firebase is ready
   window._fbOnAuth(async (user) => {
@@ -105,6 +106,8 @@
       if(adminSection) adminSection.style.display = u.rol === 'admin' ? 'block' : 'none';
       // Aplicar restricciones de rol
       aplicarRol(u.rol);
+      // Armar timeout de sesión por inactividad (8 h)
+      if(typeof _idleStart === 'function') _idleStart();
     } catch(e) {
       console.error('Auth error:', e);
       showLoginError('Error al cargar perfil: ' + e.message);
@@ -444,6 +447,9 @@ body.modal-open{overflow:hidden;}
       </div>
       <div id="login-error" style="display:none;font-size:.75rem;color:var(--danger);margin-bottom:12px;padding:8px 12px;background:rgba(255,71,87,.1);border-radius:7px;border:1px solid var(--danger);"></div>
       <button id="login-btn" class="btn btn-primary btn-full" onclick="doLogin()">Entrar</button>
+      <div style="text-align:center;margin-top:12px;">
+        <a id="login-reset" onclick="doResetPass()" style="font-size:.72rem;color:var(--muted);cursor:pointer;text-decoration:underline;">¿Olvidaste tu contraseña?</a>
+      </div>
     </div>
     <div style="text-align:center;margin-top:14px;font-size:.68rem;color:var(--muted);">v2.0 · Firebase</div>
   </div>
@@ -1957,6 +1963,8 @@ const MAIN_TABS = ['scan','inventory','movements','resumen','proveedores'];
 const NAV_LABELS = {scan:'Materiales',inventory:'Inventario',movements:'Movimientos',resumen:'Resumen',proveedores:'Proveedores',workers:'Trabajadores',qrcodes:'Mis QRs','delete-products':'Eliminar productos'};
 function navTo(name) {
   closeMenu();
+  // Defensa en profundidad: si el rol no puede ver materiales, bloquear.
+  if(!rolPuedeVer('materiales')) { volverHome(); return; }
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.getElementById('page-'+name).classList.add('active');
   MAIN_TABS.forEach(t => {
@@ -2639,11 +2647,12 @@ function renderInventory(filtro) {
   // Reset page when filter changes
   if(filtro !== undefined && filtro !== window._invFiltro) _invPage = 0;
   window._invFiltro=f;
+  const _hc = _hideCostos();
   document.getElementById('inv-summary').innerHTML=`
     <div class="sum-card accent" style="cursor:pointer;" onclick="renderInventory(null)" title="Ver todos"><div class="sum-val">${products.length}</div><div class="sum-lbl">Productos</div></div>
     <div class="sum-card danger${f==='sin-stock'?' sum-card-active':''}" style="cursor:pointer;" onclick="renderInventory(f==='sin-stock'?null:'sin-stock')" title="Filtrar sin stock"><div class="sum-val">${nos}</div><div class="sum-lbl">Sin stock</div></div>
     <div class="sum-card warn${f==='bajo'?' sum-card-active':''}" style="cursor:pointer;" onclick="renderInventory(f==='bajo'?null:'bajo')" title="Filtrar stock bajo"><div class="sum-val">${low}</div><div class="sum-lbl">Stock bajo</div></div>
-    <div class="sum-card blue" style="cursor:pointer;" onclick="renderInventory(null)" title="Ver todos"><div class="sum-val">$${fmtNum(val)}</div><div class="sum-lbl">Valor total</div></div>`;
+    ${_hc ? '' : `<div class="sum-card blue" style="cursor:pointer;" onclick="renderInventory(null)" title="Ver todos"><div class="sum-val">$${fmtNum(val)}</div><div class="sum-lbl">Valor total</div></div>`}`;
   // Populate category datalist
   const cats=[...new Set(products.map(p=>p.cat).filter(Boolean))];
   const dl=document.getElementById('cat-datalist');
@@ -2700,8 +2709,8 @@ function renderInventory(filtro) {
         <div class="stock-bar"><div class="stock-bar-fill" style="width:${pct}%;background:${bc}"></div></div>
       </div></td>
       <td class="td-mono">${p.min}</td>
-      <td class="td-mono">$${fmtNum(p.cost)}</td>
-      <td class="td-mono">$${fmtNum(p.stock*pValorUnitario(p))}</td>
+      <td class="td-mono">${_hc ? '—' : '$'+fmtNum(p.cost)}</td>
+      <td class="td-mono">${_hc ? '—' : '$'+fmtNum(p.stock*pValorUnitario(p))}</td>
     </tr>`);
   });
   tbody.innerHTML = rows.join('');
@@ -2893,6 +2902,7 @@ function renderMovements(){
     tbody.innerHTML='<tr><td colspan="9"><div class="empty"><div class="empty-icon">📋</div>Sin movimientos</div></td></tr>';
     return;
   }
+  const _hc = _hideCostos();
 
   // Group movements by batchId.
   // For legacy movements without batchId, auto-group by worker+date+type
@@ -2940,8 +2950,8 @@ function renderMovements(){
         <td><span class="pill ${isAdj?'pill-ajuste':isIn?'pill-in':'pill-out'}">${rep.type}</span></td>
         <td style="text-align:center;font-weight:600">${rep.qtyLabel||rep.qty+(rep.unidad&&rep.unidad!=='u'?' '+sanitizar(rep.unidad):'')}</td>
         <td style="font-size:.81rem;color:var(--accent2)">${rep.worker?'👷 '+sanitizar(rep.worker):'—'}</td>
-        <td class="td-mono">${isIn?'$'+fmtNum(rep.cost):'—'}</td>
-        <td class="td-mono">${isIn?'$'+fmtNum(rep.qty*rep.cost):'—'}</td>
+        <td class="td-mono">${_hc || !isIn ? '—' : '$'+fmtNum(rep.cost)}</td>
+        <td class="td-mono">${_hc || !isIn ? '—' : '$'+fmtNum(rep.qty*rep.cost)}</td>
         <td style="color:var(--muted);font-size:.76rem">${sanitizar(rep.obs||'—')}</td>
       </tr>`;
     }
@@ -2960,7 +2970,7 @@ function renderMovements(){
         <td><span class="pill ${isAdj?'pill-ajuste':isIn?'pill-in':'pill-out'}">${rep.type}</span></td>
         <td style="text-align:center;font-weight:600;color:var(--accent);">${totalQty} <span style="font-size:.65rem;color:var(--muted);">uds</span></td>
         <td style="font-size:.81rem;color:var(--accent2)">${rep.worker?'👷 '+sanitizar(rep.worker):'—'}</td>
-        <td class="td-mono">${isIn?'$'+fmtNum(totalCosto):'—'}</td>
+        <td class="td-mono">${_hc || !isIn ? '—' : '$'+fmtNum(totalCosto)}</td>
         <td class="td-mono">—</td>
         <td style="color:var(--muted);font-size:.76rem">${sanitizar(rep.obs||'—')}</td>
       </tr>
@@ -2975,8 +2985,8 @@ function renderMovements(){
               ${batch.map(m=>`<tr>
                 <td style="padding-left:24px;"><b>${sanitizar(m.prodName)}</b><br><span class="td-mono" style="font-size:.65rem;color:var(--muted);">${sanitizar(m.prodId)}</span></td>
                 <td class="td-mono">${m.qty}</td>
-                <td class="td-mono">${isIn?'$'+fmtNum(m.cost):'—'}</td>
-                <td class="td-mono">${isIn?'$'+fmtNum(m.qty*m.cost):'—'}</td>
+                <td class="td-mono">${_hc || !isIn ? '—' : '$'+fmtNum(m.cost)}</td>
+                <td class="td-mono">${_hc || !isIn ? '—' : '$'+fmtNum(m.qty*m.cost)}</td>
                 <td style="font-size:.72rem;color:var(--muted);">${sanitizar(m.obs||'—')}</td>
               </tr>`).join('')}
             </tbody>
@@ -3072,6 +3082,13 @@ function _guardAdmin(accion){
   if(_esAdminActual()) return true;
   showToast('Solo el administrador puede ' + (accion || 'realizar esta acción'), 'error');
   return false;
+}
+// Ocultar costos y valores para roles que no deben ver info financiera.
+// - estandar: acceso restringido a Urnas, no ve costos
+// - viewer:   solo lectura, pero sin ver costos (confidencialidad)
+function _hideCostos(){
+  const r = window._currentUser && window._currentUser.rol;
+  return r === 'estandar' || r === 'viewer';
 }
 function exportCSV(){
   if(!_guardAdmin('exportar datos')) return;
@@ -3340,6 +3357,8 @@ const U_NAV_LABELS = {
   uqrcodes:'Mis QRs', 'u-delete-products':'Eliminar SKU'
 };
 function uNavTo(name) {
+  // Defensa en profundidad: si el rol no puede ver urnas, bloquear.
+  if(!rolPuedeVer('urnas')) { volverHome(); return; }
   // Estandar: block restricted tabs
   const _r = window._currentUser ? window._currentUser.rol : '';
   if(_r === 'estandar' && ['umovements','uop','uresumen'].includes(name)) { name = 'uscan'; }
@@ -3623,7 +3642,7 @@ function uMostrarHistorial(serial) {
   if(!movs.length) {
     timeline.innerHTML = '<div style="padding:10px 0;font-size:.78rem;color:var(--muted);font-style:italic;">Sin movimientos registrados.</div>';
   } else {
-    const _hideCosto = window._currentUser && window._currentUser.rol === 'estandar';
+    const _hideCosto = _hideCostos();
     timeline.innerHTML = movs.map(m => {
       let icon = '📦', color = 'var(--accent)', desc = '';
       if(m.type === 'Ingreso') {
@@ -3854,12 +3873,12 @@ function uRenderInventory() {
   const sinStock  = uProducts.filter(p => _stock(p.id) === 0).length;
   const stockBajo = uProducts.filter(p => { const s=_stock(p.id); return s>0 && s<=(p.min||0); }).length;
   const valorTotal = uProducts.reduce((s, p) => s + _stock(p.id)*(p.cost||0), 0);
-  const _hideValor = window._currentUser && window._currentUser.rol === 'estandar';
+  const _hc = _hideCostos();
   document.getElementById('u-inv-summary').innerHTML = `
     <div class="sum-card accent"><div class="sum-val">${uProducts.length}</div><div class="sum-lbl">Productos</div></div>
     <div class="sum-card danger"><div class="sum-val">${sinStock}</div><div class="sum-lbl">Sin stock</div></div>
     <div class="sum-card warn"><div class="sum-val">${stockBajo}</div><div class="sum-lbl">Stock bajo</div></div>
-    ${_hideValor ? '' : `<div class="sum-card blue"><div class="sum-val">$${fmtNum(valorTotal)}</div><div class="sum-lbl">Valor total</div></div>`}`;
+    ${_hc ? '' : `<div class="sum-card blue"><div class="sum-val">$${fmtNum(valorTotal)}</div><div class="sum-lbl">Valor total</div></div>`}`;
 
   // Render each category into its own tbody
   const CATS = [
@@ -3912,8 +3931,8 @@ function uRenderInventory() {
             <div class="stock-bar"><div class="stock-bar-fill" style="width:${pct}%;background:${bc}"></div></div>
           </div></td>
           <td class="td-mono">${totalMin}</td>
-          <td class="td-mono">$${fmtNum(totalCosto)}</td>
-          <td class="td-mono">$${fmtNum(totalVal)}</td>
+          <td class="td-mono">${_hc ? '—' : '$'+fmtNum(totalCosto)}</td>
+          <td class="td-mono">${_hc ? '—' : '$'+fmtNum(totalVal)}</td>
           <td style="text-align:right;"><span id="${grpId}-arrow" style="color:var(--accent);font-size:.75rem;">▼</span></td>
         </tr>`);
 
@@ -3937,8 +3956,8 @@ function uRenderInventory() {
             <div class="stock-bar"><div class="stock-bar-fill" style="width:${pct2}%;background:${bc2}"></div></div>
           </div></td>
           <td class="td-mono">${p.min||0}</td>
-          <td class="td-mono">$${fmtNum(p.cost||0)}</td>
-          <td class="td-mono">$${fmtNum(s*(p.cost||0))}</td>
+          <td class="td-mono">${_hc ? '—' : '$'+fmtNum(p.cost||0)}</td>
+          <td class="td-mono">${_hc ? '—' : '$'+fmtNum(s*(p.cost||0))}</td>
           <td></td>
         </tr>`;
       }).join('');
@@ -7312,26 +7331,81 @@ function showLoginError(msg) {
   if(!el) return;
   el.textContent = msg;
   el.style.display = 'block';
+  el.style.color = ''; // reset (caller puede sobrescribir después)
   clearTimeout(_loginErrTimer);
-  _loginErrTimer = setTimeout(() => { el.style.display = 'none'; }, 5000);
+  _loginErrTimer = setTimeout(() => { el.style.display = 'none'; el.style.color = ''; }, 5000);
+}
+
+// Recuperación de contraseña: envía email de reset vía Firebase Auth.
+async function doResetPass() {
+  const email = document.getElementById('login-email').value.trim();
+  if(!email) return showLoginError('Ingresa tu email arriba para recibir el enlace de reset.');
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return showLoginError('Email inválido.');
+  const link = document.getElementById('login-reset');
+  const txtOrig = link ? link.textContent : '';
+  if(link) { link.textContent = 'Enviando…'; link.style.pointerEvents = 'none'; }
+  try {
+    await window._fbResetPass(email);
+    showLoginError('✓ Revisa tu correo para restablecer la contraseña.');
+    const el = document.getElementById('login-error');
+    if(el) el.style.color = 'var(--accent)';
+  } catch(e) {
+    const msgs = {
+      'auth/invalid-email':     'Email inválido.',
+      'auth/user-not-found':    'No existe una cuenta con ese email.',
+      'auth/too-many-requests': 'Demasiados intentos. Espera un momento.',
+    };
+    showLoginError(msgs[e.code] || 'Error: ' + e.message);
+  } finally {
+    if(link) { link.textContent = txtOrig; link.style.pointerEvents = ''; }
+  }
 }
 
 // Logout handler (called from hamburger menu)
 async function cerrarSesion() {
   closeMenu();
   if(!confirm('¿Cerrar sesión?')) return;
+  await _doLogoutCleanup(false);
+}
+
+// ── IDLE TIMEOUT ─────────────────────────────────────
+// Logout automático por inactividad (8 horas por defecto).
+// Reinicia el contador ante cualquier actividad del usuario.
+const _IDLE_TIMEOUT_MS = 8 * 60 * 60 * 1000; // 8 horas
+let _idleTimer = null;
+const _IDLE_EVENTS = ['mousemove','mousedown','keydown','scroll','touchstart','touchmove'];
+function _idleReset() {
+  if(_idleTimer) clearTimeout(_idleTimer);
+  _idleTimer = setTimeout(_idleLogout, _IDLE_TIMEOUT_MS);
+}
+function _idleStart() {
+  _idleStop(); // evitar duplicados
+  _IDLE_EVENTS.forEach(ev => window.addEventListener(ev, _idleReset, {passive:true}));
+  _idleReset();
+}
+function _idleStop() {
+  if(_idleTimer) { clearTimeout(_idleTimer); _idleTimer = null; }
+  _IDLE_EVENTS.forEach(ev => window.removeEventListener(ev, _idleReset));
+}
+async function _idleLogout() {
+  // Logout silencioso (sin confirm, el usuario no está presente)
+  await _doLogoutCleanup(true);
+  showLoginError('Sesión cerrada por inactividad. Vuelve a ingresar.');
+}
+async function _doLogoutCleanup(silent) {
+  _idleStop();
   // 1. Unsubscribe Firestore listeners (prevents permission errors + memory leak)
   (window._fbUnsubs || []).forEach(fn => fn());
   window._fbUnsubs = [];
   // 2. Sign out from Firebase
-  await window._fbSignOut();
+  try { await window._fbSignOut(); } catch(e) {}
   // 3. Clear local cache AFTER successful sign-out
   localStorage.clear();
   document.getElementById('app-root').style.display = 'none';
   document.getElementById('login-screen').style.display = 'flex';
   document.getElementById('login-email').value = '';
   document.getElementById('login-pass').value = '';
-  document.getElementById('login-error').style.display = 'none';
+  if(!silent) document.getElementById('login-error').style.display = 'none';
   document.getElementById('login-btn').textContent = 'Entrar';
   document.getElementById('login-btn').disabled = false;
 }
