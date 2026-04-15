@@ -81,13 +81,16 @@ service cloud.firestore {
     // ── Colección: inventario ──────────────────────────
     // inventario/materiales → products, movements, workers, etc.
     // inventario/urnas      → uProducts, uMovements, uOPs, uUnidades
+    // inventario/pagos      → pagosOrdenes, pagosRegistros (órdenes de compra y devoluciones)
     match /inventario/{seccion} {
       // Lectura: cualquier usuario activo
       allow read: if esUsuarioActivo();
 
-      // Escritura (create/update): usuarios con rol que puede registrar movimientos
-      // viewer solo puede leer, nunca escribir
-      allow write: if rolPermitido(['admin', 'ventas', 'instalacion', 'estandar']);
+      // Escritura condicional según sección (defensa en profundidad):
+      //   - pagos: solo admin y ventas (datos financieros sensibles)
+      //   - resto: admin/ventas/instalacion/estandar (viewer solo lee)
+      allow write: if (seccion == 'pagos' && rolPermitido(['admin', 'ventas']))
+                   || (seccion != 'pagos' && rolPermitido(['admin', 'ventas', 'instalacion', 'estandar']));
     }
 
     // ── Colección: auditoria ───────────────────────────
