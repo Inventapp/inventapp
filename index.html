@@ -1566,51 +1566,55 @@ body.modal-open{overflow:hidden;}
 <div class="page active" id="page-pcompras">
   <!-- Formulario nueva compra (solo admin/ventas) -->
   <div id="p-form-wrap" style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:14px;">
-    <div style="font-size:.78rem;color:var(--accent);font-weight:700;margin-bottom:10px;">+ Registrar compra</div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-      <div>
-        <label style="font-size:.66rem;color:var(--muted);">Fecha</label>
-        <input type="date" id="p-fecha" style="width:100%;margin-top:3px;">
-      </div>
-      <div>
-        <label style="font-size:.66rem;color:var(--muted);">Monto (CLP)</label>
-        <input type="number" id="p-monto" min="0" step="1" placeholder="0" style="width:100%;margin-top:3px;">
-      </div>
-      <div style="grid-column:1/-1;">
-        <label style="font-size:.66rem;color:var(--muted);">Proveedor</label>
-        <input type="text" id="p-proveedor" list="p-prov-dl" placeholder="ej: Sodimac" style="width:100%;margin-top:3px;">
-        <datalist id="p-prov-dl"></datalist>
-      </div>
-      <div style="grid-column:1/-1;">
-        <label style="font-size:.66rem;color:var(--muted);">Descripción</label>
-        <input type="text" id="p-desc" placeholder="ej: Martillos, clavos, pintura" style="width:100%;margin-top:3px;">
-      </div>
-      <div style="grid-column:1/-1;">
-        <label style="font-size:.66rem;color:var(--muted);">N° factura (puedes agregarlo después)</label>
-        <input type="text" id="p-factura" placeholder="F-12345 (opcional)" style="width:100%;margin-top:3px;">
-      </div>
-      <div>
-        <label style="font-size:.66rem;color:var(--muted);">Producto recibido</label>
-        <select id="p-recibido" style="width:100%;margin-top:3px;">
-          <option value="pendiente">⏳ Pendiente</option>
-          <option value="recibido">✓ Recibido</option>
-        </select>
-      </div>
-      <div>
-        <label style="font-size:.66rem;color:var(--muted);">Devuelto</label>
-        <select id="p-devuelto" style="width:100%;margin-top:3px;">
-          <option value="pendiente">⏳ Pendiente</option>
-          <option value="si">✓ Sí</option>
-        </select>
-      </div>
-      <div style="grid-column:1/-1;">
-        <label style="font-size:.66rem;color:var(--muted);">Observaciones (opc.)</label>
-        <input type="text" id="p-obs" placeholder="" style="width:100%;margin-top:3px;">
-      </div>
+    <div onclick="pToggleForm()" style="font-size:.78rem;color:var(--accent);font-weight:700;cursor:pointer;user-select:none;">
+      <span id="p-form-chevron" style="display:inline-block;transition:transform .2s;">▶</span> Registrar compra
     </div>
-    <div style="display:flex;gap:8px;margin-top:12px;">
-      <button class="btn btn-primary" style="flex:1;" onclick="pAddCompra()">✓ Guardar compra</button>
-      <button class="btn btn-secondary" onclick="pLimpiarForm()">Limpiar</button>
+    <div id="p-form-body" style="display:none;margin-top:10px;">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+        <div>
+          <label style="font-size:.66rem;color:var(--muted);">Fecha</label>
+          <input type="date" id="p-fecha" style="width:100%;margin-top:3px;">
+        </div>
+        <div>
+          <label style="font-size:.66rem;color:var(--muted);">Monto (CLP)</label>
+          <input type="number" id="p-monto" min="0" step="1" placeholder="0" style="width:100%;margin-top:3px;">
+        </div>
+        <div style="grid-column:1/-1;">
+          <label style="font-size:.66rem;color:var(--muted);">Proveedor</label>
+          <input type="text" id="p-proveedor" list="p-prov-dl" placeholder="ej: Sodimac" style="width:100%;margin-top:3px;">
+          <datalist id="p-prov-dl"></datalist>
+        </div>
+        <div style="grid-column:1/-1;">
+          <label style="font-size:.66rem;color:var(--muted);">Descripción</label>
+          <input type="text" id="p-desc" placeholder="ej: Martillos, clavos, pintura" style="width:100%;margin-top:3px;">
+        </div>
+        <div style="grid-column:1/-1;">
+          <label style="font-size:.66rem;color:var(--muted);">N° factura (puedes agregarlo después)</label>
+          <input type="text" id="p-factura" placeholder="F-12345 (opcional)" style="width:100%;margin-top:3px;">
+        </div>
+        <div>
+          <label style="font-size:.66rem;color:var(--muted);">Producto recibido</label>
+          <select id="p-recibido" style="width:100%;margin-top:3px;">
+            <option value="pendiente">⏳ Pendiente</option>
+            <option value="recibido">✓ Recibido</option>
+          </select>
+        </div>
+        <div>
+          <label style="font-size:.66rem;color:var(--muted);">Devuelto</label>
+          <select id="p-devuelto" style="width:100%;margin-top:3px;">
+            <option value="pendiente">⏳ Pendiente</option>
+            <option value="si">✓ Sí</option>
+          </select>
+        </div>
+        <div style="grid-column:1/-1;">
+          <label style="font-size:.66rem;color:var(--muted);">Observaciones (opc.)</label>
+          <input type="text" id="p-obs" placeholder="" style="width:100%;margin-top:3px;">
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:12px;">
+        <button class="btn btn-primary" style="flex:1;" onclick="pAddCompra()">✓ Guardar compra</button>
+        <button class="btn btn-secondary" onclick="pLimpiarForm()">Limpiar</button>
+      </div>
     </div>
   </div>
 
@@ -8335,9 +8339,19 @@ function pAddCompra() {
   });
   lsGuardarPagos();
   pLimpiarForm();
-  _pPage = 0; // ir a primera página para ver el nuevo registro
+  document.getElementById('p-form-body').style.display = 'none';
+  document.getElementById('p-form-chevron').style.transform = '';
+  _pPage = 0;
   pRenderCompras();
   showToast('✓ Compra registrada','success');
+}
+
+function pToggleForm() {
+  const body = document.getElementById('p-form-body');
+  const chev = document.getElementById('p-form-chevron');
+  const open = body.style.display === 'none';
+  body.style.display = open ? 'block' : 'none';
+  chev.style.transform = open ? 'rotate(90deg)' : '';
 }
 
 function pLimpiarForm() {
