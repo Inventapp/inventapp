@@ -4341,11 +4341,11 @@ function uRenderQR() {
     const selCount = g.unidades.filter(u => _uqrSelected.has(u.id)).length;
     const allSel = selCount === g.unidades.length && selCount > 0;
     html += `<div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;margin-bottom:8px;overflow:hidden;">
-      <div style="display:flex;align-items:center;gap:8px;padding:10px 12px;cursor:pointer;" onclick="uQRToggleGrupo('${k.replace(/'/g,"\\'")}')">
+      <div style="display:flex;align-items:center;gap:8px;padding:10px 12px;cursor:pointer;color:var(--text);" onclick="uQRToggleGrupo('${k.replace(/'/g,"\\'")}')">
         <input type="checkbox" ${allSel?'checked':''} onclick="event.stopPropagation();uQRSelectGrupo('${k.replace(/'/g,"\\'")}',this.checked)" style="flex-shrink:0;">
         <span style="font-size:.8rem;color:var(--accent);flex-shrink:0;">${expanded?'▼':'▶'}</span>
         <div style="flex:1;min-width:0;">
-          <div style="font-size:.82rem;font-weight:600;">${sanitizar(g.skuId)}${g.terminacion?' · '+sanitizar(g.terminacion):''}</div>
+          <div style="font-size:.82rem;font-weight:600;color:var(--text);">${sanitizar(g.skuId)}${g.terminacion?' · '+sanitizar(g.terminacion):''}</div>
           <div style="font-size:.68rem;color:var(--muted);">${sanitizar(g.nombre)}</div>
         </div>
         <div style="font-size:.68rem;color:var(--muted);white-space:nowrap;">${g.unidades.length} ud${selCount?' · '+selCount+' sel':''}</div>
@@ -4354,9 +4354,9 @@ function uRenderQR() {
       html += '<div style="border-top:1px solid var(--border);padding:6px 12px 10px;">';
       g.unidades.sort((a,b) => (a.id||'').localeCompare(b.id||'')).forEach(u => {
         const sel = _uqrSelected.has(u.id);
-        html += `<label style="display:flex;align-items:center;gap:8px;padding:6px 0;cursor:pointer;border-bottom:1px dashed var(--border);">
+        html += `<label style="display:flex;align-items:center;gap:8px;padding:6px 0;cursor:pointer;border-bottom:1px dashed var(--border);color:var(--text);">
           <input type="checkbox" ${sel?'checked':''} onchange="uQRToggleUnidad('${u.id}',this.checked)" style="flex-shrink:0;">
-          <span style="font-family:'Space Mono',monospace;font-size:.75rem;flex:1;">${sanitizar(u.id)}</span>
+          <span style="font-family:'Space Mono',monospace;font-size:.75rem;flex:1;color:var(--text);">${sanitizar(u.id)}</span>
           <span style="font-size:.65rem;color:var(--muted);">${sanitizar(u.estado||'')}${u.ubicacion?' · '+sanitizar(u.ubicacion):''}</span>
         </label>`;
       });
