@@ -209,15 +209,8 @@ main{position:relative;z-index:1;max-width:860px;margin:0 auto;padding:22px 15px
 
 /* SCAN RESULT */
 #scan-result{display:none;}
-#scan-result.show{display:block;animation:fadeIn .2s ease;}
-.product-found{display:flex;align-items:center;gap:13px;}
-.product-icon{width:40px;height:40px;border-radius:10px;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;font-size:1.15rem;flex-shrink:0;}
-.product-info h3{font-size:.92rem;font-weight:600;}
-.product-info p{font-size:.76rem;color:var(--muted);margin-top:2px;}
 .badge{display:inline-block;padding:2px 7px;border-radius:20px;font-size:.66rem;font-family:'Space Mono',monospace;font-weight:700;margin-left:5px;}
 .badge-ok{background:rgba(0,229,160,.15);color:var(--accent);}
-.badge-warn{background:rgba(255,165,2,.15);color:var(--warn);}
-.badge-danger{background:rgba(255,71,87,.15);color:var(--danger);}
 
 /* FORM */
 .form-row{display:grid;grid-template-columns:1fr 1fr;gap:11px;margin-top:13px;}
@@ -308,30 +301,10 @@ tr:hover td{background:rgba(255,255,255,.02);}
 .home-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;width:100%;max-width:400px;}
 .home-btn{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:28px 16px;display:flex;flex-direction:column;align-items:center;gap:10px;cursor:pointer;transition:all .2s;text-decoration:none;}
 .home-btn:hover,.home-btn:active{border-color:var(--accent);background:var(--surface2);transform:translateY(-2px);}
-.home-btn.disabled{opacity:.35;cursor:not-allowed;pointer-events:none;}
 .home-btn .hb-icon{font-size:2.2rem;}
 .home-btn .hb-label{font-family:'Space Mono',monospace;font-size:.75rem;color:var(--text);text-align:center;font-weight:700;}
 .home-btn .hb-sub{font-size:.67rem;color:var(--muted);text-align:center;}
 .home-btn.active-section{border-color:var(--accent);}
-/* RESUMEN DASHBOARD */
-.dash-prod-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px;margin-bottom:14px;}
-.dash-prod-name{font-size:1rem;font-weight:700;margin-bottom:2px;}
-.dash-prod-id{font-family:'Space Mono',monospace;font-size:.7rem;color:var(--muted);margin-bottom:14px;}
-.dash-metrics{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;}
-.dash-metric{background:var(--surface2);border-radius:10px;padding:11px 13px;}
-.dash-metric .dm-val{font-family:'Space Mono',monospace;font-size:1.2rem;font-weight:700;color:var(--accent);}
-.dash-metric .dm-val.danger{color:var(--danger);}
-.dash-metric .dm-val.warn{color:var(--warn);}
-.dash-metric .dm-val.blue{color:var(--accent2);}
-.dash-metric .dm-lbl{font-size:.68rem;color:var(--muted);margin-top:2px;}
-.dash-avg-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px;}
-.dash-avg{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:9px 10px;text-align:center;}
-.dash-avg .da-val{font-family:'Space Mono',monospace;font-size:.95rem;font-weight:700;color:var(--text);}
-.dash-avg .da-lbl{font-size:.62rem;color:var(--muted);margin-top:1px;}
-.dash-prog-wrap{margin-top:12px;}
-.dash-prog-label{display:flex;justify-content:space-between;font-size:.7rem;color:var(--muted);margin-bottom:4px;}
-.dash-prog-bar{height:6px;background:var(--surface2);border-radius:3px;overflow:hidden;}
-.dash-prog-fill{height:100%;border-radius:3px;background:var(--accent);transition:width .4s;}
 /* MODAL ESTADO OP */
 .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:400;align-items:center;justify-content:center;touch-action:manipulation;-webkit-tap-highlight-color:transparent;}
 .modal-overlay.open{display:flex;}
@@ -345,13 +318,9 @@ body.modal-open{overflow:hidden;}
 .edo-pendiente{background:var(--warn);}
 .edo-produccion{background:var(--accent2);}
 .edo-terminada{background:var(--accent);}
-.pill-pendiente{background:rgba(255,165,2,.15);color:var(--warn);}
-.pill-produccion{background:rgba(0,153,255,.15);color:var(--accent2);}
-.pill-terminada{background:rgba(0,229,160,.15);color:var(--accent);}
 
 /* ── MENU OPCIONES sub-panels ── */
 #menu-sec-mat, #menu-sec-urn { display:none; flex-direction:column; gap:5px; padding:8px 4px 4px; }
-.menu-section-label { font-family:'Space Mono',monospace; font-size:.58rem; color:var(--muted); padding:2px 4px 6px; letter-spacing:.06em; }
 /* ── MOBILE RESPONSIVE ─────────────────────── */
 @media(max-width:600px){
   /* Header: reduce blur for mobile GPU performance */
@@ -390,7 +359,6 @@ body.modal-open{overflow:hidden;}
   .card { padding:12px; }
   /* Grids 4-col → 2-col */
   .summary-grid { grid-template-columns:repeat(2,1fr); gap:7px; }
-  .dash-metrics { grid-template-columns:1fr 1fr; }
   /* Form rows: una columna */
   .form-row { grid-template-columns:1fr; }
   /* Tablas: scroll horizontal, ancho reducido */
@@ -409,7 +377,6 @@ body.modal-open{overflow:hidden;}
   .action-row { flex-wrap:wrap; gap:8px; }
   .action-row .btn { flex:1; min-width:120px; justify-content:center; }
   /* Menu opciones labels */
-  .menu-section-label { font-size:.65rem; }
   .menu-label { font-size:.62rem; }
 }
 /* ── Rol estandar: inventory read-only ── */
@@ -837,7 +804,7 @@ body.modal-open{overflow:hidden;}
   <!-- Barra superior: buscar + botón agregar -->
   <div style="display:flex;gap:8px;align-items:center;margin-bottom:14px;flex-wrap:wrap;">
     <input type="text" id="prov-search" placeholder="🔍 Buscar material o proveedor…"
-      style="flex:1;min-width:0;" oninput="provFiltrar()">
+      style="flex:1;min-width:0;" oninput="_debounce('prov-search', provFiltrar)">
     <button class="btn btn-primary" style="white-space:nowrap;" onclick="provAbrirModal()">+ Proveedor</button>
   </div>
 
@@ -1302,7 +1269,7 @@ body.modal-open{overflow:hidden;}
 <!-- LISTA DE TRABAJADORES -->
 <div id="trab-lista-view" style="padding:16px;max-width:700px;margin:0 auto;">
   <div style="display:flex;gap:8px;align-items:center;margin-bottom:12px;">
-    <input type="text" id="trab-search" placeholder="🔍 Buscar trabajador o área…" style="flex:1;" oninput="renderTrabajadoresGlobal()">
+    <input type="text" id="trab-search" placeholder="🔍 Buscar trabajador o área…" style="flex:1;" oninput="_debounce('trab-search', renderTrabajadoresGlobal)">
     <button class="btn btn-primary" style="white-space:nowrap;" onclick="trabAbrirModal()">+ Trabajador</button>
   </div>
   <div class="card" style="padding:0;overflow:hidden;">
@@ -1533,7 +1500,7 @@ body.modal-open{overflow:hidden;}
 <!-- VEH: FLOTA (lista de vehículos) -->
 <div class="page active" id="vpage-flota">
   <div style="display:flex;gap:8px;align-items:center;margin-bottom:14px;flex-wrap:wrap;">
-    <input type="text" id="veh-search" placeholder="🔍 Buscar vehículo, patente…" style="flex:1;min-width:0;" oninput="vRenderFlota()">
+    <input type="text" id="veh-search" placeholder="🔍 Buscar vehículo, patente…" style="flex:1;min-width:0;" oninput="_debounce('veh-search', vRenderFlota)">
     <button class="btn btn-primary" style="white-space:nowrap;" onclick="vAbrirModalVehiculo()">+ Vehículo</button>
   </div>
   <div id="veh-flota-lista"></div>
@@ -1621,7 +1588,7 @@ body.modal-open{overflow:hidden;}
   <!-- Filtros y búsqueda -->
   <div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap;">
     <input type="text" id="p-buscar" placeholder="🔍 Buscar proveedor, desc, factura, obs…"
-      oninput="pRenderCompras()" style="flex:1;min-width:160px;">
+      oninput="_debounce('p-buscar', pRenderCompras)" style="flex:1;min-width:160px;">
     <select id="p-filtro-estado" onchange="pRenderCompras()" style="flex:0 0 auto;">
       <option value="todos">Todos</option>
       <option value="recibido-pendiente">⏳ Sin recibir</option>
@@ -1844,6 +1811,14 @@ function lsCargarPagos() {
 function _genId(prefix) {
   return prefix + Date.now().toString(36).toUpperCase() +
          Math.random().toString(36).slice(2, 6).toUpperCase();
+}
+
+// Debounce helper: agrupa llamadas rápidas a renders y evita re-renders
+// en cada tecla. Usado por inputs de búsqueda y campos de cálculo.
+const _debounceTimers = {};
+function _debounce(key, fn, delay = 300) {
+  clearTimeout(_debounceTimers[key]);
+  _debounceTimers[key] = setTimeout(fn, delay);
 }
 
 function lsCargar() {
@@ -2215,12 +2190,6 @@ function irQRsMenu(){
   const s=_seccionActual();
   if(s==='urnas') uNavTo('uqrcodes');
   else if(s==='materiales') navTo('qrcodes');
-}
-function irEliminarMenu(){
-  closeMenu();
-  const s=_seccionActual();
-  if(s==='urnas') uNavTo('u-delete-products');
-  else navTo('delete-products');
 }
 function limpiarMovimientosMenu(){
   closeMenu();
@@ -3909,8 +3878,6 @@ function uSeleccionarTerminacion(skuId) {
   if(!sku) return;
   uIniciarIngreso(sku);
 }
-// Keep old function name as alias in case called elsewhere
-function uSeleccionarSKU(skuId) { uSeleccionarTerminacion(skuId); }
 function uIniciarIngreso(sku) {
   uCurrentSKU  = sku;
   uCurrentTerm = sku.terminacion || 'Bruto';
@@ -5136,14 +5103,14 @@ function cRenderMODTable() {
       <td style="padding:8px 12px;font-size:.78rem;">${C_PROC_ICON[pr]} ${pr.charAt(0).toUpperCase()+pr.slice(1)}</td>
       <td style="padding:6px 10px;"><input type="number" min="0" step="10000" value="${mod.sueldo}"
         style="width:90px;text-align:right;font-family:'Space Mono',monospace;font-size:.78rem;"
-        oninput="cSetMOD('${pr}','sueldo',parseFloat(this.value)||0);cRenderMODTable();cAutoCalc()"></td>
+        oninput="cSetMOD('${pr}','sueldo',parseFloat(this.value)||0);_debounce('mod-render', cRenderMODTable, 500);cAutoCalc()"></td>
       <td style="padding:6px 10px;"><input type="number" min="1" step="1" value="${mod.horasMes}"
         style="width:65px;text-align:right;font-family:'Space Mono',monospace;font-size:.78rem;"
-        oninput="cSetMOD('${pr}','horasMes',Math.max(1,parseFloat(this.value)||1));cRenderMODTable();cAutoCalc()"></td>
+        oninput="cSetMOD('${pr}','horasMes',Math.max(1,parseFloat(this.value)||1));_debounce('mod-render', cRenderMODTable, 500);cAutoCalc()"></td>
       <td style="padding:8px 10px;text-align:right;font-family:'Space Mono',monospace;font-size:.75rem;color:var(--accent);">$${fmtNum(Math.round(tasa))}</td>
       <td style="padding:6px 10px;"><input type="number" min="0" step="0.1" value="${mod.horasUnidad}"
         style="width:65px;text-align:right;font-family:'Space Mono',monospace;font-size:.78rem;"
-        oninput="cSetMOD('${pr}','horasUnidad',parseFloat(this.value)||0);cRenderMODTable();cAutoCalc()"></td>
+        oninput="cSetMOD('${pr}','horasUnidad',parseFloat(this.value)||0);_debounce('mod-render', cRenderMODTable, 500);cAutoCalc()"></td>
       <td style="padding:6px 10px;"><input type="number" min="0" max="100" step="0.1" value="${mod.merma}"
         style="width:55px;text-align:right;font-family:'Space Mono',monospace;font-size:.78rem;"
         oninput="cSetMOD('${pr}','merma',parseFloat(this.value)||0);cAutoCalc()"></td>
@@ -6483,7 +6450,6 @@ function _provPopulateSelect(selectedProdId) {
   });
 }
 
-function provModalCatChange() { /* placeholder */ }
 
 function provCerrarModal() {
   _modalHide('modal-proveedor');
@@ -8427,7 +8393,7 @@ function pDeleteCompra(id) {
     <!-- Selector de material -->
     <div style="margin-bottom:12px;">
       <label style="font-size:.72rem;color:var(--muted);">Material</label>
-      <select id="prov-form-prod" style="width:100%;margin-top:4px;" onchange="provModalCatChange()">
+      <select id="prov-form-prod" style="width:100%;margin-top:4px;">
         <option value="">— Selecciona un material —</option>
       </select>
     </div>
@@ -8746,7 +8712,7 @@ function pDeleteCompra(id) {
   <div class="modal-box" style="max-width:540px;width:94%;max-height:88vh;display:flex;flex-direction:column;">
     <div class="modal-title" style="flex-shrink:0;">✏️ Editar unidades</div>
     <div style="flex-shrink:0;margin-bottom:10px;">
-      <input type="text" id="eu-search" placeholder="Buscar por código, nombre o terminación…" style="width:100%;" oninput="euFiltrar()">
+      <input type="text" id="eu-search" placeholder="Buscar por código, nombre o terminación…" style="width:100%;" oninput="_debounce('eu-search', euFiltrar)">
     </div>
     <div id="eu-lista" style="overflow-y:auto;flex:1;"></div>
     <div style="margin-top:10px;flex-shrink:0;">
@@ -8871,7 +8837,7 @@ function pDeleteCompra(id) {
   <div class="modal-box" style="max-width:520px;width:94%;max-height:88vh;display:flex;flex-direction:column;">
     <div class="modal-title" style="color:var(--danger);flex-shrink:0;">🗑 Eliminar unidades</div>
     <div style="flex-shrink:0;margin-bottom:8px;">
-      <input type="text" id="elim-u-search" placeholder="Buscar por código, nombre, terminación o estado…" style="width:100%;" oninput="elimUFiltrar()">
+      <input type="text" id="elim-u-search" placeholder="Buscar por código, nombre, terminación o estado…" style="width:100%;" oninput="_debounce('elim-u-search', elimUFiltrar)">
     </div>
     <div style="flex-shrink:0;margin-bottom:10px;display:flex;gap:8px;">
       <button class="btn btn-danger" style="flex:1;justify-content:center;font-size:.75rem;" onclick="elimUTodo()">⚠ Eliminar TODAS las unidades</button>
@@ -8888,7 +8854,7 @@ function pDeleteCompra(id) {
   <div class="modal-box" style="max-width:520px;width:94%;max-height:88vh;display:flex;flex-direction:column;">
     <div class="modal-title" style="color:var(--danger);flex-shrink:0;">🗑 Eliminar ventas</div>
     <div style="flex-shrink:0;margin-bottom:8px;">
-      <input type="text" id="elim-v-search" placeholder="Buscar por serial, producto, contrato o notas…" style="width:100%;" oninput="elimVFiltrar()">
+      <input type="text" id="elim-v-search" placeholder="Buscar por serial, producto, contrato o notas…" style="width:100%;" oninput="_debounce('elim-v-search', elimVFiltrar)">
     </div>
     <div style="flex-shrink:0;margin-bottom:10px;display:flex;gap:8px;">
       <button class="btn btn-danger" style="flex:1;justify-content:center;font-size:.75rem;" onclick="elimVTodo()">⚠ Eliminar TODAS las ventas</button>
@@ -8925,7 +8891,7 @@ function pDeleteCompra(id) {
     </p>
     <!-- Buscador -->
     <div style="flex-shrink:0;margin-bottom:8px;">
-      <input type="text" id="ajuste-search" placeholder="🔍 Buscar producto…" style="width:100%;" oninput="matRenderAjuste()">
+      <input type="text" id="ajuste-search" placeholder="🔍 Buscar producto…" style="width:100%;" oninput="_debounce('ajuste-search', matRenderAjuste)">
     </div>
     <div id="ajuste-mat-lista" style="overflow-y:auto;flex:1;display:flex;flex-direction:column;gap:8px;"></div>
     <div class="action-row" style="flex-shrink:0;margin-top:12px;">
