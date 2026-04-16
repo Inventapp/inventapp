@@ -89,49 +89,29 @@ export function workerName(w) {
   return typeof w === 'object' && w !== null ? w.name : w;
 }
 
-// ── Pagos: lógica de saldos y estado de devolución ────
+// ── Pagos: filtrado de compras ────────────────────────
 /**
- * Suma de pagos (devoluciones) registrados contra una orden específica.
+ * Filtra compras por texto y estado.
+ * query: búsqueda libre (proveedor, descripción, factura, obs).
+ * filtro: 'todos' | 'recibido-pendiente' | 'recibido-ok' | 'devuelto-pendiente' | 'devuelto-ok' | 'sin-factura'.
  */
-export function pPagosPorOrden(ordenId, pagosRegistros) {
-  return pagosRegistros
-    .filter(p => p.ordenId === ordenId)
-    .reduce((acc, p) => acc + (Number(p.monto) || 0), 0);
-}
-
-/**
- * Estado de devolución de una orden según cuánto se ha pagado.
- * Retorna 'sin-devolver' | 'parcial' | 'devuelto'.
- */
-export function pEstadoDevolucion(orden, pagosRegistros) {
-  const pagado = pPagosPorOrden(orden.id, pagosRegistros);
-  const total  = Number(orden.monto) || 0;
-  if (pagado <= 0)     return 'sin-devolver';
-  if (pagado >= total) return 'devuelto';
-  return 'parcial';
-}
-
-/**
- * Calcula saldos por persona: cuánto adelantó vs cuánto recibió de vuelta.
- * Retorna { persona: { adelantado, devuelto, pendiente } }.
- * Si pendiente > 0, la empresa le debe; si < 0, la persona debe a la empresa.
- */
-export function pCalcularSaldos(pagosOrdenes, pagosRegistros) {
-  const saldos = {};
-  pagosOrdenes.forEach(o => {
-    const k = (o.pagadoPor || '').trim();
-    if (!k) return;
-    if (!saldos[k]) saldos[k] = { adelantado: 0, devuelto: 0, pendiente: 0 };
-    saldos[k].adelantado += Number(o.monto) || 0;
-  });
-  pagosRegistros.forEach(p => {
-    const k = (p.destinatario || '').trim();
-    if (!k) return;
-    if (!saldos[k]) saldos[k] = { adelantado: 0, devuelto: 0, pendiente: 0 };
-    saldos[k].devuelto += Number(p.monto) || 0;
-  });
-  Object.values(saldos).forEach(s => { s.pendiente = s.adelantado - s.devuelto; });
-  return saldos;
+export function pFiltrarCompras(compras, query, filtro) {
+  let lista = compras.slice();
+  if (query) {
+    const q = query.toLowerCase();
+    lista = lista.filter(c =>
+      (c.proveedor || '').toLowerCase().includes(q) ||
+      (c.descripcion || '').toLowerCase().includes(q) ||
+      (c.facturaNumero || '').toLowerCase().includes(q) ||
+      (c.obs || '').toLowerCase().includes(q)
+    );
+  }
+  if (filtro === 'recibido-pendiente') lista = lista.filter(c => !c.recibido);
+  else if (filtro === 'recibido-ok')   lista = lista.filter(c => c.recibido);
+  else if (filtro === 'devuelto-pendiente') lista = lista.filter(c => !c.devuelto);
+  else if (filtro === 'devuelto-ok')   lista = lista.filter(c => c.devuelto);
+  else if (filtro === 'sin-factura')   lista = lista.filter(c => !c.facturaNumero);
+  return lista;
 }
 
 // ── Backup: validación ────────────────────────────────

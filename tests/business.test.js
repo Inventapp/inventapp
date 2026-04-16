@@ -10,9 +10,7 @@ import {
   validarBackup,
   sanitizar,
   workerName,
-  pPagosPorOrden,
-  pEstadoDevolucion,
-  pCalcularSaldos,
+  pFiltrarCompras,
 } from './business.js';
 
 // ══════════════════════════════════════════════
@@ -272,106 +270,68 @@ describe('validarBackup', () => {
 });
 
 // ══════════════════════════════════════════════
-// PAGOS — Órdenes de compra y devoluciones
+// PAGOS — Filtrado de compras
 // ══════════════════════════════════════════════
-describe('pPagosPorOrden', () => {
-  it('suma todos los pagos asociados a una orden', () => {
-    const pagos = [
-      { id: 'p1', ordenId: 'OC-1', monto: 10000 },
-      { id: 'p2', ordenId: 'OC-1', monto: 5000 },
-      { id: 'p3', ordenId: 'OC-2', monto: 20000 },
-    ];
-    expect(pPagosPorOrden('OC-1', pagos)).toBe(15000);
-    expect(pPagosPorOrden('OC-2', pagos)).toBe(20000);
-  });
-  it('retorna 0 si no hay pagos asociados', () => {
-    expect(pPagosPorOrden('OC-99', [])).toBe(0);
-    expect(pPagosPorOrden('OC-99', [{ id: 'p1', ordenId: 'OC-1', monto: 100 }])).toBe(0);
-  });
-  it('ignora pagos con monto no numérico', () => {
-    const pagos = [
-      { id: 'p1', ordenId: 'OC-1', monto: 1000 },
-      { id: 'p2', ordenId: 'OC-1', monto: 'abc' },
-      { id: 'p3', ordenId: 'OC-1', monto: null },
-    ];
-    expect(pPagosPorOrden('OC-1', pagos)).toBe(1000);
-  });
-});
+describe('pFiltrarCompras', () => {
+  const compras = [
+    { id:'1', proveedor:'Sodimac',   descripcion:'Tornillos', facturaNumero:'F-100', obs:'urgente', recibido:true,  devuelto:false },
+    { id:'2', proveedor:'Easy',      descripcion:'Pintura',   facturaNumero:'',      obs:'',       recibido:false, devuelto:false },
+    { id:'3', proveedor:'Sodimac',   descripcion:'Clavos',    facturaNumero:'F-200', obs:'',       recibido:true,  devuelto:true  },
+    { id:'4', proveedor:'Ferretería', descripcion:'Brocas',   facturaNumero:'F-300', obs:'a crédito', recibido:false, devuelto:true },
+  ];
 
-describe('pEstadoDevolucion', () => {
-  const orden = { id: 'OC-1', monto: 50000 };
-  it("'sin-devolver' cuando no hay pagos", () => {
-    expect(pEstadoDevolucion(orden, [])).toBe('sin-devolver');
+  it('sin filtro ni query retorna todo', () => {
+    expect(pFiltrarCompras(compras, '', 'todos')).toHaveLength(4);
   });
-  it("'parcial' cuando el pago es menor al monto", () => {
-    const pagos = [{ id: 'p1', ordenId: 'OC-1', monto: 20000 }];
-    expect(pEstadoDevolucion(orden, pagos)).toBe('parcial');
+  it('filtra por texto en proveedor', () => {
+    expect(pFiltrarCompras(compras, 'sodimac', 'todos')).toHaveLength(2);
   });
-  it("'devuelto' cuando los pagos igualan el monto", () => {
-    const pagos = [{ id: 'p1', ordenId: 'OC-1', monto: 50000 }];
-    expect(pEstadoDevolucion(orden, pagos)).toBe('devuelto');
+  it('filtra por texto en descripción', () => {
+    expect(pFiltrarCompras(compras, 'pintura', 'todos')).toHaveLength(1);
   });
-  it("'devuelto' cuando los pagos exceden el monto (sobrepago)", () => {
-    const pagos = [{ id: 'p1', ordenId: 'OC-1', monto: 60000 }];
-    expect(pEstadoDevolucion(orden, pagos)).toBe('devuelto');
+  it('filtra por texto en factura', () => {
+    expect(pFiltrarCompras(compras, 'F-200', 'todos')).toHaveLength(1);
   });
-  it("'devuelto' cuando varios pagos suman el total", () => {
-    const pagos = [
-      { id: 'p1', ordenId: 'OC-1', monto: 20000 },
-      { id: 'p2', ordenId: 'OC-1', monto: 30000 },
-    ];
-    expect(pEstadoDevolucion(orden, pagos)).toBe('devuelto');
+  it('filtra por texto en obs', () => {
+    expect(pFiltrarCompras(compras, 'urgente', 'todos')).toHaveLength(1);
   });
-});
-
-describe('pCalcularSaldos', () => {
-  it('calcula saldo pendiente por persona', () => {
-    const ordenes = [
-      { id: 'OC-1', pagadoPor: 'Juan', monto: 100000 },
-      { id: 'OC-2', pagadoPor: 'Juan', monto: 50000 },
-      { id: 'OC-3', pagadoPor: 'María', monto: 30000 },
-    ];
-    const pagos = [
-      { id: 'p1', destinatario: 'Juan', monto: 80000 },
-    ];
-    const saldos = pCalcularSaldos(ordenes, pagos);
-    expect(saldos.Juan.adelantado).toBe(150000);
-    expect(saldos.Juan.devuelto).toBe(80000);
-    expect(saldos.Juan.pendiente).toBe(70000);
-    expect(saldos['María'].adelantado).toBe(30000);
-    expect(saldos['María'].devuelto).toBe(0);
-    expect(saldos['María'].pendiente).toBe(30000);
+  it('filtra recibido-pendiente (no recibidos)', () => {
+    const res = pFiltrarCompras(compras, '', 'recibido-pendiente');
+    expect(res).toHaveLength(2);
+    expect(res.every(c => !c.recibido)).toBe(true);
   });
-  it('saldo en cero cuando adelantado === devuelto', () => {
-    const ordenes = [{ id: 'OC-1', pagadoPor: 'Juan', monto: 50000 }];
-    const pagos   = [{ id: 'p1', destinatario: 'Juan', monto: 50000 }];
-    const saldos  = pCalcularSaldos(ordenes, pagos);
-    expect(saldos.Juan.pendiente).toBe(0);
+  it('filtra recibido-ok (recibidos)', () => {
+    const res = pFiltrarCompras(compras, '', 'recibido-ok');
+    expect(res).toHaveLength(2);
+    expect(res.every(c => c.recibido)).toBe(true);
   });
-  it('saldo negativo cuando se devolvió más de lo adelantado', () => {
-    const ordenes = [{ id: 'OC-1', pagadoPor: 'Juan', monto: 10000 }];
-    const pagos   = [{ id: 'p1', destinatario: 'Juan', monto: 15000 }];
-    const saldos  = pCalcularSaldos(ordenes, pagos);
-    expect(saldos.Juan.pendiente).toBe(-5000);
+  it('filtra devuelto-pendiente (sin devolver)', () => {
+    const res = pFiltrarCompras(compras, '', 'devuelto-pendiente');
+    expect(res).toHaveLength(2);
+    expect(res.every(c => !c.devuelto)).toBe(true);
   });
-  it('ignora órdenes / pagos sin persona asignada', () => {
-    const ordenes = [
-      { id: 'OC-1', pagadoPor: '',    monto: 50000 },
-      { id: 'OC-2', pagadoPor: 'Ana', monto: 10000 },
-    ];
-    const pagos = [{ id: 'p1', destinatario: '', monto: 1000 }];
-    const saldos = pCalcularSaldos(ordenes, pagos);
-    expect(Object.keys(saldos)).toEqual(['Ana']);
-    expect(saldos.Ana.adelantado).toBe(10000);
+  it('filtra devuelto-ok (devueltos)', () => {
+    const res = pFiltrarCompras(compras, '', 'devuelto-ok');
+    expect(res).toHaveLength(2);
+    expect(res.every(c => c.devuelto)).toBe(true);
   });
-  it('retorna objeto vacío si no hay datos', () => {
-    expect(pCalcularSaldos([], [])).toEqual({});
+  it('filtra sin-factura', () => {
+    const res = pFiltrarCompras(compras, '', 'sin-factura');
+    expect(res).toHaveLength(1);
+    expect(res[0].id).toBe('2');
   });
-  it('persona con solo pagos recibidos (sin haber adelantado) aparece con saldo negativo', () => {
-    // Caso borde: alguien recibió un pago pero nunca adelantó nada
-    const saldos = pCalcularSaldos([], [{ id: 'p1', destinatario: 'Luis', monto: 5000 }]);
-    expect(saldos.Luis.adelantado).toBe(0);
-    expect(saldos.Luis.devuelto).toBe(5000);
-    expect(saldos.Luis.pendiente).toBe(-5000);
+  it('combina query + filtro', () => {
+    const res = pFiltrarCompras(compras, 'sodimac', 'recibido-ok');
+    expect(res).toHaveLength(2); // ambos Sodimac son recibidos
+  });
+  it('retorna vacío si no hay matches', () => {
+    expect(pFiltrarCompras(compras, 'inexistente', 'todos')).toHaveLength(0);
+  });
+  it('array vacío retorna vacío', () => {
+    expect(pFiltrarCompras([], 'algo', 'todos')).toHaveLength(0);
+  });
+  it('búsqueda es case-insensitive', () => {
+    expect(pFiltrarCompras(compras, 'SODIMAC', 'todos')).toHaveLength(2);
+    expect(pFiltrarCompras(compras, 'PiNtUrA', 'todos')).toHaveLength(1);
   });
 });
