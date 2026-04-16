@@ -2053,6 +2053,7 @@ function entrarSeccion(nombre) {
   if (nombre === 'pagos') {
     if(!rolPuedeVer('pagos')){ volverHome(); return; }
     document.getElementById('seccion-pagos').style.display = 'block';
+    document.getElementById('page-pcompras').classList.add('active');
     document.getElementById('hdr-chip').style.display = 'none';
     setSeccionHeader('Pagos','var(--accent)');
     pRenderCompras();
