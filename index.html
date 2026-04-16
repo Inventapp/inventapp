@@ -1558,141 +1558,86 @@ body.modal-open{overflow:hidden;}
 
 
 <!-- ════════════════════════════════════════════════════
-     SECCION PAGOS — Órdenes de compra y devoluciones
+     SECCION PAGOS — Registro simple de compras
      ════════════════════════════════════════════════════ -->
 <div id="seccion-pagos" style="display:none">
-<nav id="pagos-nav" style="overflow-x:auto;display:flex;gap:4px;padding:0 8px;flex-wrap:nowrap;">
-  <button class="tab active" id="ptab-ordenes" onclick="pNavTo('pordenes')">📝 Órdenes</button>
-  <button class="tab"        id="ptab-pagos"   onclick="pNavTo('ppagos')">💳 Pagos</button>
-</nav>
 <main>
 
-<!-- PAGOS: ÓRDENES DE COMPRA -->
-<div class="page active" id="page-pordenes">
-  <!-- Resumen top -->
-  <div id="p-ord-resumen" class="sum-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px;"></div>
-
-  <!-- Formulario nueva orden (solo admin/ventas) -->
-  <div id="p-ord-form-wrap" style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:14px;">
-    <div style="font-size:.78rem;color:var(--accent);font-weight:700;margin-bottom:10px;">+ Nueva orden de compra</div>
+<div class="page active" id="page-pcompras">
+  <!-- Formulario nueva compra (solo admin/ventas) -->
+  <div id="p-form-wrap" style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:14px;">
+    <div style="font-size:.78rem;color:var(--accent);font-weight:700;margin-bottom:10px;">+ Registrar compra</div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
       <div>
         <label style="font-size:.66rem;color:var(--muted);">Fecha</label>
-        <input type="date" id="p-ord-fecha" style="width:100%;margin-top:3px;">
+        <input type="date" id="p-fecha" style="width:100%;margin-top:3px;">
       </div>
       <div>
         <label style="font-size:.66rem;color:var(--muted);">Monto (CLP)</label>
-        <input type="number" id="p-ord-monto" min="0" step="1" placeholder="0" style="width:100%;margin-top:3px;">
+        <input type="number" id="p-monto" min="0" step="1" placeholder="0" style="width:100%;margin-top:3px;">
       </div>
-      <div>
+      <div style="grid-column:1/-1;">
         <label style="font-size:.66rem;color:var(--muted);">Proveedor</label>
-        <input type="text" id="p-ord-proveedor" list="p-ord-prov-dl" placeholder="ej: Sodimac" style="width:100%;margin-top:3px;">
-        <datalist id="p-ord-prov-dl"></datalist>
-      </div>
-      <div>
-        <label style="font-size:.66rem;color:var(--muted);">Pagado por</label>
-        <input type="text" id="p-ord-pagado-por" list="p-ord-pers-dl" placeholder="Nombre" style="width:100%;margin-top:3px;">
-        <datalist id="p-ord-pers-dl"></datalist>
+        <input type="text" id="p-proveedor" list="p-prov-dl" placeholder="ej: Sodimac" style="width:100%;margin-top:3px;">
+        <datalist id="p-prov-dl"></datalist>
       </div>
       <div style="grid-column:1/-1;">
         <label style="font-size:.66rem;color:var(--muted);">Descripción</label>
-        <input type="text" id="p-ord-desc" placeholder="ej: Martillos, clavos, pintura" style="width:100%;margin-top:3px;">
+        <input type="text" id="p-desc" placeholder="ej: Martillos, clavos, pintura" style="width:100%;margin-top:3px;">
       </div>
-      <div>
-        <label style="font-size:.66rem;color:var(--muted);">N° factura (opc.)</label>
-        <input type="text" id="p-ord-factura" placeholder="F-12345" style="width:100%;margin-top:3px;">
+      <div style="grid-column:1/-1;">
+        <label style="font-size:.66rem;color:var(--muted);">N° factura (puedes agregarlo después)</label>
+        <input type="text" id="p-factura" placeholder="F-12345 (opcional)" style="width:100%;margin-top:3px;">
       </div>
       <div>
         <label style="font-size:.66rem;color:var(--muted);">Producto recibido</label>
-        <select id="p-ord-recibido" style="width:100%;margin-top:3px;">
+        <select id="p-recibido" style="width:100%;margin-top:3px;">
           <option value="pendiente">⏳ Pendiente</option>
           <option value="recibido">✓ Recibido</option>
         </select>
       </div>
+      <div>
+        <label style="font-size:.66rem;color:var(--muted);">Devuelto</label>
+        <select id="p-devuelto" style="width:100%;margin-top:3px;">
+          <option value="pendiente">⏳ Pendiente</option>
+          <option value="si">✓ Sí</option>
+        </select>
+      </div>
       <div style="grid-column:1/-1;">
         <label style="font-size:.66rem;color:var(--muted);">Observaciones (opc.)</label>
-        <input type="text" id="p-ord-obs" placeholder="" style="width:100%;margin-top:3px;">
+        <input type="text" id="p-obs" placeholder="" style="width:100%;margin-top:3px;">
       </div>
     </div>
     <div style="display:flex;gap:8px;margin-top:12px;">
-      <button class="btn btn-primary" style="flex:1;" onclick="pAddOrden()">✓ Guardar orden</button>
-      <button class="btn btn-secondary" onclick="pLimpiarFormOrden()">Limpiar</button>
+      <button class="btn btn-primary" style="flex:1;" onclick="pAddCompra()">✓ Guardar compra</button>
+      <button class="btn btn-secondary" onclick="pLimpiarForm()">Limpiar</button>
     </div>
   </div>
 
-  <!-- Filtros -->
+  <!-- Filtros y búsqueda -->
   <div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap;">
-    <input type="text" id="p-ord-buscar" placeholder="🔍 Buscar proveedor, persona, desc…"
-      oninput="pRenderOrdenes()" style="flex:1;min-width:160px;">
-    <select id="p-ord-filtro-estado" onchange="pRenderOrdenes()" style="flex:0 0 auto;">
+    <input type="text" id="p-buscar" placeholder="🔍 Buscar proveedor, desc, factura, obs…"
+      oninput="pRenderCompras()" style="flex:1;min-width:160px;">
+    <select id="p-filtro-estado" onchange="pRenderCompras()" style="flex:0 0 auto;">
       <option value="todos">Todos</option>
-      <option value="pendiente">⏳ Pendientes</option>
-      <option value="recibido">✓ Recibidos</option>
-      <option value="sin-devolver">🔴 Sin devolver</option>
-      <option value="parcial">🟡 Devuelto parcial</option>
-      <option value="devuelto">🟢 Devuelto total</option>
+      <option value="recibido-pendiente">⏳ Sin recibir</option>
+      <option value="recibido-ok">✓ Recibidos</option>
+      <option value="devuelto-pendiente">🔴 Sin devolver</option>
+      <option value="devuelto-ok">🟢 Devueltos</option>
+      <option value="sin-factura">📄 Sin factura</option>
     </select>
   </div>
 
-  <div id="p-ord-lista"></div>
-</div>
+  <!-- Contador y listado paginado -->
+  <div id="p-lista-info" style="font-size:.66rem;color:var(--muted);margin-bottom:6px;"></div>
+  <div id="p-lista"></div>
 
-<!-- PAGOS: DEVOLUCIONES / REGISTRO DE PAGOS -->
-<div class="page" id="page-ppagos">
-  <!-- Saldos por persona: el core del problema que estamos resolviendo -->
-  <div style="font-size:.72rem;color:var(--muted);margin-bottom:6px;">SALDOS POR PERSONA</div>
-  <div id="p-pag-saldos" style="margin-bottom:16px;"></div>
-
-  <!-- Form registrar pago (solo admin/ventas) -->
-  <div id="p-pag-form-wrap" style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:14px;">
-    <div style="font-size:.78rem;color:var(--accent);font-weight:700;margin-bottom:10px;">+ Registrar devolución / pago</div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-      <div>
-        <label style="font-size:.66rem;color:var(--muted);">Fecha</label>
-        <input type="date" id="p-pag-fecha" style="width:100%;margin-top:3px;">
-      </div>
-      <div>
-        <label style="font-size:.66rem;color:var(--muted);">Monto (CLP)</label>
-        <input type="number" id="p-pag-monto" min="0" step="1" placeholder="0" style="width:100%;margin-top:3px;">
-      </div>
-      <div>
-        <label style="font-size:.66rem;color:var(--muted);">Destinatario</label>
-        <input type="text" id="p-pag-dest" list="p-pag-pers-dl" placeholder="Nombre" style="width:100%;margin-top:3px;">
-        <datalist id="p-pag-pers-dl"></datalist>
-      </div>
-      <div>
-        <label style="font-size:.66rem;color:var(--muted);">Método</label>
-        <select id="p-pag-metodo" style="width:100%;margin-top:3px;">
-          <option value="transferencia">🏦 Transferencia</option>
-          <option value="efectivo">💵 Efectivo</option>
-          <option value="cheque">📄 Cheque</option>
-          <option value="otro">Otro</option>
-        </select>
-      </div>
-      <div style="grid-column:1/-1;">
-        <label style="font-size:.66rem;color:var(--muted);">Orden asociada (opc.)</label>
-        <select id="p-pag-orden" style="width:100%;margin-top:3px;">
-          <option value="">— Ninguna (abono libre) —</option>
-        </select>
-      </div>
-      <div style="grid-column:1/-1;">
-        <label style="font-size:.66rem;color:var(--muted);">Observaciones (opc.)</label>
-        <input type="text" id="p-pag-obs" placeholder="" style="width:100%;margin-top:3px;">
-      </div>
-    </div>
-    <div style="display:flex;gap:8px;margin-top:12px;">
-      <button class="btn btn-primary" style="flex:1;" onclick="pAddPago()">✓ Registrar pago</button>
-      <button class="btn btn-secondary" onclick="pLimpiarFormPago()">Limpiar</button>
-    </div>
+  <!-- Paginación -->
+  <div id="p-pager" style="display:none;margin-top:12px;gap:8px;justify-content:center;align-items:center;">
+    <button class="btn btn-secondary" id="p-pager-prev" onclick="pPagerPrev()" style="padding:6px 10px;font-size:.72rem;">‹ Anterior</button>
+    <span id="p-pager-label" style="font-size:.72rem;color:var(--muted);min-width:90px;text-align:center;"></span>
+    <button class="btn btn-secondary" id="p-pager-next" onclick="pPagerNext()" style="padding:6px 10px;font-size:.72rem;">Siguiente ›</button>
   </div>
-
-  <!-- Historial de pagos -->
-  <div style="font-size:.72rem;color:var(--muted);margin-bottom:6px;">HISTORIAL DE PAGOS</div>
-  <div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap;">
-    <input type="text" id="p-pag-buscar" placeholder="🔍 Buscar destinatario, obs…"
-      oninput="pRenderPagos()" style="flex:1;min-width:160px;">
-  </div>
-  <div id="p-pag-lista"></div>
 </div>
 
 </main>
@@ -1853,10 +1798,9 @@ async function fbSaveMat() {
 // ── PAGOS: persistencia local + Firestore ─────────────
 function lsGuardarPagos() {
   try {
-    localStorage.setItem(LS_PAGOS, JSON.stringify({ pagosOrdenes, pagosRegistros }));
+    localStorage.setItem(LS_PAGOS, JSON.stringify({ pagosCompras }));
   } catch(e) { console.warn('localStorage pagos:', e); }
-  _IDB.set(LS_PAGOS, { pagosOrdenes, pagosRegistros });
-  // Debounced Firestore write
+  _IDB.set(LS_PAGOS, { pagosCompras });
   clearTimeout(_saveTimerPag);
   _saveTimerPag = setTimeout(() => fbSavePagos(), 800);
 }
@@ -1867,7 +1811,7 @@ async function fbSavePagos() {
   try {
     await window._fbSetDoc(
       window._fbDoc(window._fbDb, 'inventario', 'pagos'),
-      { pagosOrdenes, pagosRegistros, updatedAt: new Date().toISOString(), nonce }
+      { pagosCompras, updatedAt: new Date().toISOString(), nonce }
     );
   } catch(e) {
     console.warn('Firestore save error (pagos):', e);
@@ -1880,18 +1824,13 @@ function lsCargarPagos() {
     const raw = localStorage.getItem(LS_PAGOS);
     if(raw) {
       const data = JSON.parse(raw);
-      if(Array.isArray(data.pagosOrdenes))  pagosOrdenes  = data.pagosOrdenes;
-      if(Array.isArray(data.pagosRegistros)) pagosRegistros = data.pagosRegistros;
+      if(Array.isArray(data.pagosCompras)) pagosCompras = data.pagosCompras;
     }
   } catch(e) { console.warn('Error leyendo pagos de localStorage:', e); }
-  // Fallback IndexedDB
-  if(!pagosOrdenes.length && !pagosRegistros.length) {
+  if(!pagosCompras.length) {
     (async () => {
       const d = await _IDB.get(LS_PAGOS);
-      if(d) {
-        if(Array.isArray(d.pagosOrdenes))  pagosOrdenes  = d.pagosOrdenes;
-        if(Array.isArray(d.pagosRegistros)) pagosRegistros = d.pagosRegistros;
-      }
+      if(d && Array.isArray(d.pagosCompras)) pagosCompras = d.pagosCompras;
     })();
   }
 }
@@ -1972,14 +1911,12 @@ let _vehActual = null; // patente del vehículo en ficha activa
 let _vevTipo   = null; // tipo de evento seleccionado en modal
 
 // ── PAGOS state ──
-// pagosOrdenes: órdenes de compra realizadas a proveedores.
-//   [{id, fecha, proveedor, descripcion, monto, pagadoPor, estado, fechaRecepcion, facturaNumero, obs, createdBy, createdAt}]
-//   estado: 'pendiente' | 'recibido'  (producto físico llegó o no)
-// pagosRegistros: devoluciones de dinero al que adelantó la compra.
-//   [{id, fecha, monto, ordenId, destinatario, metodo, obs, createdBy, createdAt}]
-let pagosOrdenes  = [];
-let pagosRegistros = [];
+// pagosCompras: registro simple de compras realizadas a proveedores.
+//   [{id, fecha, monto, proveedor, descripcion, facturaNumero, recibido, fechaRecepcion,
+//     devuelto, fechaDevolucion, obs, createdBy, createdAt}]
+let pagosCompras = [];
 let _saveTimerPag = null;
+let _pPage = 0; // página actual del listado
 
 function sanitizar(str) {
   if (!str) return "";
@@ -2118,7 +2055,7 @@ function entrarSeccion(nombre) {
     document.getElementById('seccion-pagos').style.display = 'block';
     document.getElementById('hdr-chip').style.display = 'none';
     setSeccionHeader('Pagos','var(--accent)');
-    pNavTo('pordenes');
+    pRenderCompras();
   } else if (nombre === 'vehiculos') {
     document.getElementById('seccion-vehiculos').style.display = 'block';
     document.getElementById('hdr-chip').style.display = 'none';
@@ -7690,19 +7627,10 @@ window._fbSubscribe = function() {
       if(!snap.exists()) return;
       const data = snap.data();
       if(data.nonce && _myPagNonces.has(data.nonce)) { _myPagNonces.delete(data.nonce); return; }
-      if(Array.isArray(data.pagosOrdenes))   pagosOrdenes   = data.pagosOrdenes;
-      if(Array.isArray(data.pagosRegistros)) pagosRegistros = data.pagosRegistros;
-      try {
-        localStorage.setItem(LS_PAGOS, JSON.stringify({ pagosOrdenes, pagosRegistros }));
-      } catch(e) {}
-      _IDB.set(LS_PAGOS, { pagosOrdenes, pagosRegistros });
-      // Re-render si la sección está activa
-      const activeP = document.querySelector('#seccion-pagos .page.active');
-      if(activeP) {
-        const pid = activeP.id.replace('page-','');
-        if(pid === 'pordenes') pRenderOrdenes();
-        if(pid === 'ppagos')   pRenderPagos();
-      }
+      if(Array.isArray(data.pagosCompras)) pagosCompras = data.pagosCompras;
+      try { localStorage.setItem(LS_PAGOS, JSON.stringify({ pagosCompras })); } catch(e) {}
+      _IDB.set(LS_PAGOS, { pagosCompras });
+      if(document.getElementById('seccion-pagos').style.display !== 'none') pRenderCompras();
     }
   ));
 
@@ -8259,186 +8187,114 @@ function menuUrnEditarOPs() {
 }
 
 // ════════════════════════════════════════════════════
-// PAGOS — Órdenes de compra + devoluciones
+// PAGOS — Registro simple de compras
 // ════════════════════════════════════════════════════
-// Modelo:
-//   pagosOrdenes[]   → compras realizadas a proveedores (producto pendiente/recibido)
-//   pagosRegistros[] → devoluciones de dinero al que adelantó la compra
-// Una persona adelanta plata comprando para la empresa; la empresa le "debe".
-// Cuando se le devuelve (parcial o total), se registra aquí para control.
+// Un solo array: pagosCompras[]. Cada registro = una compra.
+// Campos: fecha, monto, proveedor, descripcion, facturaNumero,
+//   recibido (bool), fechaRecepcion, devuelto (bool), fechaDevolucion, obs.
+const P_PAGE_SIZE = 20;
 
-// Navegación entre tabs de la sección Pagos
-const P_TABS = { pordenes: 'ptab-ordenes', ppagos: 'ptab-pagos' };
-function pNavTo(name) {
-  closeMenu();
-  if(!rolPuedeVer('pagos')) { volverHome(); return; }
-  document.querySelectorAll('#seccion-pagos .page').forEach(p => p.classList.remove('active'));
-  const target = document.getElementById('page-' + name);
-  if(!target) return;
-  target.classList.add('active');
-  Object.values(P_TABS).forEach(id => {
-    const el = document.getElementById(id); if(el) el.classList.remove('active');
-  });
-  const at = document.getElementById(P_TABS[name]); if(at) at.classList.add('active');
-  if(name === 'pordenes') pRenderOrdenes();
-  if(name === 'ppagos')   pRenderPagos();
-}
-
-// ── Lógica pura (fácil de testear) ───────────────────
-// Suma pagada por orden (todos los pagos asociados a esta orden)
-function pPagosPorOrden(ordenId) {
-  return pagosRegistros
-    .filter(p => p.ordenId === ordenId)
-    .reduce((acc, p) => acc + (Number(p.monto) || 0), 0);
-}
-// Estado de devolución de una orden: 'sin-devolver' | 'parcial' | 'devuelto'
-function pEstadoDevolucion(orden) {
-  const pagado = pPagosPorOrden(orden.id);
-  const total  = Number(orden.monto) || 0;
-  if(pagado <= 0)       return 'sin-devolver';
-  if(pagado >= total)   return 'devuelto';
-  return 'parcial';
-}
-// Saldo por persona: cuánto adelantó (órdenes) vs cuánto recibió (pagos) = deuda
-// Considera solo órdenes sin asociar pago y pagos asociados a esa persona
-// Regla simple: suma adelantos de la persona - suma pagos recibidos por esa persona
-function pCalcularSaldos() {
-  const saldos = {}; // {persona: {adelantado, devuelto, pendiente}}
-  pagosOrdenes.forEach(o => {
-    const k = (o.pagadoPor || '').trim();
-    if(!k) return;
-    if(!saldos[k]) saldos[k] = {adelantado:0, devuelto:0, pendiente:0};
-    saldos[k].adelantado += Number(o.monto) || 0;
-  });
-  pagosRegistros.forEach(p => {
-    const k = (p.destinatario || '').trim();
-    if(!k) return;
-    if(!saldos[k]) saldos[k] = {adelantado:0, devuelto:0, pendiente:0};
-    saldos[k].devuelto += Number(p.monto) || 0;
-  });
-  Object.values(saldos).forEach(s => { s.pendiente = s.adelantado - s.devuelto; });
-  return saldos;
-}
-// Totales del mes actual (órdenes + pagos)
-function pTotalesDelMes() {
-  const hoy = new Date();
-  const yyyymm = hoy.getFullYear() + '-' + String(hoy.getMonth()+1).padStart(2,'0');
-  const ordMes = pagosOrdenes
-    .filter(o => (o.fecha||'').startsWith(yyyymm))
-    .reduce((a,o) => a + (Number(o.monto)||0), 0);
-  const pagMes = pagosRegistros
-    .filter(p => (p.fecha||'').startsWith(yyyymm))
-    .reduce((a,p) => a + (Number(p.monto)||0), 0);
-  return { ordMes, pagMes };
-}
-
-// ── RENDER: Órdenes de compra ────────────────────────
-function pRenderOrdenes() {
-  // Resumen top
-  const { ordMes, pagMes } = pTotalesDelMes();
-  const saldos = pCalcularSaldos();
-  const totalPendiente = Object.values(saldos).reduce((a,s) => a + Math.max(0, s.pendiente), 0);
-  const resumen = document.getElementById('p-ord-resumen');
-  if(resumen) {
-    resumen.innerHTML = `
-      <div class="sum-card" style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px;text-align:center;">
-        <div style="font-size:1.05rem;font-weight:700;color:var(--accent);">$${fmtNum(ordMes)}</div>
-        <div style="font-size:.62rem;color:var(--muted);">Compras del mes</div>
-      </div>
-      <div class="sum-card" style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px;text-align:center;">
-        <div style="font-size:1.05rem;font-weight:700;color:#4caf50;">$${fmtNum(pagMes)}</div>
-        <div style="font-size:.62rem;color:var(--muted);">Devuelto del mes</div>
-      </div>
-      <div class="sum-card" style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px;text-align:center;">
-        <div style="font-size:1.05rem;font-weight:700;color:${totalPendiente>0?'#f44336':'var(--text)'};">$${fmtNum(totalPendiente)}</div>
-        <div style="font-size:.62rem;color:var(--muted);">Saldo pendiente</div>
-      </div>
-    `;
-  }
-
-  // Ocultar form si el rol no puede editar
-  const puedeEditar = rolPuedeEditarPagos();
-  const formWrap = document.getElementById('p-ord-form-wrap');
-  if(formWrap) formWrap.style.display = puedeEditar ? '' : 'none';
-  const formPag = document.getElementById('p-pag-form-wrap');
-  if(formPag) formPag.style.display = puedeEditar ? '' : 'none';
-
-  // Fecha default hoy
-  const fechaInput = document.getElementById('p-ord-fecha');
-  if(fechaInput && !fechaInput.value) fechaInput.value = new Date().toISOString().slice(0,10);
-
-  // Autocomplete usuario actual como "pagadoPor" si vacío
-  const pagInput = document.getElementById('p-ord-pagado-por');
-  if(pagInput && !pagInput.value && window._currentUser) {
-    pagInput.placeholder = window._currentUser.nombre || window._currentUser.email || 'Nombre';
-  }
-
-  // Datalist proveedores previos + personas
-  const provs = [...new Set(pagosOrdenes.map(o => o.proveedor).filter(Boolean))];
-  const provDl = document.getElementById('p-ord-prov-dl');
-  if(provDl) provDl.innerHTML = provs.map(p => `<option value="${sanitizar(p)}">`).join('');
-  const pers = [...new Set([
-    ...pagosOrdenes.map(o => o.pagadoPor),
-    ...pagosRegistros.map(p => p.destinatario),
-    ...workers.map(w => workerName(w)),
-  ].filter(Boolean))];
-  const persDl = document.getElementById('p-ord-pers-dl');
-  if(persDl) persDl.innerHTML = pers.map(p => `<option value="${sanitizar(p)}">`).join('');
-
-  // Filtrado
-  const q = (document.getElementById('p-ord-buscar')?.value || '').toLowerCase().trim();
-  const filtroEstado = document.getElementById('p-ord-filtro-estado')?.value || 'todos';
-  let lista = pagosOrdenes.slice().sort((a,b) => (b.fecha||'').localeCompare(a.fecha||''));
-
-  if(q) {
-    lista = lista.filter(o =>
-      (o.proveedor||'').toLowerCase().includes(q) ||
-      (o.pagadoPor||'').toLowerCase().includes(q) ||
-      (o.descripcion||'').toLowerCase().includes(q) ||
-      (o.facturaNumero||'').toLowerCase().includes(q)
+// ── Filtrado (lógica pura, testeable) ─────────────────
+function pFiltrarCompras(compras, query, filtro) {
+  let lista = compras.slice();
+  if(query) {
+    const q = query.toLowerCase();
+    lista = lista.filter(c =>
+      (c.proveedor||'').toLowerCase().includes(q) ||
+      (c.descripcion||'').toLowerCase().includes(q) ||
+      (c.facturaNumero||'').toLowerCase().includes(q) ||
+      (c.obs||'').toLowerCase().includes(q)
     );
   }
-  if(filtroEstado === 'pendiente' || filtroEstado === 'recibido') {
-    lista = lista.filter(o => (o.estado || 'pendiente') === filtroEstado);
-  } else if(['sin-devolver','parcial','devuelto'].includes(filtroEstado)) {
-    lista = lista.filter(o => pEstadoDevolucion(o) === filtroEstado);
+  if(filtro === 'recibido-pendiente') lista = lista.filter(c => !c.recibido);
+  else if(filtro === 'recibido-ok')   lista = lista.filter(c => c.recibido);
+  else if(filtro === 'devuelto-pendiente') lista = lista.filter(c => !c.devuelto);
+  else if(filtro === 'devuelto-ok')   lista = lista.filter(c => c.devuelto);
+  else if(filtro === 'sin-factura')   lista = lista.filter(c => !c.facturaNumero);
+  return lista;
+}
+
+// ── RENDER ────────────────────────────────────────────
+function pRenderCompras() {
+  // Ocultar form si el rol no puede editar
+  const puedeEditar = rolPuedeEditarPagos();
+  const formWrap = document.getElementById('p-form-wrap');
+  if(formWrap) formWrap.style.display = puedeEditar ? '' : 'none';
+
+  // Fecha default hoy
+  const fechaInput = document.getElementById('p-fecha');
+  if(fechaInput && !fechaInput.value) fechaInput.value = new Date().toISOString().slice(0,10);
+
+  // Datalist proveedores previos
+  const provs = [...new Set(pagosCompras.map(c => c.proveedor).filter(Boolean))];
+  const provDl = document.getElementById('p-prov-dl');
+  if(provDl) provDl.innerHTML = provs.map(p => `<option value="${sanitizar(p)}">`).join('');
+
+  // Filtrado
+  const q = (document.getElementById('p-buscar')?.value || '').trim();
+  const filtro = document.getElementById('p-filtro-estado')?.value || 'todos';
+  let lista = pFiltrarCompras(pagosCompras, q, filtro);
+  lista.sort((a,b) => (b.fecha||'').localeCompare(a.fecha||''));
+
+  // Info
+  const info = document.getElementById('p-lista-info');
+  if(info) info.textContent = lista.length ? `${lista.length} compra${lista.length>1?'s':''} encontrada${lista.length>1?'s':''}` : '';
+
+  // Paginación
+  const totalPages = Math.ceil(lista.length / P_PAGE_SIZE) || 1;
+  if(_pPage >= totalPages) _pPage = totalPages - 1;
+  if(_pPage < 0) _pPage = 0;
+  const start = _pPage * P_PAGE_SIZE;
+  const pageItems = lista.slice(start, start + P_PAGE_SIZE);
+
+  const pager = document.getElementById('p-pager');
+  if(pager) {
+    pager.style.display = totalPages > 1 ? 'flex' : 'none';
+    const lbl = document.getElementById('p-pager-label');
+    if(lbl) lbl.textContent = `${_pPage+1} / ${totalPages}`;
+    const prev = document.getElementById('p-pager-prev');
+    if(prev) prev.disabled = _pPage <= 0;
+    const next = document.getElementById('p-pager-next');
+    if(next) next.disabled = _pPage >= totalPages - 1;
   }
 
-  const cont = document.getElementById('p-ord-lista');
+  // Render lista
+  const cont = document.getElementById('p-lista');
   if(!cont) return;
-  if(!lista.length) {
-    cont.innerHTML = '<div style="text-align:center;padding:24px;color:var(--muted);font-size:.8rem;">No hay órdenes que mostrar.</div>';
+  if(!pageItems.length) {
+    cont.innerHTML = '<div style="text-align:center;padding:24px;color:var(--muted);font-size:.8rem;">No hay compras registradas.</div>';
     return;
   }
 
-  cont.innerHTML = lista.map(o => {
-    const devEstado = pEstadoDevolucion(o);
-    const devPagado = pPagosPorOrden(o.id);
-    const prodOk = (o.estado || 'pendiente') === 'recibido';
-    const devColor = devEstado === 'devuelto' ? '#4caf50' : devEstado === 'parcial' ? '#ff9800' : '#f44336';
-    const devLabel = devEstado === 'devuelto' ? '🟢 Devuelto' : devEstado === 'parcial' ? `🟡 Parcial (${fmtNum(devPagado)}/${fmtNum(o.monto)})` : '🔴 Sin devolver';
+  cont.innerHTML = pageItems.map(c => {
+    const recColor = c.recibido ? '#1b5e20' : '#b71c1c';
+    const recLabel = c.recibido ? '✓ Recibido' : '⏳ Pendiente';
+    const devColor = c.devuelto ? '#1b5e20' : '#b71c1c';
+    const devLabel = c.devuelto ? '✓ Devuelto' + (c.fechaDevolucion ? ' ('+fmtFecha(c.fechaDevolucion)+')' : '') : '⏳ Sin devolver';
     return `
       <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:8px;">
         <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:6px;">
           <div style="min-width:0;flex:1;">
-            <div style="font-weight:700;font-size:.88rem;color:var(--text);">${sanitizar(o.proveedor || '—')}</div>
-            <div style="font-size:.72rem;color:var(--muted);margin-top:2px;">${fmtFecha(o.fecha)} · ${sanitizar(o.pagadoPor || '—')}</div>
+            <div style="font-weight:700;font-size:.88rem;color:var(--text);">${sanitizar(c.proveedor || '—')}</div>
+            <div style="font-size:.72rem;color:var(--muted);margin-top:2px;">${fmtFecha(c.fecha)}</div>
           </div>
           <div style="text-align:right;flex-shrink:0;">
-            <div style="font-weight:700;font-size:1rem;color:var(--accent);">$${fmtNum(o.monto||0)}</div>
+            <div style="font-weight:700;font-size:1rem;color:var(--accent);">$${fmtNum(c.monto||0)}</div>
           </div>
         </div>
-        ${o.descripcion ? `<div style="font-size:.76rem;color:var(--text);margin-bottom:6px;">${sanitizar(o.descripcion)}</div>` : ''}
-        <div style="display:flex;gap:6px;flex-wrap:wrap;font-size:.68rem;margin-bottom:8px;">
-          <span style="padding:2px 6px;border-radius:4px;background:${prodOk?'#1b5e20':'#b71c1c'};color:#fff;">${prodOk?'✓ Producto recibido':'⏳ Producto pendiente'}</span>
+        ${c.descripcion ? `<div style="font-size:.76rem;color:var(--text);margin-bottom:6px;">${sanitizar(c.descripcion)}</div>` : ''}
+        <div style="display:flex;gap:6px;flex-wrap:wrap;font-size:.68rem;margin-bottom:6px;">
+          <span style="padding:2px 6px;border-radius:4px;background:${recColor};color:#fff;">${recLabel}</span>
           <span style="padding:2px 6px;border-radius:4px;background:${devColor};color:#fff;">${devLabel}</span>
-          ${o.facturaNumero ? `<span style="padding:2px 6px;border-radius:4px;background:var(--border);color:var(--text);">📄 ${sanitizar(o.facturaNumero)}</span>` : ''}
+          ${c.facturaNumero ? `<span style="padding:2px 6px;border-radius:4px;background:var(--border);color:var(--text);">📄 ${sanitizar(c.facturaNumero)}</span>` : `<span style="padding:2px 6px;border-radius:4px;background:var(--border);color:var(--muted);">Sin factura</span>`}
         </div>
-        ${o.obs ? `<div style="font-size:.7rem;color:var(--muted);font-style:italic;margin-bottom:6px;">${sanitizar(o.obs)}</div>` : ''}
+        ${c.obs ? `<div style="font-size:.7rem;color:var(--muted);font-style:italic;margin-bottom:6px;">${sanitizar(c.obs)}</div>` : ''}
         ${puedeEditar ? `
           <div style="display:flex;gap:6px;flex-wrap:wrap;">
-            ${!prodOk ? `<button class="btn btn-secondary" style="flex:1;font-size:.7rem;padding:6px 8px;" onclick="pMarcarRecibido('${o.id}')">✓ Marcar recibido</button>` : ''}
-            <button class="btn btn-secondary" style="flex:1;font-size:.7rem;padding:6px 8px;color:#f44336;" onclick="pDeleteOrden('${o.id}')">🗑 Eliminar</button>
+            ${!c.recibido ? `<button class="btn btn-secondary" style="flex:1;font-size:.68rem;padding:5px 8px;" onclick="pMarcarRecibido('${c.id}')">✓ Recibido</button>` : ''}
+            ${!c.devuelto ? `<button class="btn btn-secondary" style="flex:1;font-size:.68rem;padding:5px 8px;" onclick="pMarcarDevuelto('${c.id}')">✓ Devuelto</button>` : ''}
+            ${!c.facturaNumero ? `<button class="btn btn-secondary" style="flex:1;font-size:.68rem;padding:5px 8px;" onclick="pAgregarFactura('${c.id}')">📄 Factura</button>` : ''}
+            <button class="btn btn-secondary" style="font-size:.68rem;padding:5px 8px;color:#f44336;" onclick="pDeleteCompra('${c.id}')">🗑</button>
           </div>
         ` : ''}
       </div>
@@ -8446,227 +8302,93 @@ function pRenderOrdenes() {
   }).join('');
 }
 
-// ── RENDER: Pagos / devoluciones + saldos por persona ─
-function pRenderPagos() {
-  // Saldos por persona
-  const saldos = pCalcularSaldos();
-  const cont = document.getElementById('p-pag-saldos');
-  if(cont) {
-    const entries = Object.entries(saldos).sort((a,b) => b[1].pendiente - a[1].pendiente);
-    if(!entries.length) {
-      cont.innerHTML = '<div style="padding:16px;color:var(--muted);font-size:.78rem;text-align:center;">Sin órdenes registradas aún.</div>';
-    } else {
-      cont.innerHTML = entries.map(([persona, s]) => {
-        const color = s.pendiente > 0 ? '#f44336' : s.pendiente < 0 ? '#ff9800' : '#4caf50';
-        const etiq  = s.pendiente > 0 ? 'Por devolver' : s.pendiente < 0 ? 'A favor empresa' : 'Saldo en cero';
-        return `
-          <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:6px;">
-            <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
-              <div style="font-weight:700;font-size:.82rem;">${sanitizar(persona)}</div>
-              <div style="text-align:right;">
-                <div style="font-weight:700;font-size:.95rem;color:${color};">$${fmtNum(Math.abs(s.pendiente))}</div>
-                <div style="font-size:.6rem;color:var(--muted);">${etiq}</div>
-              </div>
-            </div>
-            <div style="display:flex;gap:10px;margin-top:4px;font-size:.66rem;color:var(--muted);">
-              <span>Adelantó: <b>$${fmtNum(s.adelantado)}</b></span>
-              <span>Recibió: <b>$${fmtNum(s.devuelto)}</b></span>
-            </div>
-          </div>
-        `;
-      }).join('');
-    }
-  }
+// ── PAGINACIÓN ────────────────────────────────────────
+function pPagerPrev() { if(_pPage > 0) { _pPage--; pRenderCompras(); } }
+function pPagerNext() { _pPage++; pRenderCompras(); }
 
-  // Fecha default hoy
-  const fechaInput = document.getElementById('p-pag-fecha');
-  if(fechaInput && !fechaInput.value) fechaInput.value = new Date().toISOString().slice(0,10);
+// ── ACCIONES ──────────────────────────────────────────
+function pAddCompra() {
+  if(!rolPuedeEditarPagos()) return showToast('No tienes permiso','error');
+  const fecha     = document.getElementById('p-fecha').value;
+  const monto     = Number(document.getElementById('p-monto').value);
+  const proveedor = document.getElementById('p-proveedor').value.trim();
+  const desc      = document.getElementById('p-desc').value.trim();
+  const factura   = document.getElementById('p-factura').value.trim();
+  const recibido  = document.getElementById('p-recibido').value === 'recibido';
+  const devuelto  = document.getElementById('p-devuelto').value === 'si';
+  const obs       = document.getElementById('p-obs').value.trim();
 
-  // Datalist personas
-  const pers = [...new Set([
-    ...pagosOrdenes.map(o => o.pagadoPor),
-    ...pagosRegistros.map(p => p.destinatario),
-    ...workers.map(w => workerName(w)),
-  ].filter(Boolean))];
-  const persDl = document.getElementById('p-pag-pers-dl');
-  if(persDl) persDl.innerHTML = pers.map(p => `<option value="${sanitizar(p)}">`).join('');
+  if(!fecha)               return showToast('Ingresa fecha','error');
+  if(!monto || monto <= 0) return showToast('Monto debe ser mayor a 0','error');
+  if(!proveedor)           return showToast('Ingresa proveedor','error');
+  if(!desc)                return showToast('Ingresa descripción','error');
 
-  // Dropdown órdenes disponibles (no devueltas totalmente)
-  const ordSel = document.getElementById('p-pag-orden');
-  if(ordSel) {
-    const disponibles = pagosOrdenes
-      .filter(o => pEstadoDevolucion(o) !== 'devuelto')
-      .sort((a,b) => (b.fecha||'').localeCompare(a.fecha||''));
-    const current = ordSel.value;
-    ordSel.innerHTML = '<option value="">— Ninguna (abono libre) —</option>' +
-      disponibles.map(o => {
-        const pagado = pPagosPorOrden(o.id);
-        const resta = (Number(o.monto)||0) - pagado;
-        return `<option value="${o.id}">${fmtFecha(o.fecha)} · ${sanitizar(o.proveedor||'—')} · ${sanitizar(o.pagadoPor||'—')} · resta $${fmtNum(resta)}</option>`;
-      }).join('');
-    if(current) ordSel.value = current;
-  }
-
-  // Historial
-  const q = (document.getElementById('p-pag-buscar')?.value || '').toLowerCase().trim();
-  let lista = pagosRegistros.slice().sort((a,b) => (b.fecha||'').localeCompare(a.fecha||''));
-  if(q) {
-    lista = lista.filter(p =>
-      (p.destinatario||'').toLowerCase().includes(q) ||
-      (p.obs||'').toLowerCase().includes(q)
-    );
-  }
-  const listaEl = document.getElementById('p-pag-lista');
-  if(!listaEl) return;
-  const puedeEditar = rolPuedeEditarPagos();
-  if(!lista.length) {
-    listaEl.innerHTML = '<div style="text-align:center;padding:16px;color:var(--muted);font-size:.78rem;">No hay pagos registrados.</div>';
-    return;
-  }
-  const metodoIcon = { transferencia:'🏦', efectivo:'💵', cheque:'📄', otro:'💳' };
-  listaEl.innerHTML = lista.map(p => {
-    const orden = p.ordenId ? pagosOrdenes.find(o => o.id === p.ordenId) : null;
-    return `
-      <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:6px;">
-        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
-          <div style="min-width:0;flex:1;">
-            <div style="font-weight:700;font-size:.82rem;">${metodoIcon[p.metodo]||'💳'} ${sanitizar(p.destinatario || '—')}</div>
-            <div style="font-size:.68rem;color:var(--muted);margin-top:2px;">${fmtFecha(p.fecha)}${orden ? ' · ref: '+sanitizar(orden.proveedor||'—') : ''}</div>
-          </div>
-          <div style="text-align:right;flex-shrink:0;">
-            <div style="font-weight:700;font-size:.92rem;color:#4caf50;">$${fmtNum(p.monto||0)}</div>
-          </div>
-        </div>
-        ${p.obs ? `<div style="font-size:.68rem;color:var(--muted);font-style:italic;margin-top:4px;">${sanitizar(p.obs)}</div>` : ''}
-        ${puedeEditar ? `
-          <div style="margin-top:6px;text-align:right;">
-            <button class="btn btn-secondary" style="font-size:.66rem;padding:4px 8px;color:#f44336;" onclick="pDeletePago('${p.id}')">🗑 Eliminar</button>
-          </div>
-        ` : ''}
-      </div>
-    `;
-  }).join('');
-}
-
-// ── ACCIONES: Crear / actualizar / eliminar ───────────
-function pAddOrden() {
-  if(!rolPuedeEditarPagos()) return showToast('No tienes permiso para crear órdenes','error');
-  const fecha    = document.getElementById('p-ord-fecha').value;
-  const monto    = Number(document.getElementById('p-ord-monto').value);
-  const proveedor= document.getElementById('p-ord-proveedor').value.trim();
-  const pagadoPor= document.getElementById('p-ord-pagado-por').value.trim() ||
-                   (window._currentUser?.nombre || window._currentUser?.email || '');
-  const desc     = document.getElementById('p-ord-desc').value.trim();
-  const factura  = document.getElementById('p-ord-factura').value.trim();
-  const estado   = document.getElementById('p-ord-recibido').value;
-  const obs      = document.getElementById('p-ord-obs').value.trim();
-
-  if(!fecha)                       return showToast('Ingresa fecha','error');
-  if(!monto || monto <= 0)         return showToast('Monto inválido','error');
-  if(!proveedor)                   return showToast('Ingresa proveedor','error');
-  if(!pagadoPor)                   return showToast('Ingresa quién pagó','error');
-  if(!desc)                        return showToast('Ingresa descripción','error');
-
-  const orden = {
-    id: _genId('OC-'),
-    fecha, monto, proveedor, pagadoPor,
-    descripcion: desc,
-    facturaNumero: factura,
-    estado,
-    fechaRecepcion: estado === 'recibido' ? fecha : '',
+  pagosCompras.push({
+    id: _genId('CP-'), fecha, monto, proveedor,
+    descripcion: desc, facturaNumero: factura,
+    recibido, fechaRecepcion: recibido ? fecha : '',
+    devuelto, fechaDevolucion: devuelto ? fecha : '',
     obs,
     createdBy: window._currentUser?.email || '',
     createdAt: new Date().toISOString(),
-  };
-  pagosOrdenes.push(orden);
+  });
   lsGuardarPagos();
-  pLimpiarFormOrden();
-  pRenderOrdenes();
-  showToast('✓ Orden registrada','success');
+  pLimpiarForm();
+  _pPage = 0; // ir a primera página para ver el nuevo registro
+  pRenderCompras();
+  showToast('✓ Compra registrada','success');
 }
 
-function pLimpiarFormOrden() {
-  ['p-ord-monto','p-ord-proveedor','p-ord-pagado-por','p-ord-desc','p-ord-factura','p-ord-obs'].forEach(id => {
+function pLimpiarForm() {
+  ['p-monto','p-proveedor','p-desc','p-factura','p-obs'].forEach(id => {
     const el = document.getElementById(id); if(el) el.value = '';
   });
-  const r = document.getElementById('p-ord-recibido'); if(r) r.value = 'pendiente';
-  const f = document.getElementById('p-ord-fecha');    if(f) f.value = new Date().toISOString().slice(0,10);
+  const r = document.getElementById('p-recibido'); if(r) r.value = 'pendiente';
+  const d = document.getElementById('p-devuelto'); if(d) d.value = 'pendiente';
+  const f = document.getElementById('p-fecha');    if(f) f.value = new Date().toISOString().slice(0,10);
 }
 
-function pMarcarRecibido(ordenId) {
+function pMarcarRecibido(id) {
   if(!rolPuedeEditarPagos()) return showToast('No tienes permiso','error');
-  const o = pagosOrdenes.find(x => x.id === ordenId);
-  if(!o) return;
-  o.estado = 'recibido';
-  o.fechaRecepcion = new Date().toISOString().slice(0,10);
+  const c = pagosCompras.find(x => x.id === id);
+  if(!c) return;
+  c.recibido = true;
+  c.fechaRecepcion = new Date().toISOString().slice(0,10);
   lsGuardarPagos();
-  pRenderOrdenes();
+  pRenderCompras();
   showToast('✓ Marcada como recibida','success');
 }
 
-function pDeleteOrden(ordenId) {
+function pMarcarDevuelto(id) {
   if(!rolPuedeEditarPagos()) return showToast('No tienes permiso','error');
-  if(!confirm('¿Eliminar esta orden de compra?\n\nLos pagos asociados NO se eliminan, pero quedarán como abonos libres.')) return;
-  pagosOrdenes = pagosOrdenes.filter(o => o.id !== ordenId);
-  // Desvincular pagos que apuntaban a esta orden
-  pagosRegistros.forEach(p => { if(p.ordenId === ordenId) p.ordenId = ''; });
+  const c = pagosCompras.find(x => x.id === id);
+  if(!c) return;
+  c.devuelto = true;
+  c.fechaDevolucion = new Date().toISOString().slice(0,10);
   lsGuardarPagos();
-  pRenderOrdenes();
-  pRenderPagos();
-  showToast('Orden eliminada','success');
+  pRenderCompras();
+  showToast('✓ Marcada como devuelta','success');
 }
 
-function pAddPago() {
+function pAgregarFactura(id) {
   if(!rolPuedeEditarPagos()) return showToast('No tienes permiso','error');
-  const fecha = document.getElementById('p-pag-fecha').value;
-  const monto = Number(document.getElementById('p-pag-monto').value);
-  const dest  = document.getElementById('p-pag-dest').value.trim();
-  const metodo= document.getElementById('p-pag-metodo').value;
-  const ordenId = document.getElementById('p-pag-orden').value;
-  const obs   = document.getElementById('p-pag-obs').value.trim();
-
-  if(!fecha)                  return showToast('Ingresa fecha','error');
-  if(!monto || monto <= 0)    return showToast('Monto inválido','error');
-  if(!dest)                   return showToast('Ingresa destinatario','error');
-
-  // Si se vinculó a una orden, autocompletar destinatario si vacío
-  let destFinal = dest;
-  if(ordenId) {
-    const ord = pagosOrdenes.find(o => o.id === ordenId);
-    if(ord && !dest) destFinal = ord.pagadoPor;
-  }
-
-  const pago = {
-    id: _genId('PG-'),
-    fecha, monto,
-    destinatario: destFinal,
-    metodo, ordenId, obs,
-    createdBy: window._currentUser?.email || '',
-    createdAt: new Date().toISOString(),
-  };
-  pagosRegistros.push(pago);
+  const c = pagosCompras.find(x => x.id === id);
+  if(!c) return;
+  const num = prompt('Ingresa N° de factura:', c.facturaNumero || '');
+  if(num === null) return; // cancelado
+  c.facturaNumero = num.trim();
   lsGuardarPagos();
-  pLimpiarFormPago();
-  pRenderPagos();
-  showToast('✓ Pago registrado','success');
+  pRenderCompras();
+  if(num.trim()) showToast('✓ Factura actualizada','success');
 }
 
-function pLimpiarFormPago() {
-  ['p-pag-monto','p-pag-dest','p-pag-obs'].forEach(id => {
-    const el = document.getElementById(id); if(el) el.value = '';
-  });
-  const o = document.getElementById('p-pag-orden');  if(o) o.value = '';
-  const m = document.getElementById('p-pag-metodo'); if(m) m.value = 'transferencia';
-  const f = document.getElementById('p-pag-fecha');  if(f) f.value = new Date().toISOString().slice(0,10);
-}
-
-function pDeletePago(pagoId) {
+function pDeleteCompra(id) {
   if(!rolPuedeEditarPagos()) return showToast('No tienes permiso','error');
-  if(!confirm('¿Eliminar este pago registrado?')) return;
-  pagosRegistros = pagosRegistros.filter(p => p.id !== pagoId);
+  if(!confirm('¿Eliminar esta compra?')) return;
+  pagosCompras = pagosCompras.filter(c => c.id !== id);
   lsGuardarPagos();
-  pRenderPagos();
-  showToast('Pago eliminado','success');
+  pRenderCompras();
+  showToast('Compra eliminada','success');
 }
 
 // ── INDICADOR OFFLINE ─────────────────────────────────
