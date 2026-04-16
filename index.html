@@ -1187,10 +1187,27 @@ body.modal-open{overflow:hidden;}
 
 <!-- U-QR -->
 <div class="page" id="page-uqrcodes">
-  <div class="action-row" style="margin-bottom:13px;">
-    <button class="btn btn-primary" onclick="uPrintAllQR()">🖨 Imprimir todos</button>
+  <div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap;align-items:center;">
+    <select id="uqr-filtro-estado" onchange="uRenderQR()" style="flex:0 0 auto;">
+      <option value="En Stock">✓ En Stock</option>
+      <option value="En Proceso">⏳ En Proceso</option>
+      <option value="Vendido">💰 Vendidos</option>
+      <option value="todos">Todos</option>
+    </select>
+    <input type="text" id="uqr-buscar" placeholder="🔍 Buscar serial o SKU…"
+      oninput="_debounce('uqr-buscar', uRenderQR)" style="flex:1;min-width:140px;">
   </div>
-  <div class="qr-grid" id="u-qr-grid"></div>
+  <div style="display:flex;gap:8px;margin-bottom:10px;font-size:.68rem;align-items:center;flex-wrap:wrap;">
+    <label style="display:flex;gap:5px;align-items:center;cursor:pointer;">
+      <input type="checkbox" id="uqr-select-all" onchange="uQRSelectAll(this.checked)"> Seleccionar todos
+    </label>
+    <span id="uqr-count" style="color:var(--muted);"></span>
+  </div>
+  <div id="u-qr-grid"></div>
+  <div style="position:sticky;bottom:0;background:var(--bg);padding:12px 0 4px;margin-top:14px;display:flex;gap:8px;flex-wrap:wrap;">
+    <button class="btn btn-primary" style="flex:1;min-width:140px;" onclick="uPrintSelectedQR()">🖨 Imprimir seleccionados</button>
+    <button class="btn btn-secondary" style="flex:1;min-width:140px;" onclick="uDownloadNiimbotZip()">📦 Descargar PNG (Niimbot)</button>
+  </div>
 </div>
 
 <!-- U-DELETE -->
@@ -4281,32 +4298,198 @@ function uExportCSV() {
 }
 function uExportExcel() { uExportCSV(); showToast('Exportando como CSV (compatible con Excel)', 'success'); }
 
-// ── QR ────────────────────────────────────────────────
-function uRenderQR() {
-  const grid = document.getElementById('u-qr-grid');
-  grid.innerHTML = '';
-  if(!uProducts.length) { grid.innerHTML = '<div class="empty"><div class="empty-icon">🔲</div>Sin SKUs</div>'; return; }
-  uProducts.forEach(p => {
-    const div = document.createElement('div');
-    div.className = 'qr-card';
-    div.innerHTML = `<div style="font-family:'Space Mono',monospace;font-size:.65rem;color:var(--muted);margin-bottom:6px;">${sanitizar(p.id)}</div>
-      <div id="qr-u-${p.id}" class="qr-img"></div>
-      <div style="font-size:.75rem;margin-top:6px;text-align:center;">${sanitizar(p.name)}</div>
-      <div style="font-size:.65rem;color:var(--muted);text-align:center;">${sanitizar(p.terminacion||'')}</div>`;
-    grid.appendChild(div);
-    if(typeof QRCode !== 'undefined') {
-      new QRCode(document.getElementById('qr-u-' + p.id), { text: p.id, width: 100, height: 100, colorDark:'#000000', colorLight:'#ffffff' });
-    }
+// ── QR por unidad ──────────────────────────────────────
+// Los QR ya no son por SKU sino por unidad serializada (ej: A-001).
+// El scanner uHandleScan() ya busca por u.id en uUnidades, así que
+// escanear un QR de unidad abre la ficha de esa unidad directamente.
+const _uqrSelected = new Set();  // serials seleccionados
+const _uqrExpanded = new Set();  // grupos expandidos (skuId|term)
+const _uqrKey = u => (u.skuId || '') + '|' + (u.terminacion || '');
+
+function uQRUnidadesFiltradas() {
+  const estado = document.getElementById('uqr-filtro-estado')?.value || 'En Stock';
+  const q = (document.getElementById('uqr-buscar')?.value || '').toLowerCase().trim();
+  return uUnidades.filter(u => {
+    if(estado !== 'todos' && u.estado !== estado) return false;
+    if(q && !(u.id||'').toLowerCase().includes(q) && !(u.skuId||'').toLowerCase().includes(q)) return false;
+    return true;
   });
 }
-function uPrintAllQR() {
+
+function uRenderQR() {
+  const grid = document.getElementById('u-qr-grid');
+  if(!grid) return;
+  const unidades = uQRUnidadesFiltradas();
+  if(!unidades.length) {
+    grid.innerHTML = '<div class="empty"><div class="empty-icon">🔲</div>Sin unidades con ese filtro</div>';
+    document.getElementById('uqr-count').textContent = '';
+    document.getElementById('uqr-select-all').checked = false;
+    return;
+  }
+  // Agrupar por skuId+terminación
+  const grupos = {};
+  unidades.forEach(u => {
+    const k = _uqrKey(u);
+    if(!grupos[k]) grupos[k] = { skuId:u.skuId, terminacion:u.terminacion||'', nombre:u.nombre||'', unidades:[] };
+    grupos[k].unidades.push(u);
+  });
+  const keys = Object.keys(grupos).sort();
+  let html = '';
+  keys.forEach(k => {
+    const g = grupos[k];
+    const expanded = _uqrExpanded.has(k);
+    const selCount = g.unidades.filter(u => _uqrSelected.has(u.id)).length;
+    const allSel = selCount === g.unidades.length && selCount > 0;
+    html += `<div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;margin-bottom:8px;overflow:hidden;">
+      <div style="display:flex;align-items:center;gap:8px;padding:10px 12px;cursor:pointer;" onclick="uQRToggleGrupo('${k.replace(/'/g,"\\'")}')">
+        <input type="checkbox" ${allSel?'checked':''} onclick="event.stopPropagation();uQRSelectGrupo('${k.replace(/'/g,"\\'")}',this.checked)" style="flex-shrink:0;">
+        <span style="font-size:.8rem;color:var(--accent);flex-shrink:0;">${expanded?'▼':'▶'}</span>
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:.82rem;font-weight:600;">${sanitizar(g.skuId)}${g.terminacion?' · '+sanitizar(g.terminacion):''}</div>
+          <div style="font-size:.68rem;color:var(--muted);">${sanitizar(g.nombre)}</div>
+        </div>
+        <div style="font-size:.68rem;color:var(--muted);white-space:nowrap;">${g.unidades.length} ud${selCount?' · '+selCount+' sel':''}</div>
+      </div>`;
+    if(expanded) {
+      html += '<div style="border-top:1px solid var(--border);padding:6px 12px 10px;">';
+      g.unidades.sort((a,b) => (a.id||'').localeCompare(b.id||'')).forEach(u => {
+        const sel = _uqrSelected.has(u.id);
+        html += `<label style="display:flex;align-items:center;gap:8px;padding:6px 0;cursor:pointer;border-bottom:1px dashed var(--border);">
+          <input type="checkbox" ${sel?'checked':''} onchange="uQRToggleUnidad('${u.id}',this.checked)" style="flex-shrink:0;">
+          <span style="font-family:'Space Mono',monospace;font-size:.75rem;flex:1;">${sanitizar(u.id)}</span>
+          <span style="font-size:.65rem;color:var(--muted);">${sanitizar(u.estado||'')}${u.ubicacion?' · '+sanitizar(u.ubicacion):''}</span>
+        </label>`;
+      });
+      html += '</div>';
+    }
+    html += '</div>';
+  });
+  grid.innerHTML = html;
+  // Actualizar contador y "seleccionar todos"
+  const totalSel = unidades.filter(u => _uqrSelected.has(u.id)).length;
+  document.getElementById('uqr-count').textContent = `${unidades.length} unidad${unidades.length!==1?'es':''} · ${totalSel} seleccionad${totalSel!==1?'as':'a'}`;
+  document.getElementById('uqr-select-all').checked = totalSel === unidades.length && totalSel > 0;
+}
+
+function uQRToggleGrupo(key) {
+  if(_uqrExpanded.has(key)) _uqrExpanded.delete(key);
+  else _uqrExpanded.add(key);
+  uRenderQR();
+}
+function uQRSelectGrupo(key, sel) {
+  const unidades = uQRUnidadesFiltradas().filter(u => _uqrKey(u) === key);
+  unidades.forEach(u => { if(sel) _uqrSelected.add(u.id); else _uqrSelected.delete(u.id); });
+  uRenderQR();
+}
+function uQRToggleUnidad(serial, sel) {
+  if(sel) _uqrSelected.add(serial); else _uqrSelected.delete(serial);
+  uRenderQR();
+}
+function uQRSelectAll(sel) {
+  uQRUnidadesFiltradas().forEach(u => { if(sel) _uqrSelected.add(u.id); else _uqrSelected.delete(u.id); });
+  uRenderQR();
+}
+
+function _uqrSeleccionadas() {
+  const vis = uQRUnidadesFiltradas();
+  return vis.filter(u => _uqrSelected.has(u.id));
+}
+
+function uPrintSelectedQR() {
+  if(typeof QRCode === 'undefined') return showToast('Librería QR no cargada','error');
+  const items = _uqrSeleccionadas();
+  if(!items.length) return showToast('Selecciona al menos una unidad','error');
   const area = document.getElementById('print-area');
-  const items = uProducts.filter(p => uStockDe(p.id, uUnidades) > 0 || uEnProcesoDe(p.id, uUnidades) > 0);
-  if (!items.length) return showToast('No hay productos con unidades para imprimir', 'error');
   area.style.display = 'flex';
-  area.innerHTML = items.map((p, i) => `<div class="qr-print-item"><div id="upqr${i}" style="background:#fff;padding:6px;display:inline-block;"></div><p><b>${sanitizar(p.name)}</b></p><p>${sanitizar(p.id)}</p></div>`).join('');
-  items.forEach((p, i) => new QRCode(document.getElementById('upqr' + i), { text: p.id, width: 140, height: 140, colorDark: '#000000', colorLight: '#ffffff' }));
+  area.innerHTML = items.map((u, i) =>
+    `<div class="qr-print-item"><div id="upqr${i}" style="background:#fff;padding:6px;display:inline-block;"></div>
+      <p><b>${sanitizar(u.id)}</b></p>
+      <p>${sanitizar(u.skuId||'')}${u.terminacion?' · '+sanitizar(u.terminacion):''}</p>
+      <p style="font-size:.7rem;color:#666;">${sanitizar(u.nombre||'')}</p></div>`
+  ).join('');
+  items.forEach((u, i) => new QRCode(document.getElementById('upqr' + i), { text: u.id, width: 140, height: 140, colorDark: '#000000', colorLight: '#ffffff' }));
   setTimeout(() => { window.print(); area.style.display = 'none'; area.innerHTML = ''; }, 400);
+}
+
+// Genera PNG individual de una etiqueta (QR + texto) para NIIMBOT
+// Canvas 400x300 px = aprox 40x30 mm a 254 dpi (tamaño de etiqueta común)
+function _uqrBuildLabelPNG(unidad) {
+  return new Promise((resolve, reject) => {
+    const holder = document.createElement('div');
+    holder.style.position = 'absolute';
+    holder.style.left = '-9999px';
+    document.body.appendChild(holder);
+    try {
+      new QRCode(holder, { text: unidad.id, width: 200, height: 200, colorDark:'#000000', colorLight:'#ffffff' });
+    } catch(e) { document.body.removeChild(holder); return reject(e); }
+    // qrcodejs genera el canvas de forma sincrónica
+    setTimeout(() => {
+      const srcCanvas = holder.querySelector('canvas');
+      if(!srcCanvas) { document.body.removeChild(holder); return reject(new Error('No canvas')); }
+      const W = 400, H = 300;
+      const out = document.createElement('canvas');
+      out.width = W; out.height = H;
+      const ctx = out.getContext('2d');
+      ctx.fillStyle = '#fff'; ctx.fillRect(0,0,W,H);
+      ctx.drawImage(srcCanvas, 12, 12, 240, 240);
+      ctx.fillStyle = '#000';
+      ctx.font = 'bold 36px monospace';
+      ctx.textBaseline = 'top';
+      const serial = String(unidad.id || '');
+      ctx.fillText(serial, 262, 20);
+      ctx.font = '18px sans-serif';
+      ctx.fillText(String(unidad.skuId || ''), 262, 64);
+      const term = String(unidad.terminacion || '');
+      if(term) ctx.fillText(term, 262, 86);
+      const nombre = String(unidad.nombre || '');
+      if(nombre) {
+        ctx.font = '16px sans-serif';
+        // Truncate si muy largo
+        const maxChars = 18;
+        ctx.fillText(nombre.length > maxChars ? nombre.slice(0, maxChars-1)+'…' : nombre, 262, 112);
+      }
+      document.body.removeChild(holder);
+      out.toBlob(blob => blob ? resolve(blob) : reject(new Error('toBlob falló')), 'image/png');
+    }, 50);
+  });
+}
+
+// Lazy-load JSZip desde CDN (solo cuando se pide descargar)
+function _loadJSZip() {
+  if(window.JSZip) return Promise.resolve(window.JSZip);
+  return new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js';
+    s.onload = () => resolve(window.JSZip);
+    s.onerror = () => reject(new Error('No se pudo cargar JSZip'));
+    document.head.appendChild(s);
+  });
+}
+
+async function uDownloadNiimbotZip() {
+  if(typeof QRCode === 'undefined') return showToast('Librería QR no cargada','error');
+  const items = _uqrSeleccionadas();
+  if(!items.length) return showToast('Selecciona al menos una unidad','error');
+  showToast('Generando etiquetas…','success');
+  let JSZip;
+  try { JSZip = await _loadJSZip(); }
+  catch(e) { return showToast('Error cargando JSZip — revisa tu conexión','error'); }
+  const zip = new JSZip();
+  for(const u of items) {
+    try {
+      const blob = await _uqrBuildLabelPNG(u);
+      const safeName = String(u.id).replace(/[^\w\-]/g,'_');
+      zip.file(safeName + '.png', blob);
+    } catch(e) { console.error('Error PNG '+u.id, e); }
+  }
+  const out = await zip.generateAsync({ type:'blob' });
+  const url = URL.createObjectURL(out);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'etiquetas_niimbot_' + new Date().toISOString().slice(0,10) + '.zip';
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 5000);
+  showToast(`✓ ${items.length} etiqueta${items.length!==1?'s':''} descargada${items.length!==1?'s':''}`,'success');
 }
 
 // ── RESUMEN ────────────────────────────────────────────
