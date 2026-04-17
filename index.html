@@ -216,8 +216,9 @@ main{position:relative;z-index:1;max-width:860px;margin:0 auto;padding:22px 15px
 .form-row{display:grid;grid-template-columns:1fr 1fr;gap:11px;margin-top:13px;}
 @media(max-width:480px){.form-row{grid-template-columns:1fr;}}
 label{display:block;font-size:.7rem;font-family:'Space Mono',monospace;color:var(--muted);margin-bottom:5px;text-transform:uppercase;letter-spacing:.5px;}
-input,select{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px 12px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:.9rem;outline:none;transition:border-color .2s;}
-input:focus,select:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(0,229,160,.1);}
+input:not([type="checkbox"]):not([type="radio"]),select{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px 12px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:.9rem;outline:none;transition:border-color .2s;}
+input:not([type="checkbox"]):not([type="radio"]):focus,select:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(0,229,160,.1);}
+input[type="checkbox"],input[type="radio"]{width:16px;height:16px;accent-color:var(--accent);cursor:pointer;flex-shrink:0;}
 select option{background:var(--surface2);}
 
 /* TYPE TOGGLE */
