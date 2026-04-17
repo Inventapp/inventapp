@@ -1549,6 +1549,8 @@ body.modal-open{overflow:hidden;}
 <main>
 
 <div class="page active" id="page-pcompras">
+  <!-- KPIs -->
+  <div class="summary-grid" id="p-kpis" style="margin-bottom:12px;"></div>
   <!-- Formulario nueva compra (solo admin/ventas) -->
   <div id="p-form-wrap" style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:14px;">
     <div onclick="pToggleForm()" style="font-size:.78rem;color:var(--accent);font-weight:700;cursor:pointer;user-select:none;">
@@ -8371,6 +8373,30 @@ function pFiltrarCompras(compras, query, filtro) {
 
 // ── RENDER ────────────────────────────────────────────
 function pRenderCompras() {
+  // KPIs
+  const pKpis = document.getElementById('p-kpis');
+  if(pKpis) {
+    const sinFactura = pagosCompras.filter(c => !c.facturaNumero).length;
+    const montoPorDevolver = pagosCompras.filter(c => !c.devuelto).reduce((s,c) => s + (c.monto||0), 0);
+    const porRecibir = pagosCompras.filter(c => !c.recibido).length;
+    pKpis.innerHTML = `
+      <div class="card" style="padding:12px;">
+        <div style="font-family:'Space Mono',monospace;font-size:.57rem;color:var(--muted);letter-spacing:.06em;margin-bottom:3px;">FACTURAS PENDIENTES</div>
+        <div style="font-family:'Space Mono',monospace;font-size:1.35rem;font-weight:700;color:${sinFactura>0?'var(--warn)':'var(--accent)'};line-height:1.1;">${sinFactura}</div>
+        <div style="font-size:.6rem;color:var(--muted);margin-top:3px;">compras sin N° factura</div>
+      </div>
+      <div class="card" style="padding:12px;">
+        <div style="font-family:'Space Mono',monospace;font-size:.57rem;color:var(--muted);letter-spacing:.06em;margin-bottom:3px;">MONTO POR DEVOLVER</div>
+        <div style="font-family:'Space Mono',monospace;font-size:1.35rem;font-weight:700;color:${montoPorDevolver>0?'var(--danger)':'var(--accent)'};line-height:1.1;">$${fmtNum(montoPorDevolver)}</div>
+        <div style="font-size:.6rem;color:var(--muted);margin-top:3px;">sin confirmar devolución</div>
+      </div>
+      <div class="card" style="padding:12px;">
+        <div style="font-family:'Space Mono',monospace;font-size:.57rem;color:var(--muted);letter-spacing:.06em;margin-bottom:3px;">PRODUCTOS POR RECIBIR</div>
+        <div style="font-family:'Space Mono',monospace;font-size:1.35rem;font-weight:700;color:${porRecibir>0?'var(--warn)':'var(--accent)'};line-height:1.1;">${porRecibir}</div>
+        <div style="font-size:.6rem;color:var(--muted);margin-top:3px;">compras sin recepción</div>
+      </div>`;
+  }
+
   // Ocultar form si el rol no puede editar
   const puedeEditar = rolPuedeEditarPagos();
   const formWrap = document.getElementById('p-form-wrap');
